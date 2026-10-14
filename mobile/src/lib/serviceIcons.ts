@@ -37,7 +37,5 @@ export const SERVICE_SHORT: Record<string, string> = {
   disinfect: "Disinfection",
 };
 
-/** Ratings shown on cards (to be replaced by live averages from reviews). */
-export const SERVICE_RATING: Record<string, number> = { regular: 4.9, deep: 4.8, move: 4.8, ac: 4.7, pest: 4.8, carpet: 4.7 };
 
 export const MOST_BOOKED = ["deep", "regular", "move", "ac", "carpet", "pest"];

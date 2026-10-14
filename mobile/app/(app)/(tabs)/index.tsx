@@ -1,13 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
-import { Dimensions, Linking, Pressable, ScrollView, Text as RNText, TextInput, View } from "react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Dimensions, Linking, Pressable, RefreshControl, ScrollView, Text as RNText, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Location from "expo-location";
-import { Card, InlineLoader, Row, SectionHeader, StatusPill, Text } from "@/components/ui";
+import { FadeIn, SkeletonCard } from "@/components/art/Motion";
+import { CoolAirScene, LivingRoomScene, PayInFourScene } from "@/components/art/Scenes";
+import { ServiceIcon } from "@/components/art/ServiceIcon";
+import { Card, Row, SectionHeader, StatusPill, Text } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { aed, when } from "@/lib/format";
-import { MOST_BOOKED, SERVICE_ICON, SERVICE_RATING, SERVICE_SHORT } from "@/lib/serviceIcons";
+import { ratingLabel } from "@/lib/rating";
+import { MOST_BOOKED, SERVICE_SHORT } from "@/lib/serviceIcons";
 import { colors, fonts, radius, shadow, space } from "@/lib/theme";
 import type { Booking, Company, Service } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
@@ -24,11 +28,12 @@ interface Address {
 }
 
 const W = Dimensions.get("window").width;
+const SLIDE = W - space(8);
 
 const PROMOS = [
-  { title: "Deep clean from AED 300", body: "Kitchen, bathrooms, inside cupboards. Every corner.", cta: "Book deep clean", service: "deep", bg: colors.ink, fg: "#fff", accent: colors.goldBright, art: "🧽" },
-  { title: "Pay in 4 with Tamara", body: "Split any booking into 4 interest-free payments.", cta: "Learn more", service: "regular", bg: "#F3E3BC", fg: colors.ink, accent: colors.ink, art: "💳" },
-  { title: "AC duct cleaning", body: "Breathe cleaner air before summer. Free survey.", cta: "Get a quote", service: "ac", bg: "#E3EEF6", fg: colors.ink, accent: "#1F5F8B", art: "❄️" },
+  { title: "Deep clean from AED 300", body: "Kitchen, bathrooms, inside cupboards. Every corner.", cta: "Book deep clean", service: "deep", bg: colors.ink, fg: "#fff", ctaBg: colors.goldBright, ctaFg: colors.ink, Art: LivingRoomScene },
+  { title: "Pay in 4 with Tamara", body: "Split any booking into 4 interest-free payments.", cta: "Book now", service: "regular", bg: "#F3E3BC", fg: colors.ink, ctaBg: colors.ink, ctaFg: "#fff", Art: PayInFourScene },
+  { title: "Beat the heat: AC duct cleaning", body: "Cleaner, cooler air. Free survey.", cta: "Get a quote", service: "ac", bg: "#E3EEF6", fg: colors.ink, ctaBg: "#1F5F8B", ctaFg: "#fff", Art: CoolAirScene },
 ];
 
 export default function Home() {
@@ -37,20 +42,24 @@ export default function Home() {
   const active = useApi<Booking[]>("/bookings?scope=active&limit=3");
   const addresses = useApi<Address[]>("/me/addresses");
   const company = useApi<Company>("/company");
+  const inbox = useApi<{ read: boolean }[]>("/me/notifications?limit=50");
   const [teams, setTeams] = useState<Availability | null>(null);
   const [query, setQuery] = useState("");
   const [slide, setSlide] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadTeams = useCallback(async () => {
+    let q = "";
+    const perm = await Location.getForegroundPermissionsAsync().catch(() => null);
+    if (perm?.granted) {
+      const pos = await Location.getLastKnownPositionAsync().catch(() => null);
+      if (pos) q = `?lat=${pos.coords.latitude}&lng=${pos.coords.longitude}`;
+    }
+    setTeams(await api<Availability>(`/staff/availability${q}`).catch(() => null));
+  }, []);
 
   useEffect(() => {
-    (async () => {
-      let q = "";
-      const perm = await Location.getForegroundPermissionsAsync().catch(() => null);
-      if (perm?.granted) {
-        const pos = await Location.getLastKnownPositionAsync().catch(() => null);
-        if (pos) q = `?lat=${pos.coords.latitude}&lng=${pos.coords.longitude}`;
-      }
-      setTeams(await api<Availability>(`/staff/availability${q}`).catch(() => null));
-    })();
+    void loadTeams();
   }, []);
 
   // Keep the live booking card current (status changes, "Track" appearing).
@@ -61,50 +70,88 @@ export default function Home() {
     return () => clearInterval(t);
   }, [hasActive]);
 
+  // Rotate the offers every few seconds.
+  useEffect(() => {
+    const t = setInterval(() => setSlide((s) => (s + 1) % PROMOS.length), 5000);
+    return () => clearInterval(t);
+  }, []);
+  const [carousel, setCarousel] = useState<ScrollView | null>(null);
+  useEffect(() => {
+    carousel?.scrollTo({ x: slide * (SLIDE + space(3)), animated: true });
+  }, [slide]);
+
+  async function refresh() {
+    setRefreshing(true);
+    await Promise.all([services.reload(), active.reload(), addresses.reload(), inbox.reload(), loadTeams()]);
+    setRefreshing(false);
+  }
+
   const all = services.data?.services ?? [];
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
     return q ? all.filter((s) => `${s.name} ${SERVICE_SHORT[s.key] ?? ""}`.toLowerCase().includes(q)) : [];
   }, [query, all]);
   const area = addresses.data?.find((a) => a.isDefault)?.area ?? addresses.data?.[0]?.area;
+  const unread = inbox.data?.filter((n) => !n.read).length ?? 0;
   const first = user?.fullName?.split(" ")[0];
   const open = (key: string) => router.push(`/service/${key}`);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: space(10) }} keyboardShouldPersistTaps="handled">
-        {/* Brand header with location, greeting and search */}
-        <View style={{ backgroundColor: colors.ink, borderBottomLeftRadius: radius.xl + 4, borderBottomRightRadius: radius.xl + 4, paddingBottom: space(8) }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: space(10) }}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.goldBright} colors={[colors.gold]} />}
+      >
+        {/* Brand header: location, live team count, notifications, greeting */}
+        <View style={{ backgroundColor: colors.ink, borderBottomLeftRadius: radius.xl + 4, borderBottomRightRadius: radius.xl + 4, paddingBottom: space(9), overflow: "hidden" }}>
+          <View style={{ position: "absolute", right: -40, top: -30, width: 180, height: 180, borderRadius: 90, backgroundColor: "#2A231A" }} />
+          <View style={{ position: "absolute", right: 40, bottom: -60, width: 120, height: 120, borderRadius: 60, backgroundColor: "#211C15" }} />
           <SafeAreaView edges={["top"]} style={{ paddingHorizontal: space(4), paddingTop: space(2), gap: space(4) }}>
             <Row style={{ justifyContent: "space-between" }}>
-              <Pressable onPress={() => router.push("/(app)/(tabs)/account")} style={{ flexDirection: "row", alignItems: "center", gap: space(2) }} accessibilityRole="button" accessibilityLabel="Service location">
-                <RNText style={{ fontSize: 18 }}>📍</RNText>
-                <View>
+              <Pressable onPress={() => router.push("/addresses")} style={{ flexDirection: "row", alignItems: "center", gap: space(2), flex: 1 }} accessibilityRole="button" accessibilityLabel="Service location">
+                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "#2A251D", alignItems: "center", justifyContent: "center" }}>
+                  <RNText style={{ fontSize: 16 }}>📍</RNText>
+                </View>
+                <View style={{ flexShrink: 1 }}>
                   <RNText style={{ color: "#A79E8D", fontFamily: fonts.medium, fontSize: 12 }}>Service location</RNText>
-                  <RNText style={{ color: "#fff", fontFamily: fonts.bold, fontSize: 15 }}>{area ?? "Abu Dhabi"} ▾</RNText>
+                  <RNText style={{ color: "#fff", fontFamily: fonts.bold, fontSize: 15 }} numberOfLines={1}>
+                    {area ?? "Set your address"} ▾
+                  </RNText>
                 </View>
               </Pressable>
-              {teams ? (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "#24201A", borderRadius: radius.pill, paddingHorizontal: space(3), paddingVertical: space(1.5) }}>
-                  <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: "#3DDC84" }} />
-                  <RNText style={{ color: "#E9E3D6", fontFamily: fonts.semibold, fontSize: 12 }}>{teams.available} pros available</RNText>
-                </View>
-              ) : null}
+              <Pressable onPress={() => router.push("/notifications")} accessibilityRole="button" accessibilityLabel={`Notifications, ${unread} unread`} style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: "#2A251D", alignItems: "center", justifyContent: "center" }}>
+                <RNText style={{ fontSize: 18 }}>🔔</RNText>
+                {unread ? (
+                  <View style={{ position: "absolute", top: 4, right: 4, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: colors.danger, alignItems: "center", justifyContent: "center", paddingHorizontal: 4, borderWidth: 2, borderColor: colors.ink }}>
+                    <RNText style={{ color: "#fff", fontFamily: fonts.bold, fontSize: 10 }}>{unread > 9 ? "9+" : unread}</RNText>
+                  </View>
+                ) : null}
+              </Pressable>
             </Row>
             <View style={{ gap: 2 }}>
               <RNText style={{ color: colors.goldBright, fontFamily: fonts.semibold, fontSize: 15 }}>Hi{first ? ` ${first}` : " there"} 👋</RNText>
               <RNText style={{ color: "#fff", fontFamily: fonts.extrabold, fontSize: 26, lineHeight: 33, letterSpacing: -0.4 }}>What can we help you with today?</RNText>
             </View>
+            {teams ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-start", backgroundColor: "#24201A", borderRadius: radius.pill, paddingHorizontal: space(3), paddingVertical: space(1.5) }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#3DDC84" }} />
+                <RNText style={{ color: "#E9E3D6", fontFamily: fonts.semibold, fontSize: 12 }}>
+                  {teams.available} teams available now{teams.nearestEtaMinutes != null ? ` · nearest ~${teams.nearestEtaMinutes} min` : ""}
+                </RNText>
+              </View>
+            ) : null}
           </SafeAreaView>
         </View>
 
         <View style={{ paddingHorizontal: space(4), marginTop: -space(7), gap: space(5) }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: space(2), backgroundColor: colors.surface, borderRadius: radius.lg, paddingHorizontal: space(4), height: 54, ...shadow.raised }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: space(2), backgroundColor: colors.surface, borderRadius: radius.lg, paddingHorizontal: space(4), height: 56, ...shadow.raised }}>
             <RNText style={{ fontSize: 16, color: colors.faint }}>🔍</RNText>
             <TextInput
               value={query}
               onChangeText={setQuery}
-              placeholder="Search for a service (e.g. sofa, AC)"
+              placeholder="Search services (e.g. sofa, AC, maid)"
               placeholderTextColor={colors.faint}
               style={{ flex: 1, fontFamily: fonts.medium, fontSize: 15, color: colors.text }}
               returnKeyType="search"
@@ -120,8 +167,8 @@ export default function Home() {
             <Card style={{ gap: 0, paddingVertical: space(1) }}>
               {results.length === 0 ? <Text variant="muted" style={{ padding: space(3) }}>No services match “{query}”.</Text> : null}
               {results.map((s) => (
-                <Pressable key={s.key} onPress={() => open(s.key)} style={{ flexDirection: "row", alignItems: "center", gap: space(3), paddingVertical: space(3) }}>
-                  <RNText style={{ fontSize: 22 }}>{SERVICE_ICON[s.key]}</RNText>
+                <Pressable key={s.key} onPress={() => open(s.key)} style={{ flexDirection: "row", alignItems: "center", gap: space(3), paddingVertical: space(2.5) }}>
+                  <ServiceIcon name={s.key} size={40} />
                   <Text style={{ flex: 1, fontFamily: fonts.semibold }}>{s.name}</Text>
                   <Text variant="small">{s.startingFromAed ? `from ${aed(s.startingFromAed)}` : "Free survey"}</Text>
                 </Pressable>
@@ -129,71 +176,81 @@ export default function Home() {
             </Card>
           ) : null}
 
-          {/* Live booking first: it's what returning customers open the app for. */}
           {active.data?.map((b) => (
-            <Card key={b.id} onPress={() => router.push(b.trackable ? `/booking/${b.id}/track` : `/booking/${b.id}`)} tone="gold">
-              <Row style={{ justifyContent: "space-between" }}>
-                <Text variant="label">YOUR UPCOMING BOOKING</Text>
-                <StatusPill status={b.status} />
-              </Row>
-              <Row>
-                <RNText style={{ fontSize: 28 }}>{SERVICE_ICON[b.service.key] ?? "✨"}</RNText>
-                <View style={{ flex: 1 }}>
-                  <Text variant="subheading">{b.service.name}</Text>
-                  <Text variant="small">
-                    {when(b.scheduledAt)} · {b.reference}
-                  </Text>
-                </View>
-              </Row>
-              {b.trackable ? (
-                <View style={{ backgroundColor: colors.ink, borderRadius: radius.md, paddingVertical: space(3), alignItems: "center" }}>
-                  <RNText style={{ color: colors.goldBright, fontFamily: fonts.bold }}>📍 Track your team live</RNText>
-                </View>
-              ) : null}
-            </Card>
+            <FadeIn key={b.id}>
+              <Card onPress={() => router.push(b.trackable ? `/booking/${b.id}/track` : `/booking/${b.id}`)} tone="gold">
+                <Row style={{ justifyContent: "space-between" }}>
+                  <Text variant="label">YOUR UPCOMING BOOKING</Text>
+                  <StatusPill status={b.status} />
+                </Row>
+                <Row>
+                  <ServiceIcon name={b.service.key} size={48} />
+                  <View style={{ flex: 1 }}>
+                    <Text variant="subheading">{b.service.name}</Text>
+                    <Text variant="small">
+                      {when(b.scheduledAt)} · {b.reference}
+                    </Text>
+                  </View>
+                </Row>
+                {b.trackable ? (
+                  <View style={{ backgroundColor: colors.ink, borderRadius: radius.md, paddingVertical: space(3), alignItems: "center" }}>
+                    <RNText style={{ color: colors.goldBright, fontFamily: fonts.bold }}>📍 Track your team live</RNText>
+                  </View>
+                ) : null}
+              </Card>
+            </FadeIn>
           ))}
 
-          {/* Offers carousel */}
+          {/* Offers carousel with illustrations */}
           <View>
             <ScrollView
+              ref={setCarousel}
               horizontal
               pagingEnabled
               showsHorizontalScrollIndicator={false}
-              snapToInterval={W - space(8) + space(3)}
+              snapToInterval={SLIDE + space(3)}
               decelerationRate="fast"
-              onMomentumScrollEnd={(e) => setSlide(Math.round(e.nativeEvent.contentOffset.x / (W - space(8) + space(3))))}
+              onMomentumScrollEnd={(e) => setSlide(Math.round(e.nativeEvent.contentOffset.x / (SLIDE + space(3))))}
               contentContainerStyle={{ gap: space(3) }}
             >
-              {PROMOS.map((p) => (
-                <Pressable key={p.title} onPress={() => open(p.service)} style={{ width: W - space(8), backgroundColor: p.bg, borderRadius: radius.xl, padding: space(5), gap: space(2), overflow: "hidden" }}>
-                  <RNText style={{ position: "absolute", right: -6, bottom: -14, fontSize: 96, opacity: 0.9 }}>{p.art}</RNText>
-                  <RNText style={{ color: p.fg, fontFamily: fonts.extrabold, fontSize: 20, width: "70%" }}>{p.title}</RNText>
-                  <RNText style={{ color: p.fg, opacity: 0.75, fontFamily: fonts.medium, fontSize: 13, width: "62%" }}>{p.body}</RNText>
-                  <View style={{ alignSelf: "flex-start", backgroundColor: p.accent, borderRadius: radius.pill, paddingHorizontal: space(4), paddingVertical: space(2), marginTop: space(2) }}>
-                    <RNText style={{ color: p.bg === colors.ink ? colors.ink : "#fff", fontFamily: fonts.bold, fontSize: 13 }}>{p.cta} →</RNText>
+              {PROMOS.map(({ Art, ...p }) => (
+                <Pressable key={p.title} onPress={() => open(p.service)} style={{ width: SLIDE, height: 176, backgroundColor: p.bg, borderRadius: radius.xl, padding: space(5), overflow: "hidden" }}>
+                  {/* Outline art needs a light backdrop on the dark banner. */}
+                  {p.bg === colors.ink ? <View style={{ position: "absolute", right: -30, bottom: -40, width: 200, height: 200, borderRadius: 100, backgroundColor: "#F3E3BC" }} /> : null}
+                  <View style={{ position: "absolute", right: -8, bottom: -6 }}>
+                    <Art width={150} height={128} />
+                  </View>
+                  <View style={{ width: "58%", gap: space(1.5) }}>
+                    <RNText style={{ color: p.fg, fontFamily: fonts.extrabold, fontSize: 19, lineHeight: 24 }}>{p.title}</RNText>
+                    <RNText style={{ color: p.fg, opacity: 0.75, fontFamily: fonts.medium, fontSize: 12.5, lineHeight: 17 }}>{p.body}</RNText>
+                  </View>
+                  <View style={{ position: "absolute", left: space(5), bottom: space(5), backgroundColor: p.ctaBg, borderRadius: radius.pill, paddingHorizontal: space(4), paddingVertical: space(2) }}>
+                    <RNText style={{ color: p.ctaFg, fontFamily: fonts.bold, fontSize: 13 }}>{p.cta} →</RNText>
                   </View>
                 </Pressable>
               ))}
             </ScrollView>
             <Row style={{ justifyContent: "center", gap: 6, marginTop: space(3) }}>
               {PROMOS.map((_, i) => (
-                <View key={i} style={{ width: i === slide ? 18 : 6, height: 6, borderRadius: 3, backgroundColor: i === slide ? colors.ink : colors.border }} />
+                <View key={i} style={{ width: i === slide ? 20 : 6, height: 6, borderRadius: 3, backgroundColor: i === slide ? colors.ink : colors.border }} />
               ))}
             </Row>
           </View>
 
           <SectionHeader title="All services" />
-          {services.loading ? <InlineLoader label="Loading services…" /> : null}
+          {services.loading ? <SkeletonCard /> : null}
           <View style={{ flexDirection: "row", flexWrap: "wrap", rowGap: space(4) }}>
-            {all.map((s) => (
-              <Pressable key={s.key} onPress={() => open(s.key)} style={{ width: "25%", alignItems: "center", gap: space(1.5) }} accessibilityRole="button" accessibilityLabel={s.name}>
-                <View style={{ width: 62, height: 62, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center", ...shadow.card }}>
-                  <RNText style={{ fontSize: 28 }}>{SERVICE_ICON[s.key] ?? "✨"}</RNText>
-                </View>
-                <RNText style={{ fontFamily: fonts.semibold, fontSize: 12, color: colors.text, textAlign: "center" }} numberOfLines={2}>
-                  {SERVICE_SHORT[s.key] ?? s.name}
-                </RNText>
-              </Pressable>
+            {all.map((s, i) => (
+              <FadeIn key={s.key} delay={i * 25} style={{ width: "25%" }}>
+                <Pressable onPress={() => open(s.key)} style={({ pressed }) => ({ alignItems: "center", gap: space(1.5), transform: [{ scale: pressed ? 0.94 : 1 }] })} accessibilityRole="button" accessibilityLabel={s.name}>
+                  <View style={{ width: 66, height: 66, borderRadius: radius.lg + 2, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center", ...shadow.card }}>
+                    <ServiceIcon name={s.key} size={50} tile={false} />
+                  </View>
+                  <RNText style={{ fontFamily: fonts.semibold, fontSize: 12, color: colors.text, textAlign: "center" }} numberOfLines={2}>
+                    {SERVICE_SHORT[s.key] ?? s.name}
+                  </RNText>
+                </Pressable>
+              </FadeIn>
             ))}
           </View>
 
@@ -202,35 +259,40 @@ export default function Home() {
             {MOST_BOOKED.map((k) => all.find((s) => s.key === k))
               .filter((s): s is Service => Boolean(s))
               .map((s) => (
-                <Pressable key={s.key} onPress={() => open(s.key)} style={{ width: 168, backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, overflow: "hidden", ...shadow.card }}>
-                  <View style={{ height: 96, backgroundColor: colors.goldSoft, alignItems: "center", justifyContent: "center" }}>
-                    <RNText style={{ fontSize: 46 }}>{SERVICE_ICON[s.key]}</RNText>
+                <Pressable key={s.key} onPress={() => open(s.key)} style={{ width: 170, backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, overflow: "hidden", ...shadow.card }}>
+                  <View style={{ height: 104, backgroundColor: colors.goldSoft, alignItems: "center", justifyContent: "center" }}>
+                    <View style={{ position: "absolute", width: 90, height: 90, borderRadius: 45, backgroundColor: "#F6E3B5", opacity: 0.6 }} />
+                    <ServiceIcon name={s.key} size={72} tile={false} />
+                    {s.rating ? (
+                      <View style={{ position: "absolute", top: space(2), left: space(2), backgroundColor: colors.surface, borderRadius: radius.pill, paddingHorizontal: space(2), paddingVertical: 2 }}>
+                        <RNText style={{ fontFamily: fonts.bold, fontSize: 11, color: colors.text }}>
+                          <RNText style={{ color: colors.star }}>★</RNText> {s.rating.toFixed(1)}
+                        </RNText>
+                      </View>
+                    ) : null}
                   </View>
                   <View style={{ padding: space(3), gap: 4 }}>
                     <Text style={{ fontFamily: fonts.bold, fontSize: 14 }} numberOfLines={1}>
                       {s.name}
                     </Text>
                     <Text variant="small">
-                      <Text variant="small" style={{ color: colors.star }}>★</Text> {SERVICE_RATING[s.key] ?? 4.8} · {Math.round(s.durationMinutes / 60)} hrs
+                      {ratingLabel(s)} · {Math.max(1, Math.round(s.durationMinutes / 60))} hrs
                     </Text>
-                    <Text style={{ fontFamily: fonts.bold, fontSize: 14 }}>{s.startingFromAed ? `From ${aed(s.startingFromAed)}` : "Free survey"}</Text>
+                    <Text style={{ fontFamily: fonts.bold, fontSize: 14, color: colors.gold }}>{s.startingFromAed ? `From ${aed(s.startingFromAed)}` : "Free survey"}</Text>
                   </View>
                 </Pressable>
               ))}
           </ScrollView>
 
-          {/* Why Xtreme */}
           <Card>
             <Text variant="heading">Why customers choose Xtreme</Text>
             {[
-              ["🛡️", "Vetted & trained professionals", "Background-checked, uniformed and insured teams."],
-              ["⭐", "Satisfaction guarantee", "Not happy? We'll come back and make it right."],
-              ["🔒", "Secure payments", "Card, Apple Pay, Google Pay, Tamara or cash on the day."],
-            ].map(([i, t, d]) => (
+              ["disinfect", "Vetted & trained professionals", "Background-checked, uniformed and insured teams."],
+              ["regular", "Satisfaction guarantee", "Not happy? We'll come back and make it right."],
+              ["fm", "Secure payments", "Card, Apple Pay, Google Pay, Tamara or cash on the day."],
+            ].map(([icon, t, d]) => (
               <Row key={t} style={{ alignItems: "flex-start", marginTop: space(1) }}>
-                <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: colors.goldSoft, alignItems: "center", justifyContent: "center" }}>
-                  <RNText style={{ fontSize: 17 }}>{i}</RNText>
-                </View>
+                <ServiceIcon name={icon!} size={40} />
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontFamily: fonts.bold, fontSize: 15 }}>{t}</Text>
                   <Text variant="small">{d}</Text>
@@ -242,7 +304,9 @@ export default function Home() {
           {company.data ? (
             <Card tone="ink" onPress={() => Linking.openURL(company.data!.whatsapp)}>
               <Row>
-                <RNText style={{ fontSize: 30 }}>💬</RNText>
+                <View style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: "#25D366", alignItems: "center", justifyContent: "center" }}>
+                  <RNText style={{ fontSize: 22 }}>💬</RNText>
+                </View>
                 <View style={{ flex: 1 }}>
                   <RNText style={{ color: "#fff", fontFamily: fonts.bold, fontSize: 16 }}>Need help? Chat with us</RNText>
                   <RNText style={{ color: "#BDB4A3", fontFamily: fonts.medium, fontSize: 13 }}>WhatsApp {company.data.phoneDisplay} · 7 days a week</RNText>

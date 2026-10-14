@@ -1,18 +1,32 @@
 import { useState } from "react";
-import { Pressable, Text as RNText, View } from "react-native";
+import { Pressable, RefreshControl, Text as RNText, View } from "react-native";
+import { FadeIn, SkeletonCard } from "@/components/art/Motion";
+import { EmptyCalendarScene } from "@/components/art/Scenes";
+import { ServiceIcon } from "@/components/art/ServiceIcon";
 import { router } from "expo-router";
-import { Button, Card, InlineLoader, Row, Screen, StatusPill, Text } from "@/components/ui";
+import { Button, Card, Row, Screen, StatusPill, Text } from "@/components/ui";
 import { aed, when } from "@/lib/format";
-import { SERVICE_ICON } from "@/lib/serviceIcons";
 import { colors, fonts, radius, space } from "@/lib/theme";
 import type { Booking } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 
 export default function Bookings() {
   const [scope, setScope] = useState<"active" | "past">("active");
-  const { data, loading } = useApi<Booking[]>(`/bookings?scope=${scope}&limit=50`);
+  const { data, loading, reload } = useApi<Booking[]>(`/bookings?scope=${scope}&limit=50`);
+  const [refreshing, setRefreshing] = useState(false);
   return (
-    <Screen>
+    <Screen
+      refresh={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={async () => {
+            setRefreshing(true);
+            await reload();
+            setRefreshing(false);
+          }}
+        />
+      }
+    >
       <Text variant="title">My bookings</Text>
       <View style={{ flexDirection: "row", backgroundColor: colors.divider, borderRadius: radius.md, padding: 4 }}>
         {(["active", "past"] as const).map((s) => (
@@ -28,10 +42,15 @@ export default function Bookings() {
         ))}
       </View>
 
-      {loading ? <InlineLoader label="Fetching your bookings…" /> : null}
+      {loading ? (
+        <>
+          <SkeletonCard />
+          <SkeletonCard />
+        </>
+      ) : null}
       {!loading && data?.length === 0 ? (
         <Card style={{ alignItems: "center", paddingVertical: space(8) }}>
-          <RNText style={{ fontSize: 44 }}>🗓️</RNText>
+          <EmptyCalendarScene size={160} />
           <Text variant="heading">{scope === "active" ? "No upcoming bookings" : "No past bookings yet"}</Text>
           <Text variant="muted" style={{ textAlign: "center" }}>
             Book a service in a few taps and track your team live.
@@ -40,11 +59,12 @@ export default function Bookings() {
         </Card>
       ) : null}
 
-      {data?.map((b) => (
-        <Card key={b.id} onPress={() => router.push(`/booking/${b.id}`)}>
+      {data?.map((b, i) => (
+        <FadeIn key={b.id} delay={i * 40}>
+        <Card onPress={() => router.push(`/booking/${b.id}`)}>
           <Row style={{ alignItems: "flex-start" }}>
             <View style={{ width: 46, height: 46, borderRadius: radius.md, backgroundColor: colors.goldSoft, alignItems: "center", justifyContent: "center" }}>
-              <RNText style={{ fontSize: 24 }}>{SERVICE_ICON[b.service.key] ?? "✨"}</RNText>
+              <ServiceIcon name={b.service.key} size={40} tile={false} />
             </View>
             <View style={{ flex: 1, gap: 2 }}>
               <Text style={{ fontFamily: fonts.bold }}>{b.service.name}</Text>
@@ -65,6 +85,7 @@ export default function Bookings() {
             ) : null}
           </Row>
         </Card>
+        </FadeIn>
       ))}
     </Screen>
   );

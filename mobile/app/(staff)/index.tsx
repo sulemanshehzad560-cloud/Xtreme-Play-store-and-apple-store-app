@@ -7,7 +7,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { DEMO } from "@/lib/demo";
 import { STAFF_LABEL, when } from "@/lib/format";
-import { SERVICE_ICON } from "@/lib/serviceIcons";
+import { ServiceIcon } from "@/components/art/ServiceIcon";
 import { startSharingLocation, stopSharingLocation } from "@/lib/staff-location";
 import { colors, fonts, radius, space } from "@/lib/theme";
 import type { Booking, StaffStatus } from "@/lib/types";
@@ -89,7 +89,7 @@ export default function StaffHome() {
         {jobs.data?.map((j) => (
           <Card key={j.id} onPress={() => router.push(`/job/${j.id}`)}>
             <Row style={{ alignItems: "flex-start" }}>
-              <RNText style={{ fontSize: 26 }}>{SERVICE_ICON[j.service.key] ?? "✨"}</RNText>
+              <ServiceIcon name={j.service.key} size={44} />
               <View style={{ flex: 1 }}>
                 <Text style={{ fontFamily: fonts.bold }}>{j.service.name}</Text>
                 <Text variant="small">

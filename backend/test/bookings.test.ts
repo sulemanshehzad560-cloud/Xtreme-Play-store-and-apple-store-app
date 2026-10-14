@@ -198,3 +198,21 @@ describe("dispatch, job updates and live tracking", () => {
     expect((await post(`/v1/staff/jobs/${booking.id}/status`, staff.auth, { status: "completed" })).json().error.code).toBe("invalid_transition");
   });
 });
+
+describe("catalog ratings", () => {
+  it("reports real ratings from reviews", async () => {
+    const before = (await t.app.inject({ method: "GET", url: "/v1/catalog/services" })).json();
+    expect(before.services.find((s: { key: string }) => s.key === "deep")).toMatchObject({ rating: null, reviewCount: 0 });
+
+    const customer = await signInPhone(t);
+    const admin = await signInAs(t, "admin");
+    const staff = await signInAs(t, "staff");
+    const booking = await book(t, customer.auth);
+    await post(`/v1/admin/bookings/${booking.id}/assign`, admin.auth, { staffIds: [staff.user.id] });
+    for (const status of ["en_route", "arrived", "in_progress", "completed"]) await post(`/v1/staff/jobs/${booking.id}/status`, staff.auth, { status });
+    await post(`/v1/bookings/${booking.id}/review`, customer.auth, { rating: 4 });
+
+    const after = (await t.app.inject({ method: "GET", url: "/v1/catalog/services" })).json();
+    expect(after.services.find((s: { key: string }) => s.key === "deep")).toMatchObject({ rating: 4, reviewCount: 1 });
+  });
+});

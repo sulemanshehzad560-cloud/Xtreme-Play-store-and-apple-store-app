@@ -28,6 +28,9 @@ const S = (key: string, name: string, tier: "regular" | "deep" | null, minutes: 
   durationMinutes: minutes,
   highlights,
   startingFromAed: tier === "regular" ? 100 : tier === "deep" ? 300 : null,
+  // Sample ratings for the demo build only; the live API reports real review averages.
+  rating: ({ regular: 4.9, deep: 4.8, move: 4.8, ac: 4.7, pest: 4.8, carpet: 4.7 } as Record<string, number>)[key] ?? null,
+  reviewCount: ({ regular: 214, deep: 187, move: 96, ac: 73, pest: 58, carpet: 41 } as Record<string, number>)[key] ?? 0,
 });
 
 const SERVICES = [
@@ -279,6 +282,17 @@ export async function demoApi(path: string, method: string, body: Json | undefin
     addresses.push(a);
     return a;
   }
+  if (seg[0] === "me" && seg[1] === "addresses" && seg[2]) {
+    const i = addresses.findIndex((a) => a.id === seg[2]);
+    if (i < 0) throw new DemoError(404, "not_found", "Address not found");
+    if (method === "DELETE") {
+      addresses.splice(i, 1);
+      return undefined;
+    }
+    if (body?.isDefault) addresses.forEach((a) => (a.isDefault = false));
+    Object.assign(addresses[i]!, body);
+    return addresses[i];
+  }
   if (route === "/me/push-tokens") return undefined;
   if (route === "/me/notifications") return notifications;
 
@@ -318,6 +332,12 @@ export async function demoApi(path: string, method: string, body: Json | undefin
     const b = bookings.find((x) => x.id === seg[1]);
     if (!b) throw new DemoError(404, "not_found", "Booking not found");
     const action = seg[2];
+    if (!action && method === "PATCH") {
+      if (body?.scheduledAt) b.scheduledAt = body.scheduledAt;
+      if (body?.notes !== undefined) b.notes = body.notes;
+      notify("Booking rescheduled", `${b.reference} moved to your new time.`);
+      return view(b);
+    }
     if (!action) return view(b);
     if (action === "cancel") {
       b.cancelled = true;

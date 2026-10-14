@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { hasOnboarded } from "@/lib/onboarding";
 import { Alert, Platform, Text as RNText, View } from "react-native";
 import { Image } from "expo-image";
 import { router } from "expo-router";
@@ -17,6 +18,12 @@ const PERKS = [
 export default function Welcome() {
   const auth = useAuth();
   const [busy, setBusy] = useState<string | null>(null);
+
+  useEffect(() => {
+    hasOnboarded().then((done) => {
+      if (!done) router.replace("/(auth)/onboarding");
+    });
+  }, []);
 
   const run = (key: string, fn: () => Promise<unknown>) => async () => {
     setBusy(key);

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, Text as RNText, View } from "react-native";
+import { Text as RNText, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { initStripe, useStripe } from "@stripe/stripe-react-native";
@@ -49,8 +49,7 @@ export default function Pay() {
     // The webhook usually lands first; syncing makes the result instant either way.
     const p = await api<{ status: string }>(`/payments/${paymentId}/sync`, { body: {} });
     if (p.status === "captured") {
-      Alert.alert("Payment successful", "Thank you! Your booking is paid.");
-      router.dismissTo(`/booking/${id}`);
+      router.dismissTo(`/booking/${id}?paid=1`);
     } else if (p.status === "pending") setError("The payment wasn't completed. You can try again.");
     else setError("The payment didn't go through. Please try another method.");
   }

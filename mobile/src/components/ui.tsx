@@ -29,7 +29,9 @@ export function Screen({
   padded = true,
   edges = ["top", "left", "right"],
   footer,
+  refresh,
 }: {
+  refresh?: React.ReactElement<import("react-native").RefreshControlProps>;
   children: ReactNode;
   scroll?: boolean;
   padded?: boolean;
@@ -40,7 +42,7 @@ export function Screen({
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={edges}>
       {scroll ? (
-        <ScrollView contentContainerStyle={{ paddingBottom: footer ? space(6) : space(10) }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={{ paddingBottom: footer ? space(6) : space(10) }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} refreshControl={refresh}>
           {inner}
         </ScrollView>
       ) : (

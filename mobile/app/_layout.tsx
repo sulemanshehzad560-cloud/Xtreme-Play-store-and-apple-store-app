@@ -8,7 +8,8 @@ import {
   PlusJakartaSans_700Bold,
   PlusJakartaSans_800ExtraBold,
 } from "@expo-google-fonts/plus-jakarta-sans";
-import { Stack } from "expo-router";
+import { Stack, router } from "expo-router";
+import * as Notifications from "expo-notifications";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StripeProvider } from "@stripe/stripe-react-native";
@@ -37,6 +38,16 @@ function Gate() {
   useEffect(() => {
     if (user) registerPush().catch(() => undefined);
     else closeSocket();
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user || DEMO) return;
+    const sub = Notifications.addNotificationResponseReceivedListener((res) => {
+      const data = res.notification.request.content.data as { bookingId?: string; type?: string };
+      if (!data?.bookingId) return;
+      router.push(user.role === "staff" ? `/job/${data.bookingId}` : `/booking/${data.bookingId}`);
+    });
+    return () => sub.remove();
   }, [user?.id]);
 
   if (!ready || !shown) return <Loading />;

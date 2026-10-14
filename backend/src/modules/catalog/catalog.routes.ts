@@ -1,6 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
+import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
+import { bookings, reviews } from "../../db/schema.js";
 import { COMPANY, SERVICE_AREAS } from "../../config/company.js";
 import type { Container } from "../../container.js";
 import { badRequest } from "../../lib/errors.js";
@@ -19,10 +21,26 @@ export async function catalogRoutes(app: FastifyInstance, c: Container) {
 
   r.get("/catalog/services", { schema: { tags, summary: "Services and price list" } }, async (_req, reply) => {
     reply.header("Cache-Control", "public, max-age=600");
+    // Real ratings from completed-job reviews; services without reviews show as new.
+    const stats = await c.db
+      .select({
+        serviceKey: bookings.serviceKey,
+        avg: sql<number>`round(avg(${reviews.rating})::numeric, 1)::float`,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(reviews)
+      .innerJoin(bookings, eq(bookings.id, reviews.bookingId))
+      .groupBy(bookings.serviceKey);
+    const byKey = new Map(stats.map((r) => [r.serviceKey, r]));
     return {
       currency: COMPANY.currency,
       vatIncluded: true,
-      services: SERVICES.map((s) => ({ ...s, startingFromAed: startingFrom(s) })),
+      services: SERVICES.map((s) => ({
+        ...s,
+        startingFromAed: startingFrom(s),
+        rating: byKey.get(s.key)?.avg ?? null,
+        reviewCount: byKey.get(s.key)?.count ?? 0,
+      })),
       propertySizes: Object.fromEntries(
         Object.entries(PRICE_TABLE).map(([type, sizes]) => [type, Object.keys(sizes).map((key) => ({ key, label: SIZE_LABELS[key] ?? key }))]),
       ),

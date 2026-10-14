@@ -2,11 +2,13 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ScrollView, Text as RNText, View } from "react-native";
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import * as Crypto from "expo-crypto";
-import * as Location from "expo-location";
 import { Button, Card, Chip, Divider, ErrorText, InlineLoader, Input, OptionCard, Row, Screen, StepBar, StickyFooter, Text } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
 import { aed, SIZE_LABEL } from "@/lib/format";
-import { SERVICE_ICON, SERVICE_RATING } from "@/lib/serviceIcons";
+import { SERVICE_ICON } from "@/lib/serviceIcons";
+import { ratingLabel } from "@/lib/rating";
+import { ServiceIcon } from "@/components/art/ServiceIcon";
+import { AddressPicker, completeAddress, type NewAddress } from "@/components/AddressPicker";
 import { colors, fonts, radius, space } from "@/lib/theme";
 import type { Booking, Service } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
@@ -34,21 +36,6 @@ const SLOTS: [string, number[]][] = [
   ["Morning", [8, 9, 10, 11]],
   ["Afternoon", [12, 13, 14, 15]],
   ["Evening", [16, 17, 18]],
-];
-// Approximate centres, used when a customer picks an area instead of sharing GPS.
-const AREAS: [string, number, number][] = [
-  ["Al Reem Island", 24.4958, 54.4035],
-  ["Saadiyat Island", 24.542, 54.433],
-  ["Yas Island", 24.4968, 54.6046],
-  ["Al Raha Beach", 24.4497, 54.6036],
-  ["Khalifa City", 24.4196, 54.5763],
-  ["Mohammed Bin Zayed City", 24.3364, 54.5418],
-  ["Al Reef", 24.459, 54.6773],
-  ["Masdar City", 24.4269, 54.6176],
-  ["Corniche", 24.4672, 54.3328],
-  ["Al Khalidiyah", 24.471, 54.348],
-  ["Mussafah", 24.354, 54.495],
-  ["Al Ain", 24.2075, 55.7447],
 ];
 const PROPERTY: [PropertyType, string, string][] = [
   ["apartment", "Apartment", "🏢"],
@@ -83,10 +70,7 @@ export default function BookService() {
   const [hour, setHour] = useState<number | null>(null);
   const [addressId, setAddressId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
-  const [area, setArea] = useState("");
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [building, setBuilding] = useState("");
-  const [unit, setUnit] = useState("");
+  const [draft, setDraft] = useState<Partial<NewAddress>>({ label: "Home" });
   const [notes, setNotes] = useState("");
   const [pay, setPay] = useState<Pay>("card");
   const [price, setPrice] = useState<number | null | undefined>(undefined);
@@ -119,32 +103,14 @@ export default function BookService() {
     if (service && !fixed) setPay("cash");
   }, [service?.key, fixed]);
 
-  async function useMyLocation() {
-    setError(null);
-    const perm = await Location.requestForegroundPermissionsAsync();
-    if (!perm.granted) return setError("Location permission is off. Choose your area below instead.");
-    const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-    setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-    const [place] = await Location.reverseGeocodeAsync(pos.coords).catch(() => []);
-    setArea(place?.district ?? place?.subregion ?? place?.city ?? "Current location");
-  }
-
-  const newAddressOk = area.trim().length >= 2 && Boolean(coords || AREAS.some(([a]) => a === area));
+  const newAddressOk = Boolean(completeAddress(draft));
   const canContinue = [true, hour != null, adding ? newAddressOk : Boolean(addressId), true][step];
 
   async function submit() {
     setBusy(true);
     setError(null);
     try {
-      const preset = AREAS.find(([a]) => a === area);
-      const newAddress = {
-        label: "Home",
-        area: area.trim(),
-        building: building.trim() || null,
-        unit: unit.trim() || null,
-        lat: coords?.lat ?? preset?.[1] ?? 24.4539,
-        lng: coords?.lng ?? preset?.[2] ?? 54.3773,
-      };
+      const newAddress = completeAddress(draft)!;
       let useId = adding ? null : addressId;
       if (adding) {
         const created = await api<Address>("/me/addresses", { body: newAddress }).catch(() => null);
@@ -220,15 +186,12 @@ export default function BookService() {
           <Card tone="gold">
             <Row>
               <View style={{ width: 60, height: 60, borderRadius: radius.lg, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
-                <RNText style={{ fontSize: 32 }}>{SERVICE_ICON[service.key] ?? "✨"}</RNText>
+                <ServiceIcon name={service.key} size={52} tile={false} />
               </View>
               <View style={{ flex: 1, gap: 2 }}>
                 <Text variant="heading">{service.name}</Text>
                 <Text variant="small">
-                  <Text variant="small" style={{ color: colors.star }}>
-                    ★
-                  </Text>{" "}
-                  {SERVICE_RATING[service.key] ?? 4.8} · approx. {Math.max(1, Math.round(service.durationMinutes / 60))} hours
+                  {ratingLabel(service)} · approx. {Math.max(1, Math.round(service.durationMinutes / 60))} hours
                 </Text>
               </View>
             </Row>
@@ -327,24 +290,7 @@ export default function BookService() {
 
           {adding ? (
             <Card>
-              <Button title="📍  Use my current location" variant="secondary" onPress={useMyLocation} />
-              <Text variant="label">Or choose your area</Text>
-              <Row style={{ flexWrap: "wrap", gap: space(2) }}>
-                {AREAS.map(([a]) => (
-                  <Chip
-                    key={a}
-                    label={a}
-                    selected={area === a}
-                    onPress={() => {
-                      setArea(a);
-                      setCoords(null);
-                    }}
-                  />
-                ))}
-              </Row>
-              {area && !AREAS.some(([a]) => a === area) ? <Text variant="small">📍 {area}</Text> : null}
-              <Input label="Building / villa name" value={building} onChangeText={setBuilding} placeholder="e.g. Sky Tower" />
-              <Input label="Flat / villa number" value={unit} onChangeText={setUnit} placeholder="e.g. 1204" />
+              <AddressPicker value={draft} onChange={setDraft} />
             </Card>
           ) : null}
           <Input label="Notes for the team (optional)" value={notes} onChangeText={setNotes} placeholder="Parking, pets, access code…" multiline style={{ minHeight: 70, textAlignVertical: "top" }} />
@@ -361,7 +307,7 @@ export default function BookService() {
             <SummaryRow
               icon="📍"
               label="Address"
-              value={(adding ? [unit, building, area] : [selectedAddress?.unit, selectedAddress?.building, selectedAddress?.area]).filter(Boolean).join(", ")}
+              value={(adding ? [draft.unit, draft.building, draft.area] : [selectedAddress?.unit, selectedAddress?.building, selectedAddress?.area]).filter(Boolean).join(", ")}
             />
           </Card>
 

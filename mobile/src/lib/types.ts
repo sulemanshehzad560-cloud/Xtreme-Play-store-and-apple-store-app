@@ -30,6 +30,9 @@ export interface Service {
   durationMinutes: number;
   highlights: string[];
   startingFromAed: number | null;
+  /** Average customer rating from completed jobs; null until reviewed. */
+  rating: number | null;
+  reviewCount: number;
 }
 
 export interface TeamMember {

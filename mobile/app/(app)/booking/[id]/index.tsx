@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { Modal, ScrollView } from "react-native";
+import { SuccessBurst } from "@/components/art/Motion";
+import { ServiceIcon } from "@/components/art/ServiceIcon";
 import { Alert, Linking, Pressable, Text as RNText, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
-import { Avatar, Button, Card, Divider, InlineLoader, Notice, Row, Screen, StatusPill, Text } from "@/components/ui";
+import { Avatar, Button, Card, Chip, Divider, InlineLoader, Notice, Row, Screen, StatusPill, Text } from "@/components/ui";
 import { api } from "@/lib/api";
 import { aed, SIZE_LABEL, STAFF_LABEL, when } from "@/lib/format";
 import { useBookingEvents } from "@/lib/realtime";
-import { SERVICE_ICON } from "@/lib/serviceIcons";
 import { colors, fonts, radius, space } from "@/lib/theme";
 import type { Booking, BookingStatus, Company } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
@@ -29,10 +31,11 @@ const PAYMENT_LABEL: Record<Booking["paymentStatus"], string> = {
 };
 
 export default function BookingDetail() {
-  const { id, new: isNew } = useLocalSearchParams<{ id: string; new?: string }>();
+  const { id, new: isNew, paid } = useLocalSearchParams<{ id: string; new?: string; paid?: string }>();
   const { data: b, reload } = useApi<Booking>(`/bookings/${id}`);
   const company = useApi<Company>("/company");
   const [rating, setRating] = useState(0);
+  const [rescheduling, setRescheduling] = useState(false);
   useBookingEvents(id, { "booking:status": () => void reload() });
 
   if (!b) {
@@ -65,12 +68,23 @@ export default function BookingDetail() {
 
   return (
     <Screen edges={["left", "right"]}>
-      {isNew ? <Notice>🎉 Booking confirmed! We'll notify you at every step.</Notice> : null}
+      {isNew || paid ? (
+        <Card tone="gold" style={{ alignItems: "center", paddingVertical: space(5) }}>
+          <SuccessBurst size={120} />
+          <Text variant="title" style={{ fontSize: 22, textAlign: "center" }}>
+            {paid ? "Payment successful!" : "Booking confirmed!"}
+          </Text>
+          <Text variant="muted" style={{ textAlign: "center" }}>
+            {b.reference} · {when(b.scheduledAt)}
+            {"\n"}We'll notify you at every step.
+          </Text>
+        </Card>
+      ) : null}
 
       <Card>
         <Row style={{ alignItems: "flex-start" }}>
           <View style={{ width: 52, height: 52, borderRadius: radius.md, backgroundColor: colors.goldSoft, alignItems: "center", justifyContent: "center" }}>
-            <RNText style={{ fontSize: 28 }}>{SERVICE_ICON[b.service.key] ?? "✨"}</RNText>
+            <ServiceIcon name={b.service.key} size={44} tile={false} />
           </View>
           <View style={{ flex: 1, gap: 4 }}>
             <Text variant="heading">{b.service.name}</Text>
@@ -179,7 +193,22 @@ export default function BookingDetail() {
       {b.review ? <Text variant="small" style={{ textAlign: "center" }}>You rated this service {"★".repeat(b.review.rating)}</Text> : null}
 
       {b.status === "completed" || b.status === "cancelled" ? <Button title="Book again" onPress={() => router.push(`/service/${b.service.key}`)} /> : null}
+      {b.canReschedule ? <Button title="🗓️  Reschedule" variant="secondary" onPress={() => setRescheduling(true)} /> : null}
       {b.canCancel ? <Button title="Cancel booking" variant="danger" onPress={cancel} /> : null}
+      <RescheduleSheet
+        visible={rescheduling}
+        onClose={() => setRescheduling(false)}
+        onPick={async (iso) => {
+          try {
+            await api(`/bookings/${b.id}`, { method: "PATCH", body: { scheduledAt: iso } });
+            setRescheduling(false);
+            await reload();
+            Alert.alert("Rescheduled", "Your new time is confirmed.");
+          } catch (e) {
+            Alert.alert("Could not reschedule", e instanceof Error ? e.message : "");
+          }
+        }}
+      />
     </Screen>
   );
 }
@@ -190,5 +219,56 @@ function Detail({ label, value }: { label: string; value: string }) {
       <Text variant="small">{label}</Text>
       <Text style={{ fontFamily: fonts.semibold, fontSize: 15 }}>{value}</Text>
     </View>
+  );
+}
+
+const HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+const hourLabel = (h: number) => `${h % 12 || 12}:00 ${h < 12 ? "AM" : "PM"}`;
+
+/** Bottom sheet to pick a new day and start time (Abu Dhabi time). */
+function RescheduleSheet({ visible, onClose, onPick }: { visible: boolean; onClose: () => void; onPick: (iso: string) => Promise<void> }) {
+  const days = useMemo(
+    () =>
+      Array.from({ length: 14 }, (_, i) => {
+        const d = new Date();
+        d.setDate(d.getDate() + i + 1);
+        return d;
+      }),
+    [],
+  );
+  const [day, setDay] = useState(days[0]!);
+  const [hour, setHour] = useState<number | null>(null);
+  const [busy, setBusy] = useState(false);
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.35)" }} onPress={onClose} />
+      <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: space(5), gap: space(3), paddingBottom: space(10) }}>
+        <Text variant="heading">Pick a new time</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space(2) }}>
+          {days.map((d) => (
+            <View key={d.toDateString()} style={{ width: 62 }}>
+              <Chip label={String(d.getDate())} sub={d.toLocaleDateString("en-GB", { weekday: "short" })} selected={d.toDateString() === day.toDateString()} onPress={() => setDay(d)} />
+            </View>
+          ))}
+        </ScrollView>
+        <Row style={{ flexWrap: "wrap", gap: space(2) }}>
+          {HOURS.map((h) => (
+            <View key={h} style={{ width: "31%" }}>
+              <Chip label={hourLabel(h)} selected={hour === h} onPress={() => setHour(h)} />
+            </View>
+          ))}
+        </Row>
+        <Button
+          title="Confirm new time"
+          disabled={hour == null}
+          loading={busy}
+          onPress={async () => {
+            setBusy(true);
+            await onPick(new Date(Date.UTC(day.getFullYear(), day.getMonth(), day.getDate(), hour! - 4)).toISOString());
+            setBusy(false);
+          }}
+        />
+      </View>
+    </Modal>
   );
 }

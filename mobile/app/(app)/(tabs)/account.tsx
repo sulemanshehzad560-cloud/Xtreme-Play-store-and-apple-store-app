@@ -112,7 +112,9 @@ export default function Account() {
       <Card style={{ gap: 0, paddingVertical: space(2) }}>
         <ListItem icon="📱" title="Mobile number" subtitle={user.phone ? `${user.phone} · verified` : "Needed to book a service"} onPress={() => router.push("/phone")} />
         <Divider />
-        <ListItem icon="📍" title="Saved addresses" subtitle={addresses.data?.length ? addresses.data.map((a) => a.area).join(", ") : "Added when you book"} />
+        <ListItem icon="📍" title="Saved addresses" subtitle={addresses.data?.length ? addresses.data.map((a) => a.area).join(", ") : "Add your home or office"} onPress={() => router.push("/addresses")} />
+        <Divider />
+        <ListItem icon="🔔" title="Notifications" subtitle="Booking updates and offers" onPress={() => router.push("/notifications")} />
         <Divider />
         <ListItem icon="🔑" title="Sign-in methods" subtitle={user.signInMethods.map((m) => METHOD_LABEL[m] ?? m).join(", ") || "—"} />
         {missing.length ? (
