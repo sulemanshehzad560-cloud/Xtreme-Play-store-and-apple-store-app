@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Xtreme Dispatch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <!-- Sign in -->
+  <section id="login" class="login hidden">
+    <div class="login-card">
+      <div class="brand"><span class="gold">Xtreme</span> Dispatch</div>
+      <p class="muted">Office dashboard for Xtreme-Home Partner. Sign in with your admin mobile number.</p>
+      <form id="phone-form">
+        <label>Mobile number<input id="phone" inputmode="tel" placeholder="050 123 4567" required /></label>
+        <button class="btn primary" type="submit">Send code</button>
+      </form>
+      <form id="code-form" class="hidden">
+        <label>6-digit code<input id="code" inputmode="numeric" maxlength="6" required /></label>
+        <button class="btn primary" type="submit">Sign in</button>
+      </form>
+      <p id="login-error" class="error"></p>
+    </div>
+  </section>
+
+  <!-- App -->
+  <section id="app" class="hidden">
+    <header class="topbar">
+      <div class="brand"><span class="gold">Xtreme</span> Dispatch</div>
+      <nav>
+        <button class="tab active" data-tab="board">Dispatch board</button>
+        <button class="tab" data-tab="map">Live map</button>
+        <button class="tab" data-tab="staff">Staff</button>
+        <button class="tab" data-tab="payments">Payments</button>
+      </nav>
+      <div class="me"><span id="live-dot" class="dot"></span><span id="me-name"></span><button id="logout" class="btn ghost small">Sign out</button></div>
+    </header>
+
+    <div class="kpis" id="kpis"></div>
+
+    <main>
+      <div id="tab-board" class="tab-panel">
+        <div class="toolbar">
+          <input id="search" placeholder="Search reference, customer, area…" />
+          <select id="day">
+            <option value="upcoming">Upcoming</option>
+            <option value="today">Today</option>
+            <option value="all">All open</option>
+          </select>
+        </div>
+        <div class="board" id="board"></div>
+      </div>
+      <div id="tab-map" class="tab-panel hidden"><div id="map"></div><aside id="map-list"></aside></div>
+      <div id="tab-staff" class="tab-panel hidden">
+        <div class="toolbar"><button class="btn primary" id="add-staff">+ Add staff member</button></div>
+        <table class="table" id="staff-table"></table>
+      </div>
+      <div id="tab-payments" class="tab-panel hidden"><table class="table" id="payments-table"></table></div>
+    </main>
+  </section>
+
+  <dialog id="modal"><form method="dialog" id="modal-body"></form></dialog>
+  <div id="toast" class="toast"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/realtime/socket.io.js"></script>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

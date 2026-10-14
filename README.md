@@ -10,6 +10,8 @@
 | --- | --- |
 | [`backend/`](backend) | The API: sign-in, bookings, dispatch, live tracking, payments, notifications. Node.js 22, Fastify, PostgreSQL, Socket.IO. |
 | [`mobile/`](mobile) | The app for the App Store and Google Play, built with Expo (React Native). |
+| [`backend/admin/`](backend/admin) | **Xtreme Dispatch**, the office dashboard at `/admin`: dispatch board, team assignment, live staff map, staff and payments. |
+| [`docs/GO_LIVE.md`](docs/GO_LIVE.md) | **Step-by-step production launch** (server, dashboard, store builds). |
 | [`docs/SETUP_CHECKLIST.md`](docs/SETUP_CHECKLIST.md) | **The accounts and keys the business owner needs to create before launch.** |
 
 ## What the app does

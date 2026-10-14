@@ -4,6 +4,9 @@ import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
+import fastifyStatic from "@fastify/static";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { jsonSchemaTransform, serializerCompiler, validatorCompiler } from "fastify-type-provider-zod";
 import { sql } from "drizzle-orm";
 import type { Env } from "./config/env.js";
@@ -64,6 +67,14 @@ export async function buildApp(env: Env, overrides: ContainerOverrides = {}): Pr
     transform: jsonSchemaTransform,
   });
   await app.register(swaggerUi, { routePrefix: "/docs" });
+
+  // Office dispatch dashboard (static web app; every action goes through the admin API).
+  await app.register(fastifyStatic, {
+    root: path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../admin"),
+    prefix: "/admin/",
+    decorateReply: false,
+  });
+  app.get("/admin", { schema: { hide: true } }, async (_req, reply) => reply.redirect("/admin/", 302));
 
   app.get("/health", { schema: { hide: true } }, async () => ({ ok: true }));
   app.get("/ready", { schema: { hide: true } }, async (_req, reply) => {
