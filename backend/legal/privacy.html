@@ -1,0 +1,273 @@
+<title>Xtreme-Home Partner Privacy Policy</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="How Xtreme Facilities Management collects, uses and protects personal data in the Xtreme-Home Partner app.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: a black-and-gold brand band, then one readable column with a contents index; legal text set for reading on a phone. */
+:root {
+  --bg: #F7F5F0;
+  --surface: #FFFFFF;
+  --ink: #16130E;
+  --text: #24201A;
+  --muted: #6B6458;
+  --line: #E7E0D2;
+  --gold: #9E7A2C;
+  --gold-soft: #F6EDD8;
+  --band: #16130E;
+  --band-text: #F6F0E3;
+  --band-gold: #E2C170;
+  --display: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --body: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12100C; --surface: #1B1813; --ink: #F6F0E3; --text: #E4DDCF; --muted: #A79F90;
+    --line: #2F2A21; --gold: #E2C170; --gold-soft: #2A2316; --band: #0A0907; --band-text: #F6F0E3; --band-gold: #E2C170;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12100C; --surface: #1B1813; --ink: #F6F0E3; --text: #E4DDCF; --muted: #A79F90;
+  --line: #2F2A21; --gold: #E2C170; --gold-soft: #2A2316; --band: #0A0907; --band-text: #F6F0E3; --band-gold: #E2C170;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--body); font-size: 16px; line-height: 1.65; }
+.wrap { max-width: 760px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header { background: var(--band); color: var(--band-text); }
+header .wrap { padding-block: 40px 36px; display: grid; gap: 10px; }
+.brand { font-weight: 800; font-size: 15px; letter-spacing: .02em; }
+.brand span { color: var(--band-gold); }
+h1 { font-family: var(--display); font-weight: 800; font-size: clamp(30px, 6vw, 42px); line-height: 1.1; margin: 0; text-wrap: balance; }
+.meta { color: #CFC6B4; font-size: 14px; display: flex; flex-wrap: wrap; gap: 6px 18px; }
+main .wrap { padding-block: 32px 64px; display: grid; gap: 36px; }
+.summary { background: var(--gold-soft); border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; display: grid; gap: 8px; }
+.summary h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--gold); margin: 0; }
+.summary ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+nav.toc h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 10px; }
+nav.toc ol { margin: 0; padding-left: 22px; columns: 2 260px; column-gap: 32px; }
+nav.toc li { break-inside: avoid; padding: 2px 0; }
+a { color: var(--gold); text-underline-offset: 3px; }
+a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: 3px; }
+section { display: grid; gap: 10px; scroll-margin-top: 16px; }
+section h2 { font-family: var(--display); color: var(--ink); font-size: 22px; font-weight: 800; line-height: 1.25; margin: 0; text-wrap: balance; }
+section h3 { color: var(--ink); font-size: 16px; font-weight: 700; margin: 8px 0 0; }
+p, ul { margin: 0; max-width: 68ch; }
+ul { padding-left: 20px; display: grid; gap: 4px; }
+strong { color: var(--ink); font-weight: 700; }
+.table { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 520px; font-size: 14.5px; }
+th, td { text-align: left; vertical-align: top; padding: 11px 14px; border-bottom: 1px solid var(--line); }
+th { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; }
+tr:last-child td { border-bottom: 0; }
+.steps { counter-reset: s; list-style: none; padding: 0; display: grid; gap: 8px; }
+.steps li { counter-increment: s; display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: start; }
+.steps li::before { content: counter(s); width: 26px; height: 26px; border-radius: 50%; background: var(--band); color: var(--band-gold); font-weight: 700; font-size: 13px; display: grid; place-items: center; margin-top: 1px; }
+.contact { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; display: grid; gap: 6px; }
+.contact div { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.contact dt { color: var(--muted); min-width: 92px; }
+.contact dd { margin: 0; color: var(--ink); font-weight: 600; user-select: all; }
+footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); padding-top: 18px; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+
+<header>
+  <div class="wrap">
+    <div class="brand"><span>Xtreme</span>-Home Partner</div>
+    <h1>Privacy Policy</h1>
+    <div class="meta"><span>Effective 14 October 2026</span><span>Xtreme Facilities Management, Abu Dhabi</span></div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="summary">
+      <h2>In short</h2>
+      <ul>
+        <li>We collect only what we need to book, deliver and bill your service.</li>
+        <li>We never sell your data and we do not show advertising.</li>
+        <li>Card details go straight to our payment providers. We never see or store your full card number.</li>
+        <li>We use your location only to set your address and, for our staff, to show their live position on the way to you.</li>
+        <li>You can delete your account at any time from inside the app.</li>
+      </ul>
+    </div>
+
+    <nav class="toc" aria-label="Contents">
+      <h2>Contents</h2>
+      <ol>
+        <li><a href="#who">Who we are</a></li>
+        <li><a href="#collect">What we collect</a></li>
+        <li><a href="#use">How we use it</a></li>
+        <li><a href="#location">Location</a></li>
+        <li><a href="#payments">Payments</a></li>
+        <li><a href="#sharing">Who we share it with</a></li>
+        <li><a href="#storage">Where it is stored</a></li>
+        <li><a href="#security">How we protect it</a></li>
+        <li><a href="#retention">How long we keep it</a></li>
+        <li><a href="#rights">Your rights</a></li>
+        <li><a href="#delete-account">Deleting your account</a></li>
+        <li><a href="#children">Children</a></li>
+        <li><a href="#changes">Changes to this policy</a></li>
+        <li><a href="#contact">Contact us</a></li>
+      </ol>
+    </nav>
+
+    <section id="who">
+      <h2>1. Who we are</h2>
+      <p>Xtreme-Home Partner is the mobile app of <strong>Xtreme Facilities Management</strong> ("Xtreme", "we", "us"), Mazyad Offices T-1, Office 1102-4, Abu Dhabi, United Arab Emirates. We are responsible for the personal data described in this policy.</p>
+      <p>This policy covers the customer app, the staff features in the same app, and our booking website and office systems that connect to it. We handle personal data in line with UAE Federal Decree-Law No. 45 of 2021 on the Protection of Personal Data.</p>
+    </section>
+
+    <section id="collect">
+      <h2>2. What we collect</h2>
+      <div class="table">
+        <table>
+          <thead><tr><th scope="col">Data</th><th scope="col">Examples</th><th scope="col">Where it comes from</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Account</strong></td><td>Name, mobile number, email address, profile photo</td><td>You, or the sign-in service you choose</td></tr>
+            <tr><td><strong>Sign-in</strong></td><td>A one-time code sent by SMS; an account ID from Google, Apple or Facebook</td><td>You and the sign-in provider</td></tr>
+            <tr><td><strong>Addresses</strong></td><td>Area, building, unit, map position, access notes</td><td>You, and your phone's location if you allow it</td></tr>
+            <tr><td><strong>Bookings</strong></td><td>Service, property type and size, date and time, notes, status history, price</td><td>You and our team</td></tr>
+            <tr><td><strong>Payments</strong></td><td>Amount, method (card or Tamara), payment status, refunds. Not your card number.</td><td>Our payment providers</td></tr>
+            <tr><td><strong>Reviews</strong></td><td>Your rating and comments after a job</td><td>You</td></tr>
+            <tr><td><strong>Messages</strong></td><td>Calls, WhatsApp messages and emails with our office</td><td>You</td></tr>
+            <tr><td><strong>Device</strong></td><td>Push notification token, phone model and operating system, app version</td><td>Your device</td></tr>
+            <tr><td><strong>Staff location</strong></td><td>Live position of our staff while on duty</td><td>Staff members' phones (see section 4)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>We do not collect your contacts, photos, health information or browsing history, and we do not use advertising or tracking IDs.</p>
+    </section>
+
+    <section id="use">
+      <h2>3. How we use it</h2>
+      <ul>
+        <li><strong>To provide the service:</strong> create your account, take your booking, send the right team to the right address, and keep you updated. This is needed to perform our contract with you.</li>
+        <li><strong>To take payment and issue refunds and VAT invoices.</strong> This is needed for the contract and to meet UAE tax law.</li>
+        <li><strong>To keep accounts secure:</strong> verify sign-ins, prevent fraud and abuse, and keep audit records of changes made by our office.</li>
+        <li><strong>To support you:</strong> answer questions and resolve complaints.</li>
+        <li><strong>To improve our service:</strong> use ratings and booking history to train staff and plan teams.</li>
+        <li><strong>To send notifications</strong> about your bookings. Offers are sent only if you agree, and you can switch notifications off in your phone's settings.</li>
+      </ul>
+      <p>We do not use automated decision-making that has legal or similarly significant effects on you.</p>
+    </section>
+
+    <section id="location">
+      <h2>4. Location</h2>
+      <h3>Customers</h3>
+      <p>If you allow it, the app reads your phone's location <strong>only while you are using it</strong>, to fill in your service address. You can type your address instead. The app does not track customers in the background.</p>
+      <h3>Our staff</h3>
+      <p>Staff members who sign in to the staff features share their location <strong>while they are on duty and travelling to a job</strong>, including when the app is in the background. This lets customers see the team arriving and lets our office dispatch the nearest team. Sharing stops when the staff member goes off duty. Location history is deleted automatically after 30 days.</p>
+    </section>
+
+    <section id="payments">
+      <h2>5. Payments</h2>
+      <p>Card, Apple Pay and Google Pay payments are processed by <strong>Stripe</strong>. Pay-in-4 payments are processed by <strong>Tamara</strong>. You enter your payment details directly into their secure forms. Both are certified to the PCI DSS card security standard.</p>
+      <p>We receive only the payment result, the amount, and limited card details such as the brand and last four digits. We never receive or store your full card number or security code. Tamara may run its own checks before approving a pay-in-4 plan, under its own privacy policy.</p>
+    </section>
+
+    <section id="sharing">
+      <h2>6. Who we share it with</h2>
+      <p>We <strong>never sell</strong> personal data. We share it only as follows:</p>
+      <ul>
+        <li><strong>Our assigned team</strong> sees your name, mobile number, address and booking notes so they can reach you and do the job.</li>
+        <li><strong>Service providers</strong> who work for us under contract and only on our instructions:
+          <ul>
+            <li>Stripe and Tamara (payments)</li>
+            <li>Twilio (SMS sign-in codes)</li>
+            <li>Google, Apple and Facebook (only if you choose to sign in with them)</li>
+            <li>Google Maps (maps in the app)</li>
+            <li>Expo, Apple and Google (push notifications)</li>
+            <li>Our cloud hosting provider (servers and database)</li>
+          </ul>
+        </li>
+        <li><strong>Authorities</strong>, when UAE law requires it, or to protect the safety of our customers and staff.</li>
+        <li><strong>A buyer or successor</strong> if our business is sold or merged. They must keep to this policy.</li>
+      </ul>
+    </section>
+
+    <section id="storage">
+      <h2>7. Where it is stored</h2>
+      <p>Our servers and database are hosted in data centres in the European Union. Some of the providers listed above process data in other countries, including the United States. When data leaves the UAE, we rely on the safeguards allowed by UAE law, such as contracts with the provider that require an adequate level of protection.</p>
+    </section>
+
+    <section id="security">
+      <h2>8. How we protect it</h2>
+      <ul>
+        <li>All traffic between the app, our servers and our providers is encrypted with HTTPS (TLS).</li>
+        <li>Sign-in codes are stored only as one-way hashes, expire after 5 minutes, and lock after repeated wrong attempts.</li>
+        <li>Sign-in sessions use short-lived tokens that are revoked when you sign out or delete your account.</li>
+        <li>Office access is limited to authorised staff, and every change they make is recorded in an audit log.</li>
+        <li>Payment data is handled by PCI DSS certified providers, never by our servers.</li>
+      </ul>
+      <p>No system is perfectly secure. If a breach affects your personal data, we will tell you and the UAE Data Office as the law requires.</p>
+    </section>
+
+    <section id="retention">
+      <h2>9. How long we keep it</h2>
+      <div class="table">
+        <table>
+          <thead><tr><th scope="col">Data</th><th scope="col">Kept for</th></tr></thead>
+          <tbody>
+            <tr><td>Account and saved addresses</td><td>Until you delete your account</td></tr>
+            <tr><td>Staff location history</td><td>30 days, then deleted automatically</td></tr>
+            <tr><td>Sign-in codes</td><td>Deleted within 24 hours</td></tr>
+            <tr><td>Bookings, payments and invoices</td><td>As long as UAE tax law requires (at least 5 years), then deleted</td></tr>
+            <tr><td>Office audit records</td><td>Up to 5 years, for security and dispute handling</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="rights">
+      <h2>10. Your rights</h2>
+      <p>Under UAE data protection law you can ask us to:</p>
+      <ul>
+        <li>give you a copy of the personal data we hold about you</li>
+        <li>correct data that is wrong or incomplete (you can edit most of it yourself in the app's Account tab)</li>
+        <li>delete your data (see section 11)</li>
+        <li>restrict or stop certain uses, and withdraw consent you gave earlier</li>
+        <li>send your data to you or another provider in a common format</li>
+      </ul>
+      <p>Email us at the address below. We will reply within 30 days. If you are not happy with our answer, you can complain to the UAE Data Office.</p>
+    </section>
+
+    <section id="delete-account">
+      <h2>11. Deleting your account</h2>
+      <p>You can delete your account yourself at any time:</p>
+      <ol class="steps">
+        <li><span>Open Xtreme-Home Partner and sign in.</span></li>
+        <li><span>Go to the <strong>Account</strong> tab.</span></li>
+        <li><span>Tap <strong>Delete account</strong> and confirm.</span></li>
+      </ol>
+      <p>Your name, mobile number, email, profile photo, saved addresses, sign-in links (Google, Apple, Facebook) and notification tokens are erased straight away, and you are signed out on all devices. Open bookings are cancelled, and paid ones are refunded.</p>
+      <p>We keep past booking and payment records without your name or contact details, only as long as UAE tax law requires.</p>
+      <p>If you can't open the app, or you signed in with Facebook and want your data removed, email <strong>sales@xtreme-fm.com</strong> with the subject "Delete my account" from the mobile number or email linked to your account. We will confirm within 30 days.</p>
+    </section>
+
+    <section id="children">
+      <h2>12. Children</h2>
+      <p>The app is for adults aged 18 or over who book services for their home or business. We do not knowingly collect data from children. If you think a child has given us personal data, contact us and we will delete it.</p>
+    </section>
+
+    <section id="changes">
+      <h2>13. Changes to this policy</h2>
+      <p>We will update this page when our practices change and show the new effective date at the top. If a change is significant, we will tell you in the app before it takes effect.</p>
+    </section>
+
+    <section id="contact">
+      <h2>14. Contact us</h2>
+      <dl class="contact">
+        <div><dt>Company</dt><dd>Xtreme Facilities Management</dd></div>
+        <div><dt>Email</dt><dd>sales@xtreme-fm.com</dd></div>
+        <div><dt>Phone</dt><dd>+971 2 675 6844</dd></div>
+        <div><dt>WhatsApp</dt><dd>+971 50 364 1714</dd></div>
+        <div><dt>Address</dt><dd>Mazyad Offices T-1, Office 1102-4, Abu Dhabi, UAE</dd></div>
+      </dl>
+    </section>
+
+    <footer>© 2026 Xtreme Facilities Management. <a href="https://www.xtreme-fmgroup.com" rel="noopener">www.xtreme-fmgroup.com</a></footer>
+  </div>
+</main>

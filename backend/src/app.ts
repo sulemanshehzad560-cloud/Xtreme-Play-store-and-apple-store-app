@@ -5,6 +5,7 @@ import rateLimit from "@fastify/rate-limit";
 import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
 import fastifyStatic from "@fastify/static";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { jsonSchemaTransform, serializerCompiler, validatorCompiler } from "fastify-type-provider-zod";
@@ -75,6 +76,12 @@ export async function buildApp(env: Env, overrides: ContainerOverrides = {}): Pr
     decorateReply: false,
   });
   app.get("/admin", { schema: { hide: true } }, async (_req, reply) => reply.redirect("/admin/", 302));
+
+  // Public legal pages linked from the store listings (Google Play, App Store, Facebook Login).
+  const legalDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../legal");
+  const privacyPage = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">${readFileSync(path.join(legalDir, "privacy.html"), "utf8")}</html>`;
+  app.get("/privacy", { schema: { hide: true } }, async (_req, reply) => reply.type("text/html; charset=utf-8").header("cache-control", "public, max-age=3600").send(privacyPage));
+  app.get("/delete-account", { schema: { hide: true } }, async (_req, reply) => reply.redirect("/privacy#delete-account", 302));
 
   app.get("/health", { schema: { hide: true } }, async () => ({ ok: true }));
   app.get("/ready", { schema: { hide: true } }, async (_req, reply) => {
