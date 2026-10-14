@@ -67,7 +67,9 @@ Any host that runs Docker works. Suggested: a managed PostgreSQL 16 database plu
 - A domain such as `api.xtreme-fmgroup.com` with HTTPS. Set `PUBLIC_URL` to it.
 - `JWT_SECRET` and `OTP_PEPPER`: random strings (`openssl rand -base64 48`).
 - `REDIS_URL` when running more than one instance.
-- `ADMIN_PHONE`: the office manager's mobile, then run `npm run db:seed` once.
+- `ADMIN_PHONE`: the office manager's mobile. The server makes it the first admin automatically on start.
+
+On Render: `render.free.yaml` for a free trial, `render.yaml` for production (about $13/month). See `GO_LIVE.md`.
 
 ## 10. Decisions for the business
 
