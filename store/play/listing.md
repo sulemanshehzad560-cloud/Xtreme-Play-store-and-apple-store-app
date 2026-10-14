@@ -54,7 +54,7 @@ www.xtreme-fmgroup.com
 ## Graphics
 - App icon: icon-512.png (512 x 512 PNG)
 - Feature graphic: feature-graphic-1024x500.png (1024 x 500)
-- Phone screenshots: at least 2, taken from the test app (portrait, 1080 x 1920 or similar)
+- Phone screenshots: screenshots/1-home.png … 5-status.png (1080 x 1920)
 
 ## Category and contact
 - App category: House & Home
