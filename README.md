@@ -4,6 +4,8 @@
 
 <img src="docs/design-preview.png" alt="App screens" />
 
+<img src="docs/dashboard-preview.png" alt="Xtreme Dispatch office dashboard" />
+
 <img src="docs/loading-animation.gif" width="300" alt="Loading animation: a mop cleaning a rug" />
 
 | Folder | What it is |
