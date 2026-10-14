@@ -1,0 +1,52 @@
+# Render Blueprint: FREE test server for the Xtreme-Home Partner API. Not for real customers.
+# Render dashboard → New → Blueprint → pick this repository → set "Blueprint Path" to render.free.yaml.
+# Free plan limits (Render):
+#   - The API sleeps after 15 minutes without traffic; the first request after that takes about a minute.
+#   - The free database is deleted after 30 days unless upgraded to a paid plan.
+# Sign-in codes are NOT texted: open the service's "Logs" tab and read the line "[sms] ... code".
+# Payments: leave Stripe/Tamara empty, or use TEST keys only.
+services:
+  - type: web
+    name: xtreme-api-test
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    region: frankfurt
+    plan: free
+    healthCheckPath: /ready
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "8080"
+      - key: DATABASE_URL
+        fromDatabase: { name: xtreme-db-test, property: connectionString }
+      - key: JWT_SECRET
+        generateValue: true
+      - key: OTP_PEPPER
+        generateValue: true
+      - key: PUBLIC_URL
+        sync: false # https://xtreme-api-test.onrender.com (shown at the top of the service page)
+      - key: SMS_PROVIDER
+        value: console
+      - key: ALLOW_CONSOLE_SMS
+        value: "true"
+      - key: APPLE_BUNDLE_IDS
+        value: ae.xtremefm.app
+      - { key: GOOGLE_CLIENT_IDS, sync: false }
+      - { key: STRIPE_SECRET_KEY, sync: false }
+      - { key: STRIPE_PUBLISHABLE_KEY, sync: false }
+      - { key: STRIPE_WEBHOOK_SECRET, sync: false }
+      - key: TAMARA_API_URL
+        value: https://api-sandbox.tamara.co
+      - key: PUSH_ENABLED
+        value: "true"
+      - { key: ADMIN_PHONE, sync: false }
+
+databases:
+  - name: xtreme-db-test
+    region: frankfurt
+    plan: free
+    databaseName: xtreme
+    user: xtreme

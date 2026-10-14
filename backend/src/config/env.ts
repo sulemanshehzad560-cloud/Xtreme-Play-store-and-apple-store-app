@@ -41,6 +41,9 @@ const EnvSchema = z.object({
   TWILIO_AUTH_TOKEN: z.string().optional(),
   TWILIO_FROM: z.string().optional(),
   TWILIO_MESSAGING_SERVICE_SID: z.string().optional(),
+  // Test servers only (e.g. the free Render blueprint): allow SMS_PROVIDER=console in production.
+  // Sign-in codes then appear in the server log instead of being texted. Never set on the live server.
+  ALLOW_CONSOLE_SMS: bool,
   // Numbers that always accept OTP_REVIEW_CODE. Lets App Store / Play reviewers sign in.
   OTP_REVIEW_PHONES: csv,
   OTP_REVIEW_CODE: z.string().regex(/^\d{6}$/).optional(),
@@ -86,7 +89,8 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   }
   const env = parsed.data;
   if (env.NODE_ENV === "production") {
-    if (env.SMS_PROVIDER === "console") throw new Error("SMS_PROVIDER=console is not allowed in production");
+    if (env.SMS_PROVIDER === "console" && !env.ALLOW_CONSOLE_SMS) throw new Error("SMS_PROVIDER=console is not allowed in production");
+    if (env.SMS_PROVIDER === "console") console.warn("Warning: test server. Sign-in codes are written to the log, not sent by SMS.");
     // Payments and personal data: the public address must be encrypted (HTTPS).
     if (!env.PUBLIC_URL.startsWith("https://")) throw new Error("PUBLIC_URL must start with https:// in production");
     if (env.STRIPE_SECRET_KEY?.startsWith("sk_test") && env.PUBLIC_URL.includes("xtreme-fmgroup.com")) {

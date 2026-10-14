@@ -1,10 +1,13 @@
 import { buildApp } from "./app.js";
 import { loadEnv } from "./config/env.js";
+import { ensureFirstAdmin } from "./db/bootstrap.js";
 import { runMigrations } from "./db/migrate.js";
 import { scheduleMaintenance } from "./maintenance.js";
 
 const env = loadEnv();
 if (process.env.MIGRATE_ON_START !== "false") await runMigrations(env.DATABASE_URL);
+// Hosts without a shell (e.g. Render free plan) get their first admin from ADMIN_PHONE here.
+console.log(await ensureFirstAdmin(env));
 
 const app = await buildApp(env);
 const stopMaintenance = scheduleMaintenance(app.container, app.log);

@@ -1,6 +1,10 @@
-# Render Blueprint: one-click production setup for the Xtreme-Home Partner API.
-# Render dashboard → New → Blueprint → pick this repository. It creates the API (Docker),
-# a PostgreSQL database and a Redis instance, and asks for the secrets marked sync: false.
+# Render Blueprint: production setup for the Xtreme-Home Partner API (paid, about $13/month:
+# Starter web service $7 + Basic-256mb PostgreSQL $6). Render asks for a card for these plans.
+# Render dashboard → New → Blueprint → pick this repository. It creates the API (Docker) and
+# a PostgreSQL database, and asks for the secrets marked sync: false.
+# Free trial instead: use render.free.yaml (see the comments in that file).
+# Redis is only needed when running more than one API server; add a keyvalue service and
+# REDIS_URL then.
 services:
   - type: web
     name: xtreme-api
@@ -18,8 +22,6 @@ services:
         value: "8080"
       - key: DATABASE_URL
         fromDatabase: { name: xtreme-db, property: connectionString }
-      - key: REDIS_URL
-        fromService: { type: keyvalue, name: xtreme-redis, property: connectionString }
       - key: JWT_SECRET
         generateValue: true
       - key: OTP_PEPPER
@@ -50,15 +52,9 @@ services:
       - { key: EXPO_ACCESS_TOKEN, sync: false }
       - { key: ADMIN_PHONE, sync: false }
 
-  - type: keyvalue
-    name: xtreme-redis
-    region: frankfurt
-    plan: starter
-    ipAllowList: []
-
 databases:
   - name: xtreme-db
     region: frankfurt
-    plan: basic-1gb
+    plan: basic-256mb
     databaseName: xtreme
     user: xtreme

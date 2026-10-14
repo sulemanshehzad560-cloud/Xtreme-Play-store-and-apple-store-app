@@ -4,10 +4,13 @@ Everything in the code is production-ready. Going live is these steps, in order.
 
 ## 1. Put the server online (≈30 minutes)
 
-**Option A: Render (simplest).** In Render: *New → Blueprint →* choose this GitHub repository. `render.yaml` creates:
-- `xtreme-api`: the API, built from `backend/Dockerfile`, health-checked on `/ready`
-- `xtreme-db`: PostgreSQL (daily backups on paid plans)
-- `xtreme-redis`: Redis, so several API instances share live tracking
+**Option A: Render (simplest).** In Render: *New → Blueprint →* choose this GitHub repository. `render.yaml` creates (paid, about $13/month; Render asks for a card):
+- `xtreme-api`: the API on the Starter plan ($7), built from `backend/Dockerfile`, health-checked on `/ready`
+- `xtreme-db`: PostgreSQL on Basic-256mb ($6), with daily backups
+
+Redis is not needed for one API server. Add a Render Key Value service and `REDIS_URL` only when you run several.
+
+**Free trial first:** set *Blueprint Path* to `render.free.yaml`. It uses Render's free plans: the API sleeps after 15 idle minutes, the database is deleted after 30 days, and sign-in codes appear in the service *Logs* instead of by SMS. Use it to test the dashboard and the app, never for real customers or real payments.
 
 Render asks for the secret values **(you)**: Twilio, Google, Facebook, Stripe, Tamara, Expo, `PUBLIC_URL` and `ADMIN_PHONE`. `JWT_SECRET` and `OTP_PEPPER` are generated for you. Database migrations run automatically on every deploy.
 
@@ -15,7 +18,7 @@ Render asks for the secret values **(you)**: Twilio, Google, Facebook, Stripe, T
 
 Then:
 1. Point `api.xtreme-fmgroup.com` at the server (Render: *Settings → Custom domain*) and set `PUBLIC_URL=https://api.xtreme-fmgroup.com`.
-2. Create the first admin: Render *Shell* → `node dist/db/seed.js` (uses `ADMIN_PHONE`).
+2. The first admin is created automatically on start from `ADMIN_PHONE` (only while no admin exists). To add one later, use the dashboard's *Admin & IT* tab.
 3. Register the payment webhooks **(you)**: Stripe → `https://api.xtreme-fmgroup.com/v1/webhooks/stripe`; Tamara → `https://api.xtreme-fmgroup.com/v1/webhooks/tamara`.
 4. Check `https://api.xtreme-fmgroup.com/ready` returns `{"ok":true}` and the API docs at `/docs`.
 

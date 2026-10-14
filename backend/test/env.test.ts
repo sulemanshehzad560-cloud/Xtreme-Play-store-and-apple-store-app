@@ -20,6 +20,11 @@ describe("production configuration", () => {
     expect(() => loadEnv({ ...base, PUBLIC_URL: "https://a.b", JWT_SECRET: "short" })).toThrow(/JWT_SECRET/);
   });
 
+  it("allows the log-only SMS stand-in on a test server when explicitly enabled", () => {
+    const env = loadEnv({ ...base, PUBLIC_URL: "https://a.b", SMS_PROVIDER: "console", ALLOW_CONSOLE_SMS: "true" });
+    expect(env.SMS_PROVIDER).toBe("console");
+  });
+
   it("requires webhook secrets alongside payment keys", () => {
     expect(() => loadEnv({ ...base, PUBLIC_URL: "https://a.b", STRIPE_SECRET_KEY: "sk_live_x" })).toThrow(/STRIPE_WEBHOOK_SECRET/);
     expect(() => loadEnv({ ...base, PUBLIC_URL: "https://a.b", TAMARA_API_TOKEN: "t" })).toThrow(/TAMARA_NOTIFICATION_TOKEN/);
