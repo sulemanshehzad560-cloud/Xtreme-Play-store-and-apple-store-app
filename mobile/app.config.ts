@@ -3,9 +3,15 @@ import type { ExpoConfig } from "expo/config";
 // Values that differ per environment come from EAS environment variables (eas.json / expo.dev).
 const env = process.env;
 
+// The Expo account and project this app builds under (expo.dev → project page).
+// These are identifiers, not secrets. Fill them in once the Expo project exists.
+const EXPO_OWNER: string | undefined = undefined;
+const EXPO_PROJECT_ID: string | undefined = undefined;
+
 const config: ExpoConfig = {
   name: "Xtreme-Home Partner",
   slug: "xtreme-home-partner",
+  owner: env.EXPO_OWNER ?? EXPO_OWNER,
   platforms: ["ios", "android"],
   scheme: "xtreme",
   version: "1.0.0",
@@ -80,7 +86,7 @@ const config: ExpoConfig = {
     googleIosClientId: env.GOOGLE_IOS_CLIENT_ID,
     // Android needs a Google Maps key to draw maps; without one the app shows a drawn map instead.
     androidMapsEnabled: Boolean(env.GOOGLE_MAPS_ANDROID_KEY),
-    eas: { projectId: env.EAS_PROJECT_ID },
+    eas: { projectId: env.EAS_PROJECT_ID ?? EXPO_PROJECT_ID },
   },
 };
 

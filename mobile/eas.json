@@ -1,24 +1,41 @@
 {
-  "cli": { "version": ">= 16.0.0", "appVersionSource": "remote" },
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "remote"
+  },
   "build": {
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "env": { "EXPO_PUBLIC_API_URL": "http://localhost:8080" }
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://localhost:8080"
+      },
+      "environment": "development"
     },
     "preview": {
       "distribution": "internal",
-      "env": { "EXPO_PUBLIC_API_URL": "https://api-staging.xtreme-fmgroup.com" }
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api-staging.xtreme-fmgroup.com"
+      },
+      "environment": "preview"
     },
     "production": {
       "autoIncrement": true,
-      "env": { "EXPO_PUBLIC_API_URL": "https://api.xtreme-fmgroup.com" }
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.xtreme-fmgroup.com"
+      },
+      "environment": "production"
     }
   },
   "submit": {
     "production": {
-      "ios": { "ascAppId": "REPLACE_WITH_APP_STORE_CONNECT_APP_ID" },
-      "android": { "serviceAccountKeyPath": "./play-service-account.json", "track": "internal" }
+      "ios": {
+        "ascAppId": "REPLACE_WITH_APP_STORE_CONNECT_APP_ID"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./play-service-account.json",
+        "track": "internal"
+      }
     }
   }
 }
