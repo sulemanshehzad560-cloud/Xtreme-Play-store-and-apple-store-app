@@ -40,6 +40,7 @@ export class StripeGateway implements CardGateway {
     return customer.id;
   }
 
+  /** Ephemeral key lets PaymentSheet show the customer's saved cards for a short time. */
   async sheetSession(customerId: string) {
     const key = await this.client().ephemeralKeys.create({ customer: customerId }, { apiVersion: "2024-06-20" });
     return { customerId, ephemeralKey: key.secret! };
