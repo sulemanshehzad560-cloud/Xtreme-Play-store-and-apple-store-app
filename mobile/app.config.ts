@@ -5,8 +5,8 @@ const env = process.env;
 
 // The Expo account and project this app builds under (expo.dev → project page).
 // These are identifiers, not secrets. Fill them in once the Expo project exists.
-const EXPO_OWNER: string | undefined = undefined;
-const EXPO_PROJECT_ID: string | undefined = undefined;
+const EXPO_OWNER: string | undefined = "suleman560s-team";
+const EXPO_PROJECT_ID: string | undefined = "08853eae-507e-439b-a003-f9e133053b99";
 
 const config: ExpoConfig = {
   name: "Xtreme-Home Partner",
