@@ -1,6 +1,8 @@
-# Xtreme customer app
+# Xtreme-Home Partner
 
-The Xtreme Facilities Management app for iPhone and Android. Customers book any Xtreme service in a few taps, pay by card, Apple Pay, Google Pay or Tamara, and watch their team arrive live on a map. Staff use the same app to go on duty, receive jobs and update each job's status.
+**Xtreme-Home Partner** is the Xtreme Facilities Management app for iPhone and Android. Customers book any Xtreme service in a few taps, pay by card, Apple Pay, Google Pay or Tamara, and watch their team arrive live on a map. Staff use the same app to go on duty, receive jobs and update each job's status.
+
+<img src="docs/loading-animation.gif" width="300" alt="Loading animation: a mop cleaning a rug" />
 
 | Folder | What it is |
 | --- | --- |

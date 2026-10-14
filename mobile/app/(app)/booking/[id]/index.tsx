@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Alert, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
-import { Button, Card, Chip, Row, Screen, StatusPill, Text } from "@/components/ui";
+import { Button, Card, Chip, InlineLoader, Row, Screen, StatusPill, Text } from "@/components/ui";
 import { api } from "@/lib/api";
 import { aed, STAFF_LABEL, STATUS_LABEL, SIZE_LABEL, when } from "@/lib/format";
 import { useBookingEvents } from "@/lib/realtime";
@@ -23,7 +23,7 @@ export default function BookingDetail() {
   const [rating, setRating] = useState(0);
   useBookingEvents(id, { "booking:status": () => void reload() });
 
-  if (!b) return <Screen><Text variant="muted">Loading…</Text></Screen>;
+  if (!b) return <Screen><InlineLoader label="Fetching your booking…" /></Screen>;
 
   const cancel = () =>
     Alert.alert("Cancel this booking?", b.paymentStatus === "paid" ? "Your payment will be refunded to the same card or Tamara plan." : undefined, [

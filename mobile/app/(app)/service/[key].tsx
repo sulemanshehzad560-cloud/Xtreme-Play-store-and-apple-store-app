@@ -4,7 +4,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import * as Crypto from "expo-crypto";
 import * as Location from "expo-location";
 import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
-import { Button, Card, Chip, ErrorText, Input, Row, Screen, Text } from "@/components/ui";
+import { Button, Card, Chip, ErrorText, InlineLoader, Input, Row, Screen, Text } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
 import { aed, SIZE_LABEL } from "@/lib/format";
 import { colors, radius, space } from "@/lib/theme";
@@ -133,7 +133,7 @@ export default function BookService() {
     }
   }
 
-  if (!service) return <Screen><Text variant="muted">Loading…</Text></Screen>;
+  if (!service) return <Screen><InlineLoader label="Preparing your booking…" /></Screen>;
   const canSubmit = addressId || area.trim().length >= 2;
 
   return (

@@ -4,8 +4,8 @@ import type { ExpoConfig } from "expo/config";
 const env = process.env;
 
 const config: ExpoConfig = {
-  name: "Xtreme",
-  slug: "xtreme",
+  name: "Xtreme-Home Partner",
+  slug: "xtreme-home-partner",
   platforms: ["ios", "android"],
   scheme: "xtreme",
   version: "1.0.0",
@@ -20,9 +20,9 @@ const config: ExpoConfig = {
     usesAppleSignIn: true,
     config: { googleMapsApiKey: env.GOOGLE_MAPS_IOS_KEY },
     infoPlist: {
-      NSLocationWhenInUseUsageDescription: "Xtreme uses your location to set the service address and to show your team arriving.",
+      NSLocationWhenInUseUsageDescription: "Xtreme-Home Partner uses your location to set the service address and to show your team arriving.",
       NSLocationAlwaysAndWhenInUseUsageDescription:
-        "Staff only: Xtreme shares your location with the customer while you are on duty and travelling to a job.",
+        "Staff only: Xtreme-Home Partner shares your location with the customer while you are on duty and travelling to a job.",
       UIBackgroundModes: ["location", "remote-notification"],
       ITSAppUsesNonExemptEncryption: false,
     },
@@ -62,7 +62,7 @@ const config: ExpoConfig = {
       {
         appID: env.FACEBOOK_APP_ID ?? "000000000000000",
         clientToken: env.FACEBOOK_CLIENT_TOKEN ?? "placeholder",
-        displayName: "Xtreme",
+        displayName: "Xtreme-Home Partner",
         scheme: `fb${env.FACEBOOK_APP_ID ?? "000000000000000"}`,
         isAutoInitEnabled: true,
         advertiserIDCollectionEnabled: false,

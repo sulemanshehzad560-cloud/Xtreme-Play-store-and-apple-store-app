@@ -3,7 +3,7 @@ import { Alert } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { initStripe, useStripe } from "@stripe/stripe-react-native";
-import { Button, Card, ErrorText, Row, Screen, Text } from "@/components/ui";
+import { Button, Card, ErrorText, InlineLoader, Row, Screen, Text } from "@/components/ui";
 import { api } from "@/lib/api";
 import { aed } from "@/lib/format";
 import { colors } from "@/lib/theme";
@@ -112,6 +112,7 @@ export default function Pay() {
   return (
     <Screen>
       <Text variant="title">Pay for your booking</Text>
+      {!options && !error ? <InlineLoader label="Getting your payment options…" /> : null}
       {options ? (
         <Card>
           <Row style={{ justifyContent: "space-between" }}>

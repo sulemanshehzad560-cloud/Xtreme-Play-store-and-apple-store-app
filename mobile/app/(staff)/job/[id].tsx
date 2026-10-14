@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Alert, Linking, Platform } from "react-native";
 import { useLocalSearchParams } from "expo-router";
-import { Button, Card, Row, Screen, StatusPill, Text } from "@/components/ui";
+import { Button, Card, InlineLoader, Row, Screen, StatusPill, Text } from "@/components/ui";
 import { api } from "@/lib/api";
 import { SIZE_LABEL, when } from "@/lib/format";
 import type { Booking, BookingStatus } from "@/lib/types";
@@ -18,7 +18,7 @@ export default function Job() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: job, setData } = useApi<Booking>(`/bookings/${id}`);
   const [busy, setBusy] = useState(false);
-  if (!job) return <Screen><Text variant="muted">Loading…</Text></Screen>;
+  if (!job) return <Screen><InlineLoader label="Loading the job…" /></Screen>;
 
   const next = NEXT[job.status];
   const { lat, lng } = job.address;

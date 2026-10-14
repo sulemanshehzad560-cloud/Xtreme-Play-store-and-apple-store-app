@@ -53,7 +53,7 @@ export async function buildApp(env: Env, overrides: ContainerOverrides = {}): Pr
   await app.register(swagger, {
     openapi: {
       info: {
-        title: "Xtreme Facilities Management API",
+        title: "Xtreme-Home Partner API",
         version: "1.0.0",
         description: "Customer app, staff app and dispatch API. Authenticate with `Authorization: Bearer <accessToken>`.",
       },

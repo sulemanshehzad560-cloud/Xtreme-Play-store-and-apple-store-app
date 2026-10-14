@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { router } from "expo-router";
-import { Card, Chip, Row, Screen, StatusPill, Text } from "@/components/ui";
+import { Card, Chip, InlineLoader, Row, Screen, StatusPill, Text } from "@/components/ui";
 import { aed, when } from "@/lib/format";
 import type { Booking } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
@@ -15,6 +15,7 @@ export default function Bookings() {
         <Chip label="Upcoming" selected={scope === "active"} onPress={() => setScope("active")} />
         <Chip label="Past" selected={scope === "past"} onPress={() => setScope("past")} />
       </Row>
+      {loading ? <InlineLoader label="Fetching your bookings…" /> : null}
       {!loading && data?.length === 0 ? <Text variant="muted">Nothing here yet.</Text> : null}
       {data?.map((b) => (
         <Card key={b.id} onPress={() => router.push(`/booking/${b.id}`)}>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Alert, Platform, View } from "react-native";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import * as AppleAuthentication from "expo-apple-authentication";
 import { Button, Screen, Text } from "@/components/ui";
@@ -25,14 +26,30 @@ export default function Welcome() {
 
   return (
     <Screen>
-      <View style={{ alignItems: "center", marginTop: space(10), gap: space(4) }}>
-        <Image source={require("../../assets/logo.png")} style={{ width: 168, height: 168, borderRadius: 32 }} accessibilityLabel="Xtreme logo" />
-        <Text variant="title" style={{ textAlign: "center" }}>
-          Xtreme at your fingertips
+      <LinearGradient
+        colors={["rgba(226,193,112,0.22)", "rgba(3,4,5,0)"]}
+        style={{ position: "absolute", top: -space(4), left: -space(4), right: -space(4), height: 420 }}
+      />
+      <View style={{ alignItems: "center", marginTop: space(8), gap: space(4) }}>
+        <View style={{ shadowColor: colors.gold, shadowOpacity: 0.45, shadowRadius: 30, shadowOffset: { width: 0, height: 0 }, elevation: 12 }}>
+          <Image source={require("../../assets/logo.png")} style={{ width: 150, height: 150, borderRadius: 34 }} accessibilityLabel="Xtreme logo" />
+        </View>
+        <Text style={{ color: colors.gold, fontSize: 24, fontWeight: "900", letterSpacing: 3, textAlign: "center" }}>
+          XTREME<Text style={{ fontSize: 24, fontWeight: "900" }}>-</Text>HOME PARTNER
+        </Text>
+        <Text variant="title" style={{ textAlign: "center", fontSize: 26 }}>
+          Your home, spotless.{"\n"}Right at your fingertips.
         </Text>
         <Text variant="muted" style={{ textAlign: "center" }}>
-          Book cleaning and facilities services across Abu Dhabi, and watch your team arrive live.
+          Book cleaning and facilities services across Abu Dhabi, pay your way, and watch your team arrive live.
         </Text>
+        <View style={{ flexDirection: "row", gap: space(2), flexWrap: "wrap", justifyContent: "center" }}>
+          {["✓ Vetted teams", "✓ Live tracking", "✓ Pay in 4 with Tamara"].map((t) => (
+            <Text key={t} variant="small" style={{ color: colors.goldHi, borderWidth: 1, borderColor: colors.border, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
+              {t}
+            </Text>
+          ))}
+        </View>
       </View>
 
       <View style={{ gap: space(3), marginTop: space(8) }}>

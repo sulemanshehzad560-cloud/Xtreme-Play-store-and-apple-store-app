@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
-import { Card, Row, StatusPill, Text } from "@/components/ui";
+import { Card, InlineLoader, Row, StatusPill, Text } from "@/components/ui";
 import { api } from "@/lib/api";
 import { STAFF_LABEL } from "@/lib/format";
 import { useBookingEvents } from "@/lib/realtime";
@@ -38,7 +38,7 @@ export default function Track() {
     );
   }, [t?.location?.lat, t?.location?.lng]);
 
-  if (!t) return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
+  if (!t) return <View style={{ flex: 1, backgroundColor: colors.bg, justifyContent: "center" }}><InlineLoader label="Finding your team…" /></View>;
   const lead = t.team.find((m) => m.isLead) ?? t.team[0];
 
   return (

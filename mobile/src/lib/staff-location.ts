@@ -34,7 +34,7 @@ export async function startSharingLocation(): Promise<boolean> {
     activityType: Location.ActivityType.AutomotiveNavigation,
     showsBackgroundLocationIndicator: true,
     foregroundService: {
-      notificationTitle: "Xtreme: on duty",
+      notificationTitle: "Xtreme-Home Partner: on duty",
       notificationBody: "Sharing your location with customers while you are on duty.",
       notificationColor: "#E2C170",
     },

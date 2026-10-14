@@ -1,0 +1,18 @@
+export const SERVICE_ICON: Record<string, string> = {
+  regular: "🧹",
+  deep: "🫧",
+  move: "📦",
+  postcon: "🏗️",
+  kitbath: "🚿",
+  carpet: "🛋️",
+  ac: "❄️",
+  pest: "🐜",
+  tank: "💧",
+  facade: "🏢",
+  kitchenex: "🍳",
+  laundry: "🧺",
+  drapery: "🪟",
+  helper: "🤝",
+  fm: "🛠️",
+  disinfect: "🧴",
+};

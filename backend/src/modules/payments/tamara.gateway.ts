@@ -86,7 +86,7 @@ export class TamaraGateway implements BnplGateway {
       tax_amount: money(i.taxMinor, i.currency),
       shipping_amount: money(0, i.currency),
       merchant_url: i.urls,
-      platform: "Xtreme mobile app",
+      platform: "Xtreme-Home Partner app",
       is_mobile: true,
     });
     return { orderId: res.order_id, checkoutUrl: res.checkout_url };

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Alert } from "react-native";
 import { router } from "expo-router";
-import { Button, Card, Row, Screen, StatusPill, Text } from "@/components/ui";
+import { Button, Card, InlineLoader, Row, Screen, StatusPill, Text } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { STAFF_LABEL, when } from "@/lib/format";
@@ -68,6 +68,7 @@ export default function StaffHome() {
       </Card>
 
       <Text variant="heading">My jobs</Text>
+      {jobs.loading ? <InlineLoader label="Fetching your jobs…" /> : null}
       {jobs.data?.length === 0 ? <Text variant="muted">No jobs assigned yet.</Text> : null}
       {jobs.data?.map((j) => (
         <Card key={j.id} onPress={() => router.push(`/job/${j.id}`)}>

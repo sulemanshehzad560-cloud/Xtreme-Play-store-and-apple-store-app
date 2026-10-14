@@ -67,7 +67,7 @@ export class OtpService {
 
     if (!review) {
       const minutes = Math.round(this.config.ttlSeconds / 60);
-      await this.sms.send(phone, `${code} is your Xtreme verification code. It expires in ${minutes} minutes. Never share it.`);
+      await this.sms.send(phone, `${code} is your Xtreme-Home Partner verification code. It expires in ${minutes} minutes. Never share it.`);
     }
     return { expiresIn: this.config.ttlSeconds, resendIn: this.config.resendCooldownSeconds };
   }

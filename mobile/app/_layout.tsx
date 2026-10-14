@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import * as SplashScreen from "expo-splash-screen";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -10,15 +11,26 @@ import { closeSocket } from "@/lib/realtime";
 import { colors } from "@/lib/theme";
 import "@/lib/staff-location"; // registers the background task at startup
 
+// Hand over from the static native splash to the animated loader as soon as JS is up.
+SplashScreen.preventAutoHideAsync().catch(() => undefined);
+const MIN_LOADER_MS = 1600;
+
 function Gate() {
   const { ready, user } = useAuth();
+  const [shown, setShown] = useState(false);
+
+  useEffect(() => {
+    SplashScreen.hideAsync().catch(() => undefined);
+    const t = setTimeout(() => setShown(true), MIN_LOADER_MS);
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     if (user) registerPush().catch(() => undefined);
     else closeSocket();
   }, [user?.id]);
 
-  if (!ready) return <Loading />;
+  if (!ready || !shown) return <Loading />;
   const isStaff = user?.role === "staff";
   return (
     <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
