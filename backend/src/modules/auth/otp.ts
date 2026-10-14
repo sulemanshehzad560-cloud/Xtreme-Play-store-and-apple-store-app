@@ -11,10 +11,10 @@ export interface OtpConfig {
   /** Store reviewers sign in with these numbers and a fixed code; no SMS is sent. */
   reviewPhones: string[];
   reviewCode?: string | undefined;
+  resendCooldownSeconds: number;
 }
 
 const CODE_LENGTH = 6;
-const RESEND_COOLDOWN_SECONDS = 30;
 const MAX_SENDS_PER_HOUR = 5;
 const MAX_ATTEMPTS = 5;
 
@@ -43,7 +43,7 @@ export class OtpService {
 
     const last = recent[0];
     if (last) {
-      const wait = RESEND_COOLDOWN_SECONDS - Math.floor((Date.now() - last.createdAt.getTime()) / 1000);
+      const wait = this.config.resendCooldownSeconds - Math.floor((Date.now() - last.createdAt.getTime()) / 1000);
       if (wait > 0) throw tooManyRequests(`Please wait ${wait}s before requesting another code`, wait);
     }
     if (recent.length >= MAX_SENDS_PER_HOUR) {
@@ -69,7 +69,7 @@ export class OtpService {
       const minutes = Math.round(this.config.ttlSeconds / 60);
       await this.sms.send(phone, `${code} is your Xtreme verification code. It expires in ${minutes} minutes. Never share it.`);
     }
-    return { expiresIn: this.config.ttlSeconds, resendIn: RESEND_COOLDOWN_SECONDS };
+    return { expiresIn: this.config.ttlSeconds, resendIn: this.config.resendCooldownSeconds };
   }
 
   /** Throws unless `code` is the live code for `phone`. Each code works once. */

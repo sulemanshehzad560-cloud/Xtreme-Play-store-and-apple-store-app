@@ -71,6 +71,7 @@ export function createContainer(env: Env, log: FastifyBaseLogger, overrides: Con
     ttlSeconds: env.OTP_TTL_SECONDS,
     reviewPhones: env.OTP_REVIEW_PHONES,
     reviewCode: env.OTP_REVIEW_CODE,
+    resendCooldownSeconds: env.OTP_RESEND_COOLDOWN_SECONDS,
   });
   const auth = new AuthService(db, tokens, otp, verifiers);
   const notifications = new NotificationService(db, push, hub, log);

@@ -34,6 +34,7 @@ const EnvSchema = z.object({
   // Phone OTP
   OTP_PEPPER: z.string().min(16, "OTP_PEPPER must be at least 16 characters"),
   OTP_TTL_SECONDS: z.coerce.number().int().default(5 * 60),
+  OTP_RESEND_COOLDOWN_SECONDS: z.coerce.number().int().min(0).default(30),
   OTP_DEFAULT_REGION: z.string().length(2).default("AE"),
   SMS_PROVIDER: z.enum(["console", "twilio"]).default("console"),
   TWILIO_ACCOUNT_SID: z.string().optional(),

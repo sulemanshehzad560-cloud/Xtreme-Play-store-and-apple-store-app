@@ -236,3 +236,10 @@ export function quote(input: {
   if (price == null) return { error: "Annual plan is not offered for this property" };
   return { priceAed: price, pricing: "fixed", tier, label: `AED ${price} per visit` };
 }
+
+/** Lowest per-visit price for a fixed-price service, for "from AED …" labels. */
+export function startingFrom(service: CatalogService): number | null {
+  if (service.pricing.kind !== "tiered") return null;
+  const col = service.pricing.tier === "regular" ? 0 : 1;
+  return Math.min(...Object.values(PRICE_TABLE).flatMap((sizes) => Object.values(sizes).map((row) => row[col]!)));
+}
