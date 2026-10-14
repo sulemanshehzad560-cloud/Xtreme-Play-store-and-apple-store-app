@@ -21,7 +21,6 @@ const config: ExpoConfig = {
   backgroundColor: "#030405",
   ios: {
     bundleIdentifier: "ae.xtremefm.app",
-    buildNumber: "1",
     supportsTablet: false,
     usesAppleSignIn: true,
     config: { googleMapsApiKey: env.GOOGLE_MAPS_IOS_KEY },
@@ -35,7 +34,6 @@ const config: ExpoConfig = {
   },
   android: {
     package: "ae.xtremefm.app",
-    versionCode: 1,
     adaptiveIcon: { foregroundImage: "./assets/adaptive-icon.png", backgroundColor: "#030405" },
     ...(env.GOOGLE_MAPS_ANDROID_KEY ? { config: { googleMaps: { apiKey: env.GOOGLE_MAPS_ANDROID_KEY } } } : {}),
     permissions: [
