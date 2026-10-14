@@ -1,0 +1,13 @@
+node_modules
+.expo
+dist
+ios
+android
+*.jks
+*.p8
+*.p12
+*.mobileprovision
+play-service-account.json
+google-services.json
+GoogleService-Info.plist
+expo-env.d.ts
