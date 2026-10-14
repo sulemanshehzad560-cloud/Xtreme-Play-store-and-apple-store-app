@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { Alert, Platform, View } from "react-native";
-import { Image } from "expo-image";
-import { LinearGradient } from "expo-linear-gradient";
+import { LogoOrb } from "@/components/LogoOrb";
 import { router } from "expo-router";
 import * as AppleAuthentication from "expo-apple-authentication";
-import { Button, Screen, Text } from "@/components/ui";
+import { Button, Pulse, Screen, Text, Wordmark } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
-import { colors, space } from "@/lib/theme";
+import { colors, fonts, space } from "@/lib/theme";
 
 export default function Welcome() {
   const auth = useAuth();
@@ -26,28 +25,21 @@ export default function Welcome() {
 
   return (
     <Screen>
-      <LinearGradient
-        colors={["rgba(226,193,112,0.22)", "rgba(3,4,5,0)"]}
-        style={{ position: "absolute", top: -space(4), left: -space(4), right: -space(4), height: 420 }}
-      />
-      <View style={{ alignItems: "center", marginTop: space(8), gap: space(4) }}>
-        <View style={{ shadowColor: colors.gold, shadowOpacity: 0.45, shadowRadius: 30, shadowOffset: { width: 0, height: 0 }, elevation: 12 }}>
-          <Image source={require("../../assets/logo.png")} style={{ width: 150, height: 150, borderRadius: 34 }} accessibilityLabel="Xtreme logo" />
-        </View>
-        <Text style={{ color: colors.gold, fontSize: 24, fontWeight: "900", letterSpacing: 3, textAlign: "center" }}>
-          XTREME<Text style={{ fontSize: 24, fontWeight: "900" }}>-</Text>HOME PARTNER
+      <View style={{ alignItems: "center", marginTop: space(6), gap: space(4) }}>
+        <LogoOrb size={196} />
+        <Wordmark size={19} />
+        <Text variant="title" style={{ textAlign: "center", fontSize: 24, lineHeight: 32 }}>
+          Your home, spotless.{"\n"}At your fingertips.
         </Text>
-        <Text variant="title" style={{ textAlign: "center", fontSize: 26 }}>
-          Your home, spotless.{"\n"}Right at your fingertips.
-        </Text>
-        <Text variant="muted" style={{ textAlign: "center" }}>
+        <Text variant="muted" style={{ textAlign: "center", paddingHorizontal: space(2) }}>
           Book cleaning and facilities services across Abu Dhabi, pay your way, and watch your team arrive live.
         </Text>
         <View style={{ flexDirection: "row", gap: space(2), flexWrap: "wrap", justifyContent: "center" }}>
-          {["✓ Vetted teams", "✓ Live tracking", "✓ Pay in 4 with Tamara"].map((t) => (
-            <Text key={t} variant="small" style={{ color: colors.goldHi, borderWidth: 1, borderColor: colors.border, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
-              {t}
-            </Text>
+          {["VETTED TEAMS", "LIVE TRACKING", "PAY IN 4"].map((t) => (
+            <View key={t} style={{ flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderColor: colors.hairline, backgroundColor: colors.glass, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
+              <Pulse color={colors.cyan} size={5} />
+              <Text style={{ fontFamily: fonts.displayMedium, fontSize: 9, letterSpacing: 1.4, color: colors.goldHi }}>{t}</Text>
+            </View>
           ))}
         </View>
       </View>
@@ -59,7 +51,7 @@ export default function Welcome() {
             buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
             buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
             cornerRadius={14}
-            style={{ height: 52 }}
+            style={{ height: 54 }}
             onPress={run("apple", auth.signInWithApple)}
           />
         ) : null}

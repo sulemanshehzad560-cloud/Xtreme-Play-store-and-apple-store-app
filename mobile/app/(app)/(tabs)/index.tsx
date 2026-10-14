@@ -5,11 +5,11 @@ import * as Location from "expo-location";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { SERVICE_ICON } from "@/lib/serviceIcons";
-import { Card, InlineLoader, Row, Screen, StatusPill, Text } from "@/components/ui";
+import { Card, InlineLoader, Pulse, Row, Screen, SectionLabel, StatusPill, Text, Wordmark } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { aed, when } from "@/lib/format";
-import { colors, radius, space } from "@/lib/theme";
+import { colors, fonts, glow, gradients, radius, space } from "@/lib/theme";
 import type { Booking, Company, Service } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 
@@ -45,35 +45,46 @@ export default function Home() {
     <Screen>
       <Row style={{ justifyContent: "space-between" }}>
         <View style={{ flex: 1 }}>
-          <Text variant="muted">Welcome{first ? `, ${first}` : ""} 👋</Text>
-          <Text style={{ color: colors.gold, fontWeight: "900", letterSpacing: 2 }}>XTREME-HOME PARTNER</Text>
+          <Text variant="muted">Welcome back{first ? `, ${first}` : ""}</Text>
+          <Wordmark size={14} />
         </View>
         <Image source={require("../../../assets/logo.png")} style={{ width: 48, height: 48, borderRadius: 12 }} />
       </Row>
 
       <Pressable onPress={() => router.push("/service/deep")} accessibilityRole="button" accessibilityLabel="Book a deep clean">
-        <LinearGradient
-          colors={[colors.goldHi, colors.gold, colors.goldLo]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{ borderRadius: radius.lg, padding: space(5), gap: space(2) }}
-        >
-          <RNText style={{ color: colors.onGold, fontSize: 24, fontWeight: "900" }}>A spotless home,{"\n"}one tap away.</RNText>
-          <RNText style={{ color: colors.onGold, opacity: 0.8 }}>Deep cleaning from AED 300 · vetted teams · live tracking</RNText>
-          <View style={{ alignSelf: "flex-start", backgroundColor: colors.bg, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 8, marginTop: space(1) }}>
-            <RNText style={{ color: colors.gold, fontWeight: "800" }}>Book a deep clean →</RNText>
+        <LinearGradient colors={gradients.gold} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
+          {/* diagonal light streaks */}
+          <LinearGradient
+            colors={["rgba(255,255,255,0)", "rgba(255,255,255,0.35)", "rgba(255,255,255,0)"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={{ position: "absolute", top: -40, bottom: -40, width: 70, right: 70, transform: [{ rotate: "20deg" }] }}
+          />
+          <RNText style={{ fontFamily: fonts.displayMedium, fontSize: 10, letterSpacing: 2.5, color: colors.onGold, opacity: 0.7 }}>FEATURED · DEEP CLEAN</RNText>
+          <RNText style={{ fontFamily: fonts.displayBlack, color: colors.onGold, fontSize: 23, lineHeight: 30 }}>A spotless home,{"\n"}one tap away.</RNText>
+          <RNText style={{ fontFamily: fonts.bodySemi, color: colors.onGold, opacity: 0.8 }}>From AED 300 · vetted teams · live tracking</RNText>
+          <View style={styles.heroCta}>
+            <RNText style={{ fontFamily: fonts.display, fontSize: 11, letterSpacing: 1.5, color: colors.gold }}>BOOK NOW  →</RNText>
           </View>
-          <RNText style={{ position: "absolute", right: space(4), top: space(3), fontSize: 54 }}>🧽</RNText>
+          <RNText style={{ position: "absolute", right: space(4), top: space(4), fontSize: 50 }}>🧽</RNText>
         </LinearGradient>
       </Pressable>
 
       {teams ? (
         <Card>
-          <Text variant="gold">Teams right now</Text>
           <Row style={{ justifyContent: "space-between" }}>
-            <Stat label="On duty" value={teams.onDuty} />
-            <Stat label="Available" value={teams.available} />
-            <Stat label="Deployed" value={teams.deployed} />
+            <Text variant="gold">Teams right now</Text>
+            <Row style={{ gap: 6 }}>
+              <Pulse color={colors.ok} />
+              <Text style={{ fontFamily: fonts.displayMedium, fontSize: 9, letterSpacing: 1.6, color: colors.ok }}>LIVE</Text>
+            </Row>
+          </Row>
+          <Row style={{ justifyContent: "space-between" }}>
+            <Stat label="On duty" value={teams.onDuty} color={colors.goldHi} />
+            <View style={styles.statDivider} />
+            <Stat label="Available" value={teams.available} color={colors.ok} />
+            <View style={styles.statDivider} />
+            <Stat label="Deployed" value={teams.deployed} color={colors.cyan} />
           </Row>
           {teams.nearestEtaMinutes != null ? (
             <Text variant="small">Nearest available team is about {teams.nearestEtaMinutes} min away.</Text>
@@ -94,7 +105,7 @@ export default function Home() {
         </Card>
       ))}
 
-      <Text variant="heading">Our services</Text>
+      <SectionLabel>Our services</SectionLabel>
       {services.loading ? <InlineLoader label="Loading services…" /> : null}
       <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: space(3) }}>
         {services.data?.services.map((s) => (
@@ -103,16 +114,16 @@ export default function Home() {
             onPress={() => router.push(`/service/${s.key}`)}
             accessibilityRole="button"
             accessibilityLabel={s.name}
-            style={({ pressed }) => [styles.tile, pressed && { transform: [{ scale: 0.97 }], borderColor: colors.gold }]}
+            style={({ pressed }) => [styles.tile, pressed && { transform: [{ scale: 0.97 }], borderColor: colors.gold, shadowColor: colors.gold, shadowOpacity: 0.5, shadowRadius: 12 }]}
           >
             <View style={styles.tileIcon}>
               <RNText style={{ fontSize: 26 }}>{SERVICE_ICON[s.key] ?? "✨"}</RNText>
             </View>
-            <Text style={{ fontWeight: "700", fontSize: 15 }} numberOfLines={2}>
+            <Text style={{ fontFamily: fonts.bodyBold, fontSize: 15, lineHeight: 19 }} numberOfLines={2}>
               {s.name}
             </Text>
-            <Text variant="small" style={{ color: s.startingFromAed != null ? colors.gold : colors.muted }}>
-              {s.startingFromAed != null ? `from ${aed(s.startingFromAed)}` : "Free survey"}
+            <Text style={{ fontFamily: fonts.displayMedium, fontSize: 10, letterSpacing: 1, color: s.startingFromAed != null ? colors.gold : colors.cyan }}>
+              {s.startingFromAed != null ? `FROM ${aed(s.startingFromAed).toUpperCase()}` : "FREE SURVEY"}
             </Text>
           </Pressable>
         ))}
@@ -132,33 +143,50 @@ export default function Home() {
 }
 
 const styles = StyleSheet.create({
+  hero: {
+    borderRadius: radius.lg,
+    padding: space(5),
+    gap: space(2),
+    overflow: "hidden",
+    shadowColor: colors.gold,
+    shadowOpacity: 0.45,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 10,
+  },
+  heroCta: { alignSelf: "flex-start", backgroundColor: colors.bg, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 9, marginTop: space(1) },
+  statDivider: { width: 1, alignSelf: "stretch", backgroundColor: colors.hairline },
   tile: {
     width: "48%",
-    backgroundColor: colors.card,
+    backgroundColor: colors.glass,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.hairline,
     padding: space(4),
     gap: space(2),
-    minHeight: 150,
+    minHeight: 156,
   },
   tileIcon: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "rgba(226,193,112,0.12)",
+    backgroundColor: "rgba(90,216,234,0.08)",
     borderWidth: 1,
-    borderColor: colors.goldLo,
+    borderColor: "rgba(90,216,234,0.5)",
+    shadowColor: colors.cyan,
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
     alignItems: "center",
     justifyContent: "center",
   },
 });
 
-function Stat({ label, value }: { label: string; value: number }) {
+function Stat({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <View style={{ alignItems: "center", flex: 1 }}>
-      <Text style={{ fontSize: 26, fontWeight: "800", color: colors.goldHi }}>{value}</Text>
-      <Text variant="small">{label}</Text>
+    <View style={{ alignItems: "center", flex: 1, gap: 2 }}>
+      <Text style={[{ fontFamily: fonts.displayBlack, fontSize: 30, lineHeight: 38, color }, glow(color, 14)]}>{String(value).padStart(2, "0")}</Text>
+      <Text style={{ fontFamily: fonts.displayMedium, fontSize: 9, letterSpacing: 1.6, color: colors.muted }}>{label.toUpperCase()}</Text>
     </View>
   );
 }

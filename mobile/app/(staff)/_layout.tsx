@@ -1,5 +1,5 @@
 import { Stack } from "expo-router";
-import { colors } from "@/lib/theme";
+import { colors, fonts } from "@/lib/theme";
 
 export default function StaffLayout() {
   return (
@@ -7,7 +7,9 @@ export default function StaffLayout() {
       screenOptions={{
         headerStyle: { backgroundColor: colors.bg },
         headerTintColor: colors.gold,
-        headerTitleStyle: { color: colors.text },
+        headerTitleStyle: { color: colors.text, fontFamily: fonts.display, fontSize: 15 },
+        headerShadowVisible: false,
+        headerBackButtonDisplayMode: "minimal",
         contentStyle: { backgroundColor: colors.bg },
       }}
     >

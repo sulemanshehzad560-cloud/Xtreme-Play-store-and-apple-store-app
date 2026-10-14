@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import * as SplashScreen from "expo-splash-screen";
+import { useFonts } from "expo-font";
+import { Orbitron_500Medium, Orbitron_700Bold, Orbitron_900Black } from "@expo-google-fonts/orbitron";
+import { Exo2_400Regular, Exo2_500Medium, Exo2_600SemiBold, Exo2_700Bold } from "@expo-google-fonts/exo-2";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -48,6 +51,17 @@ function Gate() {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts({
+    Orbitron_500Medium,
+    Orbitron_700Bold,
+    Orbitron_900Black,
+    Exo2_400Regular,
+    Exo2_500Medium,
+    Exo2_600SemiBold,
+    Exo2_700Bold,
+  });
+  // The native logo splash stays up until the fonts are ready, so text never flashes in a fallback font.
+  if (!fontsLoaded && !fontError) return null;
   return (
     <SafeAreaProvider>
       {/* The publishable key arrives with each payment, so none is needed up front. */}
