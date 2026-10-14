@@ -42,9 +42,15 @@ jobs:
       - run: npx tsc --noEmit
       - name: Generate native Android project
         run: npx expo prebuild --platform android --no-install --clean
+      - name: Give Gradle enough memory to package the APK
+        working-directory: mobile/android
+        run: |
+          sed -i '/^org.gradle.jvmargs=/d' gradle.properties
+          echo "org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8" >> gradle.properties
+          grep jvmargs gradle.properties
       - name: Build APK (release variant, signed with the debug key so it installs directly)
         working-directory: mobile/android
-        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
+        run: ./gradlew assembleRelease --no-daemon --stacktrace -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
       - name: Name the APK
         run: |
           mkdir -p ../dist
