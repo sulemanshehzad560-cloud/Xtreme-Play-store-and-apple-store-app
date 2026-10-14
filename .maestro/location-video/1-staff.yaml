@@ -4,7 +4,10 @@ appId: ae.xtremefm.app
 - launchApp:
     clearState: true
     permissions:
-      all: unset          # Maestro grants everything by default; we want the real permission prompts
+      location: unset     # Maestro grants everything by default; we want the real location prompts
+- tapOn:                  # a slow emulator sometimes shows "isn't responding" for the launcher
+    text: "Wait"
+    optional: true
 - extendedWaitUntil:
     visible: "Skip"
     timeout: 90000

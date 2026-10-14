@@ -7,6 +7,9 @@ OUT=$2
 MAESTRO="$HOME/.maestro/bin/maestro"
 mkdir -p "$OUT"
 
+# Let the freshly booted emulator settle so the launcher doesn't stall during the recording.
+sleep 45
+adb shell input keyevent KEYCODE_HOME
 adb install -r "$APK"
 adb emu geo fix 54.4035 24.4958          # Al Reem Island, Abu Dhabi
 adb shell settings put system show_touches 1
