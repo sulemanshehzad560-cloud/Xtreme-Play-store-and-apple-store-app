@@ -13,6 +13,10 @@ import { TokenService } from "./modules/auth/tokens.js";
 import { BookingService, DEFAULT_RULES, type BookingRules } from "./modules/bookings/booking.service.js";
 import { NotificationService } from "./modules/notifications/notification.service.js";
 import { ExpoPush, NoopPush, type PushSender } from "./modules/notifications/push.js";
+import type { BnplGateway, CardGateway } from "./modules/payments/gateways.js";
+import { PaymentService } from "./modules/payments/payment.service.js";
+import { StripeGateway } from "./modules/payments/stripe.gateway.js";
+import { TamaraGateway } from "./modules/payments/tamara.gateway.js";
 import { StaffService } from "./modules/staff/staff.service.js";
 import { RealtimeHub } from "./modules/tracking/realtime.js";
 import { UserService } from "./modules/users/user.service.js";
@@ -33,6 +37,9 @@ export interface Container {
   bookings: BookingService;
   staff: StaffService;
   users: UserService;
+  card: CardGateway;
+  bnpl: BnplGateway;
+  payments: PaymentService;
 }
 
 export interface ContainerOverrides {
@@ -40,6 +47,8 @@ export interface ContainerOverrides {
   push?: PushSender;
   verifiers?: Partial<Record<SocialProvider, SocialVerifier>>;
   bookingRules?: Partial<BookingRules>;
+  card?: CardGateway;
+  bnpl?: BnplGateway;
 }
 
 export function createContainer(env: Env, log: FastifyBaseLogger, overrides: ContainerOverrides = {}): Container {
@@ -75,5 +84,22 @@ export function createContainer(env: Env, log: FastifyBaseLogger, overrides: Con
     etaSpeedKmh: env.ETA_AVERAGE_SPEED_KMH,
   });
   const users = new UserService(db, tokens, bookings);
-  return { env, db, pool, hub, sms, push, verifiers, tokens, otp, auth, notifications, bookings, staff, users };
+  const card = overrides.card ?? new StripeGateway(env.STRIPE_SECRET_KEY, env.STRIPE_PUBLISHABLE_KEY, env.STRIPE_WEBHOOK_SECRET);
+  const bnpl = overrides.bnpl ?? new TamaraGateway(env.TAMARA_API_URL, env.TAMARA_API_TOKEN, env.TAMARA_NOTIFICATION_TOKEN);
+  const payments = new PaymentService(
+    db,
+    bookings,
+    notifications,
+    card,
+    bnpl,
+    {
+      vatRate: env.VAT_RATE,
+      publicUrl: env.PUBLIC_URL,
+      appScheme: env.APP_SCHEME,
+      merchantName: env.STRIPE_MERCHANT_NAME,
+      tamaraInstalments: env.TAMARA_INSTALMENTS,
+    },
+    log,
+  );
+  return { env, db, pool, hub, sms, push, verifiers, tokens, otp, auth, notifications, bookings, staff, users, card, bnpl, payments };
 }

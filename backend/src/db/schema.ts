@@ -29,7 +29,20 @@ export const staffStatus = pgEnum("staff_status", ["off_duty", "available", "en_
 export const propertyType = pgEnum("property_type", ["apartment", "villa", "office"]);
 export const bookingPlan = pgEnum("booking_plan", ["one_off", "amc"]);
 export const pricingKind = pgEnum("pricing_kind", ["fixed", "inspection"]);
-export const paymentMethod = pgEnum("payment_method", ["cash", "card_on_site", "bank_transfer"]);
+/** How the customer intends to pay. "card" and "tamara" are paid in the app. */
+export const paymentMethod = pgEnum("payment_method", ["card", "tamara", "cash", "card_on_site", "bank_transfer"]);
+/** Roll-up on the booking, derived from its payments. */
+export const bookingPaymentStatus = pgEnum("booking_payment_status", ["unpaid", "pending", "paid", "partially_refunded", "refunded"]);
+export const paymentProvider = pgEnum("payment_provider", ["stripe", "tamara"]);
+export const paymentStatus = pgEnum("payment_status", [
+  "pending", // created, customer has not finished paying
+  "authorised", // money reserved (Tamara approved), not captured yet
+  "captured", // money taken
+  "failed",
+  "cancelled",
+  "partially_refunded",
+  "refunded",
+]);
 export const bookingStatus = pgEnum("booking_status", [
   "requested", // customer placed it
   "confirmed", // office accepted the slot
@@ -56,6 +69,7 @@ export const users = pgTable(
     avatarUrl: text("avatar_url"),
     locale: text("locale").notNull().default("en"),
     marketingOptIn: boolean("marketing_opt_in").notNull().default(false),
+    stripeCustomerId: text("stripe_customer_id"),
     blockedAt: ts("blocked_at"),
     deletedAt: ts("deleted_at"),
     createdAt: createdAt(),
@@ -229,6 +243,7 @@ export const bookings = pgTable(
     pricing: pricingKind("pricing").notNull(),
     priceAed: integer("price_aed"),
     paymentMethod: paymentMethod("payment_method").notNull().default("cash"),
+    paymentStatus: bookingPaymentStatus("payment_status").notNull().default("unpaid"),
     status: bookingStatus("status").notNull().default("requested"),
     scheduledAt: ts("scheduled_at").notNull(),
     durationMinutes: integer("duration_minutes").notNull(),
@@ -304,6 +319,51 @@ export const reviews = pgTable(
   (t) => [check("reviews_rating_range", sql`${t.rating} between 1 and 5`)],
 );
 
+// ---------------------------------------------------------------- payments
+
+/** One attempt to pay for a booking. Amounts are in fils (AED minor units). */
+export const payments = pgTable(
+  "payments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    bookingId: uuid("booking_id")
+      .notNull()
+      .references(() => bookings.id),
+    customerId: uuid("customer_id")
+      .notNull()
+      .references(() => users.id),
+    provider: paymentProvider("provider").notNull(),
+    status: paymentStatus("status").notNull().default("pending"),
+    amountMinor: integer("amount_minor").notNull(),
+    refundedMinor: integer("refunded_minor").notNull().default(0),
+    currency: text("currency").notNull().default("AED"),
+    providerRef: text("provider_ref"),
+    checkoutUrl: text("checkout_url"),
+    instalments: smallint("instalments"),
+    failureReason: text("failure_reason"),
+    capturedAt: ts("captured_at"),
+    createdAt: createdAt(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("payments_booking_idx").on(t.bookingId),
+    uniqueIndex("payments_provider_ref_unique").on(t.provider, t.providerRef),
+    check("payments_refund_le_amount", sql`${t.refundedMinor} between 0 and ${t.amountMinor}`),
+  ],
+);
+
+/** Webhook ids already handled, so a provider retry is processed once. */
+export const paymentWebhookEvents = pgTable(
+  "payment_webhook_events",
+  {
+    provider: paymentProvider("provider").notNull(),
+    eventId: text("event_id").notNull(),
+    type: text("type").notNull(),
+    receivedAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.provider, t.eventId] })],
+);
+
 // ---------------------------------------------------------------- notifications
 
 export const pushTokens = pgTable(
@@ -337,6 +397,8 @@ export const notifications = pgTable(
 );
 
 export type User = typeof users.$inferSelect;
+export type Payment = typeof payments.$inferSelect;
+export type PaymentStatus = (typeof paymentStatus.enumValues)[number];
 export type Booking = typeof bookings.$inferSelect;
 export type StaffProfile = typeof staffProfiles.$inferSelect;
 export type BookingStatus = (typeof bookingStatus.enumValues)[number];

@@ -46,7 +46,7 @@ export interface CreateBookingInput {
   addressId?: string | undefined;
   address?: AddressInput | undefined;
   notes?: string | undefined;
-  paymentMethod: "cash" | "card_on_site" | "bank_transfer";
+  paymentMethod: "card" | "tamara" | "cash" | "card_on_site" | "bank_transfer";
   idempotencyKey?: string | undefined;
 }
 
@@ -68,7 +68,16 @@ const STALE_LOCATION_MS = 5 * 60_000;
 
 type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0];
 
+export type StatusListener = (booking: Booking, from: BookingStatus, actor: Actor) => Promise<void>;
+
 export class BookingService {
+  private readonly listeners: StatusListener[] = [];
+
+  /** Lets other modules (payments) react to status changes without a circular import. */
+  onStatusChange(listener: StatusListener) {
+    this.listeners.push(listener);
+  }
+
   constructor(
     private readonly db: Database,
     private readonly notifications: NotificationService,
@@ -279,6 +288,7 @@ export class BookingService {
 
     if (to === "confirmed" && from === "assigned") for (const id of team) this.hub.leave(id, rooms.booking(bookingId));
     await this.announce(updated, actor, team);
+    for (const listener of this.listeners) await listener(updated, from, actor);
     return this.view(updated, actor);
   }
 
@@ -332,6 +342,7 @@ export class BookingService {
   async setPrice(bookingId: string, admin: Actor, priceAed: number) {
     const booking = await this.loadFor(bookingId, admin);
     if (TERMINAL.includes(booking.status)) throw conflict("not_editable", "Closed bookings cannot be repriced");
+    if (booking.paymentStatus !== "unpaid") throw conflict("already_paid", "This booking has a payment. Refund it before changing the price.");
     const [updated] = await this.db.transaction(async (tx) => {
       const rows = await tx.update(bookings).set({ priceAed, updatedAt: new Date() }).where(eq(bookings.id, bookingId)).returning();
       await this.event(tx, bookingId, admin, "priced", null, null, { priceAed, previous: booking.priceAed });
@@ -628,6 +639,8 @@ export class BookingService {
         pricing: b.pricing,
         priceAed: b.priceAed,
         paymentMethod: b.paymentMethod,
+        paymentStatus: b.paymentStatus,
+        canPay: b.priceAed != null && b.paymentStatus === "unpaid" && !TERMINAL.includes(b.status),
         scheduledAt: b.scheduledAt.toISOString(),
         durationMinutes: b.durationMinutes,
         address: { ...b.address, lat: b.lat, lng: b.lng },

@@ -1,8 +1,11 @@
 CREATE TYPE "public"."auth_provider" AS ENUM('phone', 'google', 'facebook', 'apple');--> statement-breakpoint
+CREATE TYPE "public"."booking_payment_status" AS ENUM('unpaid', 'pending', 'paid', 'partially_refunded', 'refunded');--> statement-breakpoint
 CREATE TYPE "public"."booking_plan" AS ENUM('one_off', 'amc');--> statement-breakpoint
 CREATE TYPE "public"."booking_status" AS ENUM('requested', 'confirmed', 'assigned', 'en_route', 'arrived', 'in_progress', 'completed', 'cancelled');--> statement-breakpoint
 CREATE TYPE "public"."device_platform" AS ENUM('ios', 'android', 'web');--> statement-breakpoint
-CREATE TYPE "public"."payment_method" AS ENUM('cash', 'card_on_site', 'bank_transfer');--> statement-breakpoint
+CREATE TYPE "public"."payment_method" AS ENUM('card', 'tamara', 'cash', 'card_on_site', 'bank_transfer');--> statement-breakpoint
+CREATE TYPE "public"."payment_provider" AS ENUM('stripe', 'tamara');--> statement-breakpoint
+CREATE TYPE "public"."payment_status" AS ENUM('pending', 'authorised', 'captured', 'failed', 'cancelled', 'partially_refunded', 'refunded');--> statement-breakpoint
 CREATE TYPE "public"."pricing_kind" AS ENUM('fixed', 'inspection');--> statement-breakpoint
 CREATE TYPE "public"."property_type" AS ENUM('apartment', 'villa', 'office');--> statement-breakpoint
 CREATE TYPE "public"."staff_status" AS ENUM('off_duty', 'available', 'en_route', 'on_job', 'on_break');--> statement-breakpoint
@@ -65,6 +68,7 @@ CREATE TABLE "bookings" (
 	"pricing" "pricing_kind" NOT NULL,
 	"price_aed" integer,
 	"payment_method" "payment_method" DEFAULT 'cash' NOT NULL,
+	"payment_status" "booking_payment_status" DEFAULT 'unpaid' NOT NULL,
 	"status" "booking_status" DEFAULT 'requested' NOT NULL,
 	"scheduled_at" timestamp with time zone NOT NULL,
 	"duration_minutes" integer NOT NULL,
@@ -113,6 +117,33 @@ CREATE TABLE "otp_challenges" (
 	"consumed_at" timestamp with time zone,
 	"ip" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "payment_webhook_events" (
+	"provider" "payment_provider" NOT NULL,
+	"event_id" text NOT NULL,
+	"type" text NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "payment_webhook_events_provider_event_id_pk" PRIMARY KEY("provider","event_id")
+);
+--> statement-breakpoint
+CREATE TABLE "payments" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"booking_id" uuid NOT NULL,
+	"customer_id" uuid NOT NULL,
+	"provider" "payment_provider" NOT NULL,
+	"status" "payment_status" DEFAULT 'pending' NOT NULL,
+	"amount_minor" integer NOT NULL,
+	"refunded_minor" integer DEFAULT 0 NOT NULL,
+	"currency" text DEFAULT 'AED' NOT NULL,
+	"provider_ref" text,
+	"checkout_url" text,
+	"instalments" smallint,
+	"failure_reason" text,
+	"captured_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "payments_refund_le_amount" CHECK ("payments"."refunded_minor" between 0 and "payments"."amount_minor")
 );
 --> statement-breakpoint
 CREATE TABLE "push_tokens" (
@@ -174,6 +205,7 @@ CREATE TABLE "users" (
 	"avatar_url" text,
 	"locale" text DEFAULT 'en' NOT NULL,
 	"marketing_opt_in" boolean DEFAULT false NOT NULL,
+	"stripe_customer_id" text,
 	"blocked_at" timestamp with time zone,
 	"deleted_at" timestamp with time zone,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
@@ -191,6 +223,8 @@ ALTER TABLE "bookings" ADD CONSTRAINT "bookings_address_id_addresses_id_fk" FORE
 ALTER TABLE "location_pings" ADD CONSTRAINT "location_pings_staff_id_users_id_fk" FOREIGN KEY ("staff_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "location_pings" ADD CONSTRAINT "location_pings_booking_id_bookings_id_fk" FOREIGN KEY ("booking_id") REFERENCES "public"."bookings"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "notifications" ADD CONSTRAINT "notifications_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "payments" ADD CONSTRAINT "payments_booking_id_bookings_id_fk" FOREIGN KEY ("booking_id") REFERENCES "public"."bookings"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "payments" ADD CONSTRAINT "payments_customer_id_users_id_fk" FOREIGN KEY ("customer_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "push_tokens" ADD CONSTRAINT "push_tokens_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "refresh_tokens" ADD CONSTRAINT "refresh_tokens_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "reviews" ADD CONSTRAINT "reviews_booking_id_bookings_id_fk" FOREIGN KEY ("booking_id") REFERENCES "public"."bookings"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -209,6 +243,8 @@ CREATE INDEX "location_pings_staff_time_idx" ON "location_pings" USING btree ("s
 CREATE INDEX "location_pings_booking_time_idx" ON "location_pings" USING btree ("booking_id","recorded_at");--> statement-breakpoint
 CREATE INDEX "notifications_user_created_idx" ON "notifications" USING btree ("user_id","created_at");--> statement-breakpoint
 CREATE INDEX "otp_challenges_phone_created_idx" ON "otp_challenges" USING btree ("phone","created_at");--> statement-breakpoint
+CREATE INDEX "payments_booking_idx" ON "payments" USING btree ("booking_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "payments_provider_ref_unique" ON "payments" USING btree ("provider","provider_ref");--> statement-breakpoint
 CREATE INDEX "push_tokens_user_idx" ON "push_tokens" USING btree ("user_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "refresh_tokens_hash_unique" ON "refresh_tokens" USING btree ("token_hash");--> statement-breakpoint
 CREATE INDEX "refresh_tokens_family_idx" ON "refresh_tokens" USING btree ("family_id");--> statement-breakpoint

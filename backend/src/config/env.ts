@@ -50,6 +50,18 @@ const EnvSchema = z.object({
   FACEBOOK_APP_ID: z.string().optional(),
   FACEBOOK_APP_SECRET: z.string().optional(),
 
+  // Payments. Prices in the catalog are in AED and include VAT.
+  VAT_RATE: z.coerce.number().min(0).max(1).default(0.05),
+  APP_SCHEME: z.string().default("xtreme"),
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_PUBLISHABLE_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  STRIPE_MERCHANT_NAME: z.string().default("Xtreme Facilities Management"),
+  TAMARA_API_URL: z.string().url().default("https://api-sandbox.tamara.co"),
+  TAMARA_API_TOKEN: z.string().optional(),
+  TAMARA_NOTIFICATION_TOKEN: z.string().optional(),
+  TAMARA_INSTALMENTS: z.coerce.number().int().min(2).max(12).default(4),
+
   // Push notifications (Expo)
   EXPO_ACCESS_TOKEN: z.string().optional(),
   PUSH_ENABLED: bool,
@@ -74,6 +86,8 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   const env = parsed.data;
   if (env.NODE_ENV === "production") {
     if (env.SMS_PROVIDER === "console") throw new Error("SMS_PROVIDER=console is not allowed in production");
+    if (env.STRIPE_SECRET_KEY && !env.STRIPE_WEBHOOK_SECRET) throw new Error("STRIPE_WEBHOOK_SECRET is required with STRIPE_SECRET_KEY");
+    if (env.TAMARA_API_TOKEN && !env.TAMARA_NOTIFICATION_TOKEN) throw new Error("TAMARA_NOTIFICATION_TOKEN is required with TAMARA_API_TOKEN");
     if (env.CORS_ORIGINS.includes("*")) throw new Error("CORS_ORIGINS=* is not allowed in production");
   }
   return env;
