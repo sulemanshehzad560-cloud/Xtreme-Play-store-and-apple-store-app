@@ -10,6 +10,7 @@ appId: ae.xtremefm.app
     timeout: 20000
 - tapOn: "Continue with mobile number"
 - inputText: "501234567"
+- hideKeyboard
 - tapOn: "Send code"
 - extendedWaitUntil:
     visible: "Enter the code"

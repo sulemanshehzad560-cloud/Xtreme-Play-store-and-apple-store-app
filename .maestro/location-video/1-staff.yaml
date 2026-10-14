@@ -9,6 +9,7 @@ appId: ae.xtremefm.app
 - tapOn: "Skip"
 - tapOn: "Continue with mobile number"
 - inputText: "500000002"
+- hideKeyboard
 - tapOn: "Send code"
 - extendedWaitUntil:
     visible: "Enter the code"

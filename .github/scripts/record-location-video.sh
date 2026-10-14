@@ -13,7 +13,11 @@ adb shell settings put system show_touches 1
 
 start_rec() { adb shell "screenrecord --bit-rate 8000000 --time-limit 180 /sdcard/$1.mp4" & sleep 1; }
 stop_rec() { adb shell pkill -INT screenrecord; sleep 4; adb pull "/sdcard/$1.mp4" "$OUT/$1.mp4"; }
-snap() { adb exec-out screencap -p > "$OUT/$1.png"; }
+snap() {
+  adb exec-out screencap -p > "$OUT/$1.png"
+  echo "--- texts on screen at $1 ---"
+  adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1 && adb shell cat /sdcard/ui.xml | grep -o 'text="[^"]*"' | grep -v 'text=""' | head -60
+}
 
 status=0
 
