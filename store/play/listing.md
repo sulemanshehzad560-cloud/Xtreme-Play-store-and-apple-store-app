@@ -43,7 +43,7 @@ STAY UPDATED
 • Rate your service and help us keep standards high
 
 EASY SIGN-IN
-Sign in with your mobile number, Google, Apple or Facebook.
+Sign in with your mobile number, Google or Facebook.
 
 SERVING ABU DHABI
 Al Reem Island, Al Raha Beach, Yas Island, Saadiyat Island and more.
