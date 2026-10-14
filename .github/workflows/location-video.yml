@@ -63,7 +63,13 @@ jobs:
       - name: Install ffmpeg
         run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
       - name: Install Maestro
-        run: curl -fsSL "https://get.maestro.mobile.dev" | bash
+        run: |
+          set -o pipefail
+          for i in 1 2 3; do
+            curl -fsSL "https://get.maestro.mobile.dev" | bash && [ -x "$HOME/.maestro/bin/maestro" ] && break
+            echo "Maestro install attempt $i failed; retrying"; sleep 10
+          done
+          "$HOME/.maestro/bin/maestro" --version
       - name: Record on emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
