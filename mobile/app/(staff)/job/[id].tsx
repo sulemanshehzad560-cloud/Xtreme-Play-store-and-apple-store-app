@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Alert, Linking, Platform } from "react-native";
+import { Alert, Linking, Platform, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
-import { Button, Card, InlineLoader, Row, Screen, StatusPill, Text } from "@/components/ui";
+import { Button, Card, Divider, InlineLoader, Row, Screen, StatusPill, StickyFooter, Text } from "@/components/ui";
 import { api } from "@/lib/api";
-import { SIZE_LABEL, when } from "@/lib/format";
+import { aed, SIZE_LABEL, when } from "@/lib/format";
+import { fonts } from "@/lib/theme";
 import type { Booking, BookingStatus } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 
@@ -11,14 +12,20 @@ const NEXT: Partial<Record<BookingStatus, { to: BookingStatus; label: string }>>
   assigned: { to: "en_route", label: "Start driving" },
   en_route: { to: "arrived", label: "I've arrived" },
   arrived: { to: "in_progress", label: "Start the job" },
-  in_progress: { to: "completed", label: "Job completed" },
+  in_progress: { to: "completed", label: "Mark as completed" },
 };
 
 export default function Job() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: job, setData } = useApi<Booking>(`/bookings/${id}`);
   const [busy, setBusy] = useState(false);
-  if (!job) return <Screen><InlineLoader label="Loading the job…" /></Screen>;
+  if (!job) {
+    return (
+      <Screen edges={["left", "right"]}>
+        <InlineLoader label="Loading the job…" />
+      </Screen>
+    );
+  }
 
   const next = NEXT[job.status];
   const { lat, lng } = job.address;
@@ -40,35 +47,47 @@ export default function Job() {
   }
 
   return (
-    <Screen>
-      <Row style={{ justifyContent: "space-between" }}>
-        <Text variant="title" style={{ flex: 1 }}>
-          {job.service.name}
-        </Text>
-        <StatusPill status={job.status} />
-      </Row>
-      <Text variant="muted">
-        {job.reference} · {when(job.scheduledAt)}
-      </Text>
+    <Screen
+      edges={["left", "right"]}
+      footer={
+        next ? (
+          <StickyFooter>
+            <Button title={next.label} onPress={advance} loading={busy} style={{ flex: 1 }} />
+          </StickyFooter>
+        ) : undefined
+      }
+    >
       <Card>
-        <Text variant="gold">Customer</Text>
-        <Text>{job.customer?.fullName ?? "Customer"}</Text>
-        {job.customer?.phone ? <Button title={`Call ${job.customer.phone}`} variant="secondary" onPress={() => Linking.openURL(`tel:${job.customer!.phone}`)} /> : null}
+        <Row style={{ justifyContent: "space-between" }}>
+          <Text variant="heading" style={{ flex: 1 }}>
+            {job.service.name}
+          </Text>
+          <StatusPill status={job.status} />
+        </Row>
+        <Text variant="small">
+          {job.reference} · {when(job.scheduledAt)}
+        </Text>
       </Card>
       <Card>
-        <Text variant="gold">Address</Text>
-        <Text>{[job.address.unit, job.address.building, job.address.area].filter(Boolean).join(", ")}</Text>
+        <Text variant="label">CUSTOMER</Text>
+        <Text style={{ fontFamily: fonts.bold }}>{job.customer?.fullName ?? "Customer"}</Text>
+        {job.customer?.phone ? <Button title={`📞  Call ${job.customer.phone}`} variant="secondary" size="sm" onPress={() => Linking.openURL(`tel:${job.customer!.phone}`)} /> : null}
+      </Card>
+      <Card>
+        <Text variant="label">ADDRESS</Text>
+        <Text style={{ fontFamily: fonts.semibold }}>{[job.address.unit, job.address.building, job.address.area].filter(Boolean).join(", ")}</Text>
         <Text variant="small">
           {job.property.type} · {SIZE_LABEL[job.property.size] ?? job.property.size}
         </Text>
         {job.notes ? <Text variant="small">Notes: {job.notes}</Text> : null}
-        <Button title="Navigate" variant="secondary" onPress={navigate} />
+        <Button title="🧭  Navigate" variant="secondary" size="sm" onPress={navigate} />
       </Card>
       <Card>
-        <Text variant="gold">Payment</Text>
-        <Text>{job.paymentStatus === "paid" ? "Paid in the app" : `Collect on site: AED ${job.priceAed ?? "as quoted"}`}</Text>
+        <Text variant="label">PAYMENT</Text>
+        <Divider />
+        <Text style={{ fontFamily: fonts.semibold }}>{job.paymentStatus === "paid" ? "✅ Paid in the app" : `Collect on site: ${aed(job.priceAed)}`}</Text>
       </Card>
-      {next ? <Button title={next.label} onPress={advance} loading={busy} /> : null}
+      <View />
     </Screen>
   );
 }

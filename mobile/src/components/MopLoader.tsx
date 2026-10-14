@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { AccessibilityInfo, Animated, Easing, View } from "react-native";
 import Svg, { Defs, G, Line, LinearGradient, Path, Rect, Stop } from "react-native-svg";
-import { colors } from "../lib/theme";
-import { Text } from "./ui";
+import { fonts } from "../lib/theme";
+
+// Fixed brand palette so the scene looks the same on light and dark screens.
+const P = { goldHi: "#F6DE9E", gold: "#E2C170", goldLo: "#9C7A2E" };
+import { Text } from "react-native";
 
 // Drawing space; the whole scene is scaled by `size`.
 const W = 280;
@@ -27,7 +30,7 @@ const MESSAGES = ["Rolling out the rug…", "Mopping things up…", "Making it s
  * Brand loading animation: a mop sweeps back and forth over a rug, wiping away
  * dirt spots that sparkle as they disappear. Pure Animated + SVG, native-driven.
  */
-export function MopLoader({ size = 1, label, cycleMessages = !label }: { size?: number; label?: string; cycleMessages?: boolean }) {
+export function MopLoader({ size = 1, label, cycleMessages = !label, tone = "light" }: { size?: number; label?: string; cycleMessages?: boolean; tone?: "light" | "dark" }) {
   const p = useRef(new Animated.Value(0)).current; // 0→1 sweep right, 1→2 sweep back
   const bubbles = useRef([0, 1, 2].map(() => new Animated.Value(0))).current;
   const [still, setStill] = useState(false);
@@ -97,7 +100,7 @@ export function MopLoader({ size = 1, label, cycleMessages = !label }: { size?: 
               width: RUG.w - 12,
               height: RUG.h - 12,
               borderRadius: 4,
-              backgroundColor: colors.goldHi,
+              backgroundColor: P.goldHi,
               opacity: 0.14,
               transformOrigin: "left center",
               transform: [{ scaleX: shine }],
@@ -130,7 +133,7 @@ export function MopLoader({ size = 1, label, cycleMessages = !label }: { size?: 
                     left: x - 7,
                     top: y - 26,
                     fontSize: 16,
-                    color: colors.goldHi,
+                    color: P.goldHi,
                     opacity: sparkle,
                     transform: [{ scale: sparkle }],
                   }}
@@ -177,7 +180,7 @@ export function MopLoader({ size = 1, label, cycleMessages = !label }: { size?: 
         </View>
       </View>
       {label || cycleMessages ? (
-        <Text variant="muted" style={{ fontSize: 15 * Math.max(0.85, size) }}>
+        <Text style={{ fontFamily: fonts.medium, fontSize: 15 * Math.max(0.85, size), color: tone === "dark" ? "#BDB4A3" : "#6F685C" }}>
           {label ?? MESSAGES[msg]}
         </Text>
       ) : null}
@@ -197,26 +200,26 @@ function Rug() {
           <Stop offset="1" stopColor="#17130D" />
         </LinearGradient>
         <LinearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
-          <Stop offset="0" stopColor={colors.goldHi} />
-          <Stop offset="1" stopColor={colors.goldLo} />
+          <Stop offset="0" stopColor={P.goldHi} />
+          <Stop offset="1" stopColor={P.goldLo} />
         </LinearGradient>
       </Defs>
       {/* soft floor shadow */}
       <Rect x={x + 4} y={y + h - 2} width={w - 8} height={8} rx={4} fill="#000" opacity={0.45} />
       {fringe.map((fy) => (
         <G key={fy}>
-          <Line x1={x - 9} y1={fy} x2={x} y2={fy} stroke={colors.gold} strokeWidth={1.4} strokeLinecap="round" />
-          <Line x1={x + w} y1={fy} x2={x + w + 9} y2={fy} stroke={colors.gold} strokeWidth={1.4} strokeLinecap="round" />
+          <Line x1={x - 9} y1={fy} x2={x} y2={fy} stroke={P.gold} strokeWidth={1.4} strokeLinecap="round" />
+          <Line x1={x + w} y1={fy} x2={x + w + 9} y2={fy} stroke={P.gold} strokeWidth={1.4} strokeLinecap="round" />
         </G>
       ))}
       <Rect x={x} y={y} width={w} height={h} rx={5} fill="url(#rug)" stroke="url(#gold)" strokeWidth={2} />
-      <Rect x={x + 6} y={y + 6} width={w - 12} height={h - 12} rx={3} fill="none" stroke={colors.goldLo} strokeWidth={1} strokeDasharray="4 3" />
+      <Rect x={x + 6} y={y + 6} width={w - 12} height={h - 12} rx={3} fill="none" stroke={P.goldLo} strokeWidth={1} strokeDasharray="4 3" />
       {diamonds.map((dx) => (
         <Path
           key={dx}
           d={`M ${dx} ${y + h / 2 - 9} L ${dx + 9} ${y + h / 2} L ${dx} ${y + h / 2 + 9} L ${dx - 9} ${y + h / 2} Z`}
           fill="none"
-          stroke={colors.goldLo}
+          stroke={P.goldLo}
           strokeWidth={1.2}
           opacity={0.8}
         />
@@ -231,13 +234,13 @@ function Mop() {
     <Svg width={MOP_W} height={MOP_H} style={{ position: "absolute" }}>
       <Defs>
         <LinearGradient id="handle" x1="0" y1="0" x2="1" y2="0">
-          <Stop offset="0" stopColor={colors.goldHi} />
-          <Stop offset="1" stopColor={colors.goldLo} />
+          <Stop offset="0" stopColor={P.goldHi} />
+          <Stop offset="1" stopColor={P.goldLo} />
         </LinearGradient>
       </Defs>
       {/* handle */}
       <Rect x={MOP_W / 2 - 2.5} y={0} width={5} height={MOP_H - 30} rx={2.5} fill="url(#handle)" />
-      <Rect x={MOP_W / 2 - 4} y={0} width={8} height={10} rx={3} fill={colors.goldLo} />
+      <Rect x={MOP_W / 2 - 4} y={0} width={8} height={10} rx={3} fill={P.goldLo} />
       {/* head */}
       <Rect x={7} y={MOP_H - 33} width={MOP_W - 14} height={8} rx={3} fill="url(#handle)" />
       {/* cotton strands */}

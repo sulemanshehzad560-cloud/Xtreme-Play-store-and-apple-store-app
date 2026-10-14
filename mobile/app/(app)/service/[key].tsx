@@ -1,15 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { ScrollView, Text as RNText, View } from "react-native";
+import { Stack, router, useLocalSearchParams } from "expo-router";
 import * as Crypto from "expo-crypto";
 import * as Location from "expo-location";
-import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
-import { Button, Card, Chip, ErrorText, InlineLoader, Input, Row, Screen, Text } from "@/components/ui";
+import { Button, Card, Chip, Divider, ErrorText, InlineLoader, Input, OptionCard, Row, Screen, StepBar, StickyFooter, Text } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
 import { aed, SIZE_LABEL } from "@/lib/format";
-import { colors, radius, space } from "@/lib/theme";
-import type { Booking, Company, Service } from "@/lib/types";
+import { SERVICE_ICON, SERVICE_RATING } from "@/lib/serviceIcons";
+import { colors, fonts, radius, space } from "@/lib/theme";
+import type { Booking, Service } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
+import { TamaraBadge } from "@/components/BrandIcons";
 
 type PropertyType = "apartment" | "villa" | "office";
 type Pay = "card" | "tamara" | "cash";
@@ -28,8 +29,32 @@ interface Address {
   isDefault: boolean;
 }
 
-const ABU_DHABI = { latitude: 24.4539, longitude: 54.3773 };
-const HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+const STEPS = ["Service details", "Date & time", "Address", "Review & pay"];
+const SLOTS: [string, number[]][] = [
+  ["Morning", [8, 9, 10, 11]],
+  ["Afternoon", [12, 13, 14, 15]],
+  ["Evening", [16, 17, 18]],
+];
+// Approximate centres, used when a customer picks an area instead of sharing GPS.
+const AREAS: [string, number, number][] = [
+  ["Al Reem Island", 24.4958, 54.4035],
+  ["Saadiyat Island", 24.542, 54.433],
+  ["Yas Island", 24.4968, 54.6046],
+  ["Al Raha Beach", 24.4497, 54.6036],
+  ["Khalifa City", 24.4196, 54.5763],
+  ["Mohammed Bin Zayed City", 24.3364, 54.5418],
+  ["Al Reef", 24.459, 54.6773],
+  ["Masdar City", 24.4269, 54.6176],
+  ["Corniche", 24.4672, 54.3328],
+  ["Al Khalidiyah", 24.471, 54.348],
+  ["Mussafah", 24.354, 54.495],
+  ["Al Ain", 24.2075, 55.7447],
+];
+const PROPERTY: [PropertyType, string, string][] = [
+  ["apartment", "Apartment", "🏢"],
+  ["villa", "Villa", "🏡"],
+  ["office", "Office", "🏬"],
+];
 
 function nextDays(n: number) {
   return Array.from({ length: n }, (_, i) => {
@@ -39,215 +64,360 @@ function nextDays(n: number) {
   });
 }
 
-/** Builds an ISO time for `hour`:00 Abu Dhabi time (UTC+4, no daylight saving). */
-function abuDhabiTime(day: Date, hour: number) {
-  const d = new Date(Date.UTC(day.getFullYear(), day.getMonth(), day.getDate(), hour - 4, 0, 0));
-  return d.toISOString();
-}
+/** ISO time for `hour`:00 Abu Dhabi (UTC+4, no daylight saving). */
+const abuDhabiTime = (day: Date, hour: number) => new Date(Date.UTC(day.getFullYear(), day.getMonth(), day.getDate(), hour - 4)).toISOString();
+const hourLabel = (h: number) => `${h % 12 || 12}:00 ${h < 12 ? "AM" : "PM"}`;
 
 export default function BookService() {
   const { key } = useLocalSearchParams<{ key: string }>();
   const catalog = useApi<Catalog>("/catalog/services");
-  const company = useApi<Company>("/company");
   const saved = useApi<Address[]>("/me/addresses");
   const service = catalog.data?.services.find((s) => s.key === key);
 
+  const [step, setStep] = useState(0);
   const [type, setType] = useState<PropertyType>("apartment");
   const [size, setSize] = useState("2bhk");
   const [plan, setPlan] = useState<"one_off" | "amc">("one_off");
-  const [day, setDay] = useState<Date>(nextDays(1)[0]!);
-  const [hour, setHour] = useState(10);
+  const days = useMemo(() => nextDays(14), []);
+  const [day, setDay] = useState(days[0]!);
+  const [hour, setHour] = useState<number | null>(null);
   const [addressId, setAddressId] = useState<string | null>(null);
-  const [pin, setPin] = useState(ABU_DHABI);
+  const [adding, setAdding] = useState(false);
   const [area, setArea] = useState("");
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [building, setBuilding] = useState("");
   const [unit, setUnit] = useState("");
   const [notes, setNotes] = useState("");
   const [pay, setPay] = useState<Pay>("card");
-  const [price, setPrice] = useState<{ priceAed: number | null; label: string } | null>(null);
+  const [price, setPrice] = useState<number | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const idempotencyKey = useRef(Crypto.randomUUID()).current;
-  const map = useRef<MapView>(null);
 
   const sizes = catalog.data?.propertySizes[type] ?? [];
-  const days = useMemo(() => nextDays(14), []);
+  const fixed = service?.pricing.kind === "tiered";
 
   useEffect(() => {
-    if (sizes.length && !sizes.some((s) => s.key === size)) setSize(sizes[0]!.key);
+    if (sizes.length && !sizes.some((s) => s.key === size)) setSize(sizes[Math.min(1, sizes.length - 1)]!.key);
   }, [type, sizes.length]);
 
   useEffect(() => {
-    const def = saved.data?.find((a) => a.isDefault);
+    if (!saved.data) return;
+    const def = saved.data.find((a) => a.isDefault) ?? saved.data[0];
     if (def && !addressId) setAddressId(def.id);
+    if (saved.data.length === 0) setAdding(true);
   }, [saved.data]);
 
   useEffect(() => {
     if (!service) return;
-    api<{ priceAed: number | null; label: string }>(`/catalog/quote?serviceKey=${service.key}&propertyType=${type}&propertySize=${size}&plan=${plan}`)
-      .then(setPrice)
-      .catch(() => setPrice(null));
+    api<{ priceAed: number | null }>(`/catalog/quote?serviceKey=${service.key}&propertyType=${type}&propertySize=${size}&plan=${plan}`)
+      .then((q) => setPrice(q.priceAed))
+      .catch(() => setPrice(undefined));
   }, [service?.key, type, size, plan]);
 
+  useEffect(() => {
+    if (service && !fixed) setPay("cash");
+  }, [service?.key, fixed]);
+
   async function useMyLocation() {
+    setError(null);
     const perm = await Location.requestForegroundPermissionsAsync();
-    if (!perm.granted) return setError("Allow location access, or move the map to your building.");
+    if (!perm.granted) return setError("Location permission is off. Choose your area below instead.");
     const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-    const next = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
-    setPin(next);
-    map.current?.animateToRegion({ ...next, latitudeDelta: 0.005, longitudeDelta: 0.005 });
-    const [place] = await Location.reverseGeocodeAsync(next).catch(() => []);
-    if (place?.district || place?.subregion) setArea(place.district ?? place.subregion ?? "");
+    setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+    const [place] = await Location.reverseGeocodeAsync(pos.coords).catch(() => []);
+    setArea(place?.district ?? place?.subregion ?? place?.city ?? "Current location");
   }
+
+  const newAddressOk = area.trim().length >= 2 && Boolean(coords || AREAS.some(([a]) => a === area));
+  const canContinue = [true, hour != null, adding ? newAddressOk : Boolean(addressId), true][step];
 
   async function submit() {
     setBusy(true);
     setError(null);
     try {
-      const newAddress = { label: "Service address", area: area.trim(), building: building.trim() || null, unit: unit.trim() || null, lat: pin.latitude, lng: pin.longitude };
-      const body = {
-        serviceKey: key,
-        propertyType: type,
-        propertySize: size,
-        plan,
-        scheduledAt: abuDhabiTime(day, hour),
-        notes: notes.trim() || undefined,
-        paymentMethod: price?.priceAed == null ? "cash" : pay,
-        ...(addressId
-          ? { addressId }
-          : { address: newAddress }),
+      const preset = AREAS.find(([a]) => a === area);
+      const newAddress = {
+        label: "Home",
+        area: area.trim(),
+        building: building.trim() || null,
+        unit: unit.trim() || null,
+        lat: coords?.lat ?? preset?.[1] ?? 24.4539,
+        lng: coords?.lng ?? preset?.[2] ?? 54.3773,
       };
-      const booking = await api<Booking>("/bookings", { body, headers: { "Idempotency-Key": idempotencyKey } });
-      if (!addressId && area.trim()) {
-        void api("/me/addresses", { body: newAddress }).catch(() => undefined);
+      let useId = adding ? null : addressId;
+      if (adding) {
+        const created = await api<Address>("/me/addresses", { body: newAddress }).catch(() => null);
+        useId = created?.id ?? null;
       }
+      const booking = await api<Booking>("/bookings", {
+        headers: { "Idempotency-Key": idempotencyKey },
+        body: {
+          serviceKey: key,
+          propertyType: type,
+          propertySize: size,
+          plan,
+          scheduledAt: abuDhabiTime(day, hour!),
+          notes: notes.trim() || undefined,
+          paymentMethod: fixed ? pay : "cash",
+          ...(useId ? { addressId: useId } : { address: newAddress }),
+        },
+      });
       if (booking.canPay && (pay === "card" || pay === "tamara")) router.replace(`/booking/${booking.id}/pay?method=${pay}`);
-      else router.replace(`/booking/${booking.id}`);
+      else router.replace(`/booking/${booking.id}?new=1`);
     } catch (e) {
       if (e instanceof ApiError && e.code === "phone_required") {
         router.push("/phone");
-        setError("Add your mobile number, then tap Book again.");
+        setError("Add your mobile number, then tap Confirm again.");
       } else setError(e instanceof Error ? e.message : "Could not book");
     } finally {
       setBusy(false);
     }
   }
 
-  if (!service) return <Screen><InlineLoader label="Preparing your booking…" /></Screen>;
-  const canSubmit = addressId || area.trim().length >= 2;
+  if (!service) {
+    return (
+      <Screen edges={["left", "right"]}>
+        <InlineLoader label="Preparing your booking…" />
+      </Screen>
+    );
+  }
+
+  const selectedAddress = saved.data?.find((a) => a.id === addressId);
+  const totalLabel = fixed ? (price != null ? aed(price) : "…") : "Free survey";
+  const cta = step < 3 ? "Continue" : fixed && pay !== "cash" && price != null ? `Pay ${aed(price)}` : "Confirm booking";
 
   return (
-    <Screen>
-      <Text variant="title">{service.name}</Text>
-      <Text variant="muted">{service.highlights.join(" · ")}</Text>
+    <Screen
+      edges={["left", "right"]}
+      footer={
+        <StickyFooter>
+          <View style={{ flex: 1 }}>
+            <Text variant="small">{fixed ? "Total (incl. VAT)" : "Price"}</Text>
+            <Text variant="price">{totalLabel}</Text>
+          </View>
+          <Button title={cta} onPress={() => (step < 3 ? setStep(step + 1) : submit())} disabled={!canContinue} loading={busy} style={{ flex: 1.3 }} />
+        </StickyFooter>
+      }
+    >
+      <Stack.Screen
+        options={{
+          title: service.name,
+          headerLeft:
+            step > 0
+              ? () => (
+                  <Text onPress={() => setStep(step - 1)} style={{ fontSize: 30, paddingRight: space(3) }} accessibilityLabel="Previous step">
+                    ‹
+                  </Text>
+                )
+              : undefined,
+        }}
+      />
+      <StepBar steps={STEPS} current={step} />
 
-      <Section title="Property">
-        <Row style={{ flexWrap: "wrap" }}>
-          {(["apartment", "villa", "office"] as const).map((t) => (
-            <Chip key={t} label={t[0]!.toUpperCase() + t.slice(1)} selected={type === t} onPress={() => setType(t)} />
-          ))}
-        </Row>
-        <Row style={{ flexWrap: "wrap" }}>
-          {sizes.map((s) => (
-            <Chip key={s.key} label={SIZE_LABEL[s.key] ?? s.label} selected={size === s.key} onPress={() => setSize(s.key)} />
-          ))}
-        </Row>
-        {service.key === "deep" && type !== "office" ? (
-          <Row>
-            <Chip label="One-off" selected={plan === "one_off"} onPress={() => setPlan("one_off")} />
-            <Chip label="Annual plan (per visit)" selected={plan === "amc"} onPress={() => setPlan("amc")} />
+      {step === 0 ? (
+        <>
+          <Card tone="gold">
+            <Row>
+              <View style={{ width: 60, height: 60, borderRadius: radius.lg, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
+                <RNText style={{ fontSize: 32 }}>{SERVICE_ICON[service.key] ?? "✨"}</RNText>
+              </View>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text variant="heading">{service.name}</Text>
+                <Text variant="small">
+                  <Text variant="small" style={{ color: colors.star }}>
+                    ★
+                  </Text>{" "}
+                  {SERVICE_RATING[service.key] ?? 4.8} · approx. {Math.max(1, Math.round(service.durationMinutes / 60))} hours
+                </Text>
+              </View>
+            </Row>
+            <Divider />
+            {service.highlights.map((h) => (
+              <Row key={h} style={{ gap: space(2) }}>
+                <RNText style={{ color: colors.success, fontSize: 15 }}>✓</RNText>
+                <Text style={{ fontSize: 14, flex: 1 }}>{h}</Text>
+              </Row>
+            ))}
+          </Card>
+
+          <Text variant="heading">Property type</Text>
+          <Row style={{ gap: space(2) }}>
+            {PROPERTY.map(([t, label, icon]) => (
+              <View key={t} style={{ flex: 1 }}>
+                <Chip icon={icon} label={label} selected={type === t} onPress={() => setType(t)} />
+              </View>
+            ))}
           </Row>
-        ) : null}
-      </Section>
 
-      <Section title="Date & time (Abu Dhabi)">
-        <Row style={{ flexWrap: "wrap" }}>
-          {days.map((d) => (
-            <Chip
-              key={d.toDateString()}
-              label={d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
-              selected={d.toDateString() === day.toDateString()}
-              onPress={() => setDay(d)}
+          <Text variant="heading">Size</Text>
+          <Row style={{ flexWrap: "wrap", gap: space(2) }}>
+            {sizes.map((s) => (
+              <Chip key={s.key} label={SIZE_LABEL[s.key] ?? s.label} selected={size === s.key} onPress={() => setSize(s.key)} />
+            ))}
+          </Row>
+
+          {service.key === "deep" && type !== "office" ? (
+            <>
+              <Text variant="heading">How often?</Text>
+              <OptionCard selected={plan === "one_off"} onPress={() => setPlan("one_off")} title="One-time deep clean" subtitle="Single visit" />
+              <OptionCard
+                selected={plan === "amc"}
+                onPress={() => setPlan("amc")}
+                title="Annual plan"
+                subtitle="Lower price per visit, scheduled through the year"
+                right={<Text style={{ color: colors.success, fontFamily: fonts.bold, fontSize: 13 }}>Save more</Text>}
+              />
+            </>
+          ) : null}
+
+          {!fixed ? (
+            <Card>
+              <Text style={{ fontFamily: fonts.bold }}>How pricing works</Text>
+              <Text variant="small">This service is priced after a free survey. You get the price in the app before any work starts, then pay in the app or on the day.</Text>
+            </Card>
+          ) : null}
+        </>
+      ) : null}
+
+      {step === 1 ? (
+        <>
+          <Text variant="heading">Pick a day</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -space(4) }} contentContainerStyle={{ gap: space(2), paddingHorizontal: space(4) }}>
+            {days.map((d) => (
+              <View key={d.toDateString()} style={{ width: 62 }}>
+                <Chip label={String(d.getDate())} sub={d.toLocaleDateString("en-GB", { weekday: "short" })} selected={d.toDateString() === day.toDateString()} onPress={() => setDay(d)} />
+              </View>
+            ))}
+          </ScrollView>
+          <Text variant="small">{day.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</Text>
+
+          {SLOTS.map(([label, hours]) => (
+            <View key={label} style={{ gap: space(2) }}>
+              <Text variant="label">{label}</Text>
+              <Row style={{ flexWrap: "wrap", gap: space(2) }}>
+                {hours.map((h) => (
+                  <View key={h} style={{ width: "31%" }}>
+                    <Chip label={hourLabel(h)} selected={hour === h} onPress={() => setHour(h)} />
+                  </View>
+                ))}
+              </Row>
+            </View>
+          ))}
+          <Text variant="small">Your team arrives within 30 minutes of the start time.</Text>
+        </>
+      ) : null}
+
+      {step === 2 ? (
+        <>
+          <Text variant="heading">Where should we come?</Text>
+          {saved.data?.map((a) => (
+            <OptionCard
+              key={a.id}
+              selected={!adding && addressId === a.id}
+              onPress={() => {
+                setAdding(false);
+                setAddressId(a.id);
+              }}
+              title={`${a.label} · ${a.area}`}
+              subtitle={[a.unit, a.building].filter(Boolean).join(", ") || undefined}
             />
           ))}
-        </Row>
-        <Row style={{ flexWrap: "wrap" }}>
-          {HOURS.map((h) => (
-            <Chip key={h} label={`${String(h).padStart(2, "0")}:00`} selected={hour === h} onPress={() => setHour(h)} />
-          ))}
-        </Row>
-      </Section>
+          {saved.data?.length ? <OptionCard selected={adding} onPress={() => setAdding(true)} title="+ Add a new address" /> : null}
 
-      <Section title="Where">
-        {saved.data?.length ? (
-          <Row style={{ flexWrap: "wrap" }}>
-            {saved.data.map((a) => (
-              <Chip key={a.id} label={`${a.label} · ${a.area}`} selected={addressId === a.id} onPress={() => setAddressId(a.id)} />
-            ))}
-            <Chip label="New address" selected={!addressId} onPress={() => setAddressId(null)} />
-          </Row>
-        ) : null}
-        {!addressId ? (
-          <>
-            <View style={{ height: 220, borderRadius: radius.lg, overflow: "hidden" }}>
-              <MapView
-                ref={map}
-                provider={PROVIDER_GOOGLE}
-                style={{ flex: 1 }}
-                initialRegion={{ ...ABU_DHABI, latitudeDelta: 0.15, longitudeDelta: 0.15 }}
-                onRegionChangeComplete={(r) => setPin({ latitude: r.latitude, longitude: r.longitude })}
-                showsUserLocation
+          {adding ? (
+            <Card>
+              <Button title="📍  Use my current location" variant="secondary" onPress={useMyLocation} />
+              <Text variant="label">Or choose your area</Text>
+              <Row style={{ flexWrap: "wrap", gap: space(2) }}>
+                {AREAS.map(([a]) => (
+                  <Chip
+                    key={a}
+                    label={a}
+                    selected={area === a}
+                    onPress={() => {
+                      setArea(a);
+                      setCoords(null);
+                    }}
+                  />
+                ))}
+              </Row>
+              {area && !AREAS.some(([a]) => a === area) ? <Text variant="small">📍 {area}</Text> : null}
+              <Input label="Building / villa name" value={building} onChangeText={setBuilding} placeholder="e.g. Sky Tower" />
+              <Input label="Flat / villa number" value={unit} onChangeText={setUnit} placeholder="e.g. 1204" />
+            </Card>
+          ) : null}
+          <Input label="Notes for the team (optional)" value={notes} onChangeText={setNotes} placeholder="Parking, pets, access code…" multiline style={{ minHeight: 70, textAlignVertical: "top" }} />
+        </>
+      ) : null}
+
+      {step === 3 ? (
+        <>
+          <Card>
+            <Text variant="heading">Booking summary</Text>
+            <SummaryRow icon={SERVICE_ICON[service.key] ?? "✨"} label="Service" value={`${service.name}${plan === "amc" ? " · Annual plan" : ""}`} />
+            <SummaryRow icon="🏠" label="Property" value={`${PROPERTY.find(([t]) => t === type)![1]} · ${SIZE_LABEL[size] ?? size}`} />
+            <SummaryRow icon="🗓️" label="Date & time" value={`${day.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} · ${hour != null ? hourLabel(hour) : ""}`} />
+            <SummaryRow
+              icon="📍"
+              label="Address"
+              value={(adding ? [unit, building, area] : [selectedAddress?.unit, selectedAddress?.building, selectedAddress?.area]).filter(Boolean).join(", ")}
+            />
+          </Card>
+
+          <Text variant="heading">Payment method</Text>
+          {fixed ? (
+            <>
+              <OptionCard selected={pay === "card"} onPress={() => setPay("card")} title="Card, Apple Pay or Google Pay" subtitle="Pay securely now" icon={<RNText style={{ fontSize: 22 }}>💳</RNText>} />
+              <OptionCard
+                selected={pay === "tamara"}
+                onPress={() => setPay("tamara")}
+                title="Tamara: pay in 4"
+                subtitle={price ? `4 interest-free payments of ${aed(Math.round((price / 4) * 100) / 100)}` : "Split into 4 interest-free payments"}
+                icon={<TamaraBadge />}
               />
-              {/* The pin is fixed in the middle; customers move the map under it. */}
-              <View pointerEvents="none" style={{ position: "absolute", left: "50%", top: "50%", marginLeft: -12, marginTop: -30 }}>
-                <Text style={{ fontSize: 30, color: colors.gold }}>📍</Text>
-              </View>
-            </View>
-            <Button title="Use my current location" variant="secondary" onPress={useMyLocation} />
-            <Row style={{ flexWrap: "wrap" }}>
-              {company.data?.serviceAreas.slice(0, 12).map((a) => (
-                <Chip key={a} label={a} selected={area === a} onPress={() => setArea(a)} />
-              ))}
-            </Row>
-            <Input label="Area" value={area} onChangeText={setArea} placeholder="e.g. Al Reem Island" />
-            <Input label="Building / villa" value={building} onChangeText={setBuilding} />
-            <Input label="Flat / unit" value={unit} onChangeText={setUnit} />
-          </>
-        ) : null}
-        <Input label="Notes for the team (optional)" value={notes} onChangeText={setNotes} multiline style={{ minHeight: 80, paddingTop: space(3) }} />
-      </Section>
+              <OptionCard selected={pay === "cash"} onPress={() => setPay("cash")} title="Pay on the day" subtitle="Cash or card to the team after the service" icon={<RNText style={{ fontSize: 22 }}>💵</RNText>} />
+            </>
+          ) : (
+            <Card tone="gold">
+              <Text style={{ fontSize: 14 }}>Nothing to pay now. After the free survey you'll get the price in the app and can pay by card, Tamara or on the day.</Text>
+            </Card>
+          )}
 
-      <Section title="Payment">
-        {price?.priceAed != null ? (
-          <Row style={{ flexWrap: "wrap" }}>
-            <Chip label="Card / Apple Pay / Google Pay" selected={pay === "card"} onPress={() => setPay("card")} />
-            <Chip label="Tamara: pay in 4" selected={pay === "tamara"} onPress={() => setPay("tamara")} />
-            <Chip label="Pay on the day" selected={pay === "cash"} onPress={() => setPay("cash")} />
-          </Row>
-        ) : (
-          <Text variant="muted">We'll confirm the price after a free survey. You can pay in the app then.</Text>
-        )}
-      </Section>
+          {fixed && price != null ? (
+            <Card>
+              <PriceRow label={`${service.name} (${SIZE_LABEL[size] ?? size})`} value={aed(price)} />
+              <PriceRow label="VAT (5%, included)" value={aed(Math.round((price - price / 1.05) * 100) / 100)} muted />
+              <Divider />
+              <PriceRow label="Total" value={aed(price)} bold />
+            </Card>
+          ) : null}
+          <Text variant="small">Free cancellation until your team sets off. Paid bookings are refunded automatically.</Text>
+        </>
+      ) : null}
 
-      <Card>
-        <Row style={{ justifyContent: "space-between" }}>
-          <Text variant="muted">Total (VAT included)</Text>
-          <Text variant="heading" style={{ color: colors.goldHi }}>
-            {price ? aed(price.priceAed) : "…"}
-          </Text>
-        </Row>
-      </Card>
       <ErrorText error={error} />
-      <Button title={price?.priceAed != null && pay !== "cash" ? "Book & pay" : "Book now"} onPress={submit} loading={busy} disabled={!canSubmit} />
     </Screen>
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function SummaryRow({ icon, label, value }: { icon: string; label: string; value: string }) {
   return (
-    <View style={{ gap: space(3) }}>
-      <Text variant="gold">{title}</Text>
-      {children}
-    </View>
+    <Row style={{ alignItems: "flex-start", marginTop: space(1) }}>
+      <RNText style={{ fontSize: 18, width: 26 }}>{icon}</RNText>
+      <View style={{ flex: 1 }}>
+        <Text variant="small">{label}</Text>
+        <Text style={{ fontFamily: fonts.semibold, fontSize: 15 }}>{value}</Text>
+      </View>
+    </Row>
+  );
+}
+
+function PriceRow({ label, value, muted, bold }: { label: string; value: string; muted?: boolean; bold?: boolean }): ReactNode {
+  return (
+    <Row style={{ justifyContent: "space-between" }}>
+      <Text style={{ fontSize: 14, color: muted ? colors.muted : colors.text, fontFamily: bold ? fonts.bold : fonts.regular, flex: 1 }}>{label}</Text>
+      <Text style={{ fontSize: bold ? 17 : 14, color: muted ? colors.muted : colors.text, fontFamily: bold ? fonts.extrabold : fonts.semibold }}>{value}</Text>
+    </Row>
   );
 }

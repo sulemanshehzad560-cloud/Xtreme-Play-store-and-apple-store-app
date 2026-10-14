@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { router } from "expo-router";
-import { Button, ErrorText, Input, Screen, Text } from "@/components/ui";
+import { Button, ErrorText, Input, Notice, Screen, Text } from "@/components/ui";
+import { DEMO } from "@/lib/demo";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
@@ -32,7 +33,7 @@ export default function AddPhone() {
   }
 
   return (
-    <Screen>
+    <Screen edges={["left", "right"]}>
       <Text variant="heading">{sentTo ? `Enter the code sent to ${sentTo}` : "Add your mobile number"}</Text>
       <Text variant="muted">Our team uses it to reach you on the day of the service.</Text>
       {sentTo ? (
@@ -41,6 +42,7 @@ export default function AddPhone() {
         <Input label="Mobile number" value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="050 123 4567" autoFocus />
       )}
       <ErrorText error={error} />
+      {DEMO ? <Notice>Demo build: any number and any 6-digit code work.</Notice> : null}
       <Button title={sentTo ? "Verify" : "Send code"} onPress={step} loading={busy} disabled={sentTo ? code.length !== 6 : phone.length < 9} />
     </Screen>
   );

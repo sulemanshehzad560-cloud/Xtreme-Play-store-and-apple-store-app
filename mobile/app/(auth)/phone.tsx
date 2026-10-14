@@ -1,7 +1,10 @@
 import { useState } from "react";
+import { Text as RNText, View } from "react-native";
 import { router } from "expo-router";
-import { Button, ErrorText, Input, Screen, Text } from "@/components/ui";
+import { Button, ErrorText, Input, Notice, Screen, StickyFooter, Text } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
+import { DEMO } from "@/lib/demo";
+import { colors, fonts, space } from "@/lib/theme";
 
 export default function Phone() {
   const { requestCode } = useAuth();
@@ -23,22 +26,35 @@ export default function Phone() {
   }
 
   return (
-    <Screen>
-      <Text variant="title">Your mobile number</Text>
-      <Text variant="muted">We'll text you a 6-digit code. UAE numbers can be entered as 05X XXX XXXX.</Text>
+    <Screen
+      footer={
+        <StickyFooter>
+          <Button title="Send code" onPress={submit} loading={busy} disabled={phone.replace(/\D/g, "").length < 9} style={{ flex: 1 }} />
+        </StickyFooter>
+      }
+    >
+      <Text onPress={() => router.back()} style={{ fontSize: 26 }} accessibilityLabel="Back">
+        ‹
+      </Text>
+      <Text variant="title">What's your mobile number?</Text>
+      <Text variant="muted">We'll text you a 6-digit code to verify it.</Text>
       <Input
-        label="Mobile number"
         value={phone}
         onChangeText={setPhone}
         keyboardType="phone-pad"
         textContentType="telephoneNumber"
         autoComplete="tel"
-        placeholder="050 123 4567"
+        placeholder="50 123 4567"
         autoFocus
+        prefix={
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingRight: space(3), borderRightWidth: 1, borderRightColor: colors.border }}>
+            <RNText style={{ fontSize: 18 }}>🇦🇪</RNText>
+            <RNText style={{ fontFamily: fonts.semibold, fontSize: 16, color: colors.text }}>+971</RNText>
+          </View>
+        }
       />
       <ErrorText error={error} />
-      <Button title="Send code" onPress={submit} loading={busy} disabled={phone.replace(/\D/g, "").length < 9} />
-      <Button title="Back" variant="ghost" onPress={() => router.back()} />
+      {DEMO ? <Notice>Demo build: any number works. Use 050 000 0002 to see the staff app.</Notice> : null}
     </Screen>
   );
 }

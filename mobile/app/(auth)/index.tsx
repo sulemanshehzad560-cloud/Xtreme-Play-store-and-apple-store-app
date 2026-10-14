@@ -1,11 +1,18 @@
 import { useState } from "react";
-import { Alert, Platform, View } from "react-native";
-import { LogoOrb } from "@/components/LogoOrb";
+import { Alert, Platform, Text as RNText, View } from "react-native";
+import { Image } from "expo-image";
 import { router } from "expo-router";
-import * as AppleAuthentication from "expo-apple-authentication";
-import { Button, Pulse, Screen, Text, Wordmark } from "@/components/ui";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { AppleIcon, FacebookIcon, GoogleIcon } from "@/components/BrandIcons";
+import { Button, Text } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
-import { colors, fonts, space } from "@/lib/theme";
+import { colors, fonts, radius, space } from "@/lib/theme";
+
+const PERKS = [
+  ["🛡️", "Vetted, trained & insured teams"],
+  ["📍", "Track your team live on the map"],
+  ["💳", "Card, Apple Pay, Google Pay or Tamara"],
+];
 
 export default function Welcome() {
   const auth = useAuth();
@@ -24,44 +31,47 @@ export default function Welcome() {
   };
 
   return (
-    <Screen>
-      <View style={{ alignItems: "center", marginTop: space(6), gap: space(4) }}>
-        <LogoOrb size={196} />
-        <Wordmark size={19} />
-        <Text variant="title" style={{ textAlign: "center", fontSize: 24, lineHeight: 32 }}>
-          Your home, spotless.{"\n"}At your fingertips.
-        </Text>
-        <Text variant="muted" style={{ textAlign: "center", paddingHorizontal: space(2) }}>
-          Book cleaning and facilities services across Abu Dhabi, pay your way, and watch your team arrive live.
-        </Text>
-        <View style={{ flexDirection: "row", gap: space(2), flexWrap: "wrap", justifyContent: "center" }}>
-          {["VETTED TEAMS", "LIVE TRACKING", "PAY IN 4"].map((t) => (
-            <View key={t} style={{ flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderColor: colors.hairline, backgroundColor: colors.glass, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
-              <Pulse color={colors.cyan} size={5} />
-              <Text style={{ fontFamily: fonts.displayMedium, fontSize: 9, letterSpacing: 1.4, color: colors.goldHi }}>{t}</Text>
+    <View style={{ flex: 1, backgroundColor: colors.ink }}>
+      <SafeAreaView edges={["top"]} style={{ paddingHorizontal: space(6), paddingTop: space(6), paddingBottom: space(10), gap: space(5) }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: space(3) }}>
+          <Image source={require("../../assets/logo.png")} style={{ width: 52, height: 52, borderRadius: 14 }} accessibilityLabel="Xtreme logo" />
+          <View>
+            <RNText style={{ color: colors.goldBright, fontFamily: fonts.extrabold, fontSize: 20 }}>
+              Xtreme<RNText style={{ color: "#fff" }}>-Home Partner</RNText>
+            </RNText>
+            <RNText style={{ color: "#A79E8D", fontFamily: fonts.medium, fontSize: 12 }}>by Xtreme Facilities Management</RNText>
+          </View>
+        </View>
+        <RNText style={{ color: "#fff", fontFamily: fonts.extrabold, fontSize: 30, lineHeight: 38, letterSpacing: -0.5 }}>
+          Home services you can trust, <RNText style={{ color: colors.goldBright }}>booked in a minute.</RNText>
+        </RNText>
+        <View style={{ gap: space(2.5) }}>
+          {PERKS.map(([icon, text]) => (
+            <View key={text} style={{ flexDirection: "row", alignItems: "center", gap: space(3) }}>
+              <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: "#2A251D", alignItems: "center", justifyContent: "center" }}>
+                <RNText style={{ fontSize: 14 }}>{icon}</RNText>
+              </View>
+              <RNText style={{ color: "#E9E3D6", fontFamily: fonts.medium, fontSize: 15 }}>{text}</RNText>
             </View>
           ))}
         </View>
-      </View>
+      </SafeAreaView>
 
-      <View style={{ gap: space(3), marginTop: space(8) }}>
-        <Button title="Continue with mobile number" onPress={() => router.push("/(auth)/phone")} />
+      <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: colors.bg, borderTopLeftRadius: radius.xl + 4, borderTopRightRadius: radius.xl + 4, padding: space(6), gap: space(3) }}>
+        <Text variant="heading">Get started</Text>
+        <Text variant="muted" style={{ marginTop: -space(2), marginBottom: space(1) }}>
+          Sign in or create your account
+        </Text>
+        <Button title="Continue with mobile number" onPress={() => router.push("/(auth)/phone")} icon={<RNText style={{ fontSize: 16 }}>📱</RNText>} />
         {Platform.OS === "ios" ? (
-          <AppleAuthentication.AppleAuthenticationButton
-            buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
-            buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
-            cornerRadius={14}
-            style={{ height: 54 }}
-            onPress={run("apple", auth.signInWithApple)}
-          />
+          <Button title="Continue with Apple" variant="secondary" loading={busy === "apple"} onPress={run("apple", auth.signInWithApple)} icon={<AppleIcon color={colors.text} />} />
         ) : null}
-        <Button title="Continue with Google" variant="secondary" loading={busy === "google"} onPress={run("google", auth.signInWithGoogle)} />
-        <Button title="Continue with Facebook" variant="secondary" loading={busy === "facebook"} onPress={run("facebook", auth.signInWithFacebook)} />
-      </View>
-
-      <Text variant="small" style={{ textAlign: "center", marginTop: space(4), color: colors.faint }}>
-        By continuing you agree to Xtreme's terms of service and privacy policy.
-      </Text>
-    </Screen>
+        <Button title="Continue with Google" variant="secondary" loading={busy === "google"} onPress={run("google", auth.signInWithGoogle)} icon={<GoogleIcon />} />
+        <Button title="Continue with Facebook" variant="secondary" loading={busy === "facebook"} onPress={run("facebook", auth.signInWithFacebook)} icon={<FacebookIcon />} />
+        <Text variant="small" style={{ textAlign: "center", marginTop: "auto" }}>
+          By continuing you agree to our Terms of Service and Privacy Policy.
+        </Text>
+      </SafeAreaView>
+    </View>
   );
 }

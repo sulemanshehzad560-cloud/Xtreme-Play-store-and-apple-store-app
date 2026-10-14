@@ -6,8 +6,8 @@ export default function StaffLayout() {
     <Stack
       screenOptions={{
         headerStyle: { backgroundColor: colors.bg },
-        headerTintColor: colors.gold,
-        headerTitleStyle: { color: colors.text, fontFamily: fonts.display, fontSize: 15 },
+        headerTintColor: colors.text,
+        headerTitleStyle: { color: colors.text, fontFamily: fonts.bold, fontSize: 17 },
         headerShadowVisible: false,
         headerBackButtonDisplayMode: "minimal",
         contentStyle: { backgroundColor: colors.bg },

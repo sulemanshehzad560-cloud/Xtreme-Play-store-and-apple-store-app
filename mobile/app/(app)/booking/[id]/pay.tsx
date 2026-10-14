@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
-import { Alert } from "react-native";
+import { Alert, Text as RNText, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { initStripe, useStripe } from "@stripe/stripe-react-native";
-import { Button, Card, ErrorText, InlineLoader, Row, Screen, Text } from "@/components/ui";
+import { TamaraBadge } from "@/components/BrandIcons";
+import { Button, Card, Divider, ErrorText, InlineLoader, Notice, OptionCard, Row, Screen, StickyFooter, Text } from "@/components/ui";
 import { api } from "@/lib/api";
+import { DEMO } from "@/lib/demo";
 import { aed } from "@/lib/format";
-import { colors } from "@/lib/theme";
+import { colors, fonts, space } from "@/lib/theme";
 
 interface Options {
   amount: { totalAed: number; vatAed: number };
@@ -14,7 +16,7 @@ interface Options {
 }
 interface CardStart {
   paymentId: string;
-  stripe: {
+  stripe?: {
     publishableKey: string;
     paymentIntentClientSecret: string;
     customerId: string;
@@ -26,17 +28,15 @@ interface CardStart {
 }
 interface TamaraStart {
   paymentId: string;
-  tamara: { checkoutUrl: string; returnUrlPrefix: string };
-}
-interface PaymentView {
-  status: string;
+  tamara?: { checkoutUrl: string; returnUrlPrefix: string };
 }
 
 export default function Pay() {
   const { id, method: preselected } = useLocalSearchParams<{ id: string; method?: "card" | "tamara" }>();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [options, setOptions] = useState<Options | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
+  const [method, setMethod] = useState<"card" | "tamara" | "cash">(preselected ?? "card");
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -47,99 +47,111 @@ export default function Pay() {
 
   async function finish(paymentId: string) {
     // The webhook usually lands first; syncing makes the result instant either way.
-    const p = await api<PaymentView>(`/payments/${paymentId}/sync`, { body: {} });
+    const p = await api<{ status: string }>(`/payments/${paymentId}/sync`, { body: {} });
     if (p.status === "captured") {
-      Alert.alert("Payment received", "Thank you! Your booking is paid.");
+      Alert.alert("Payment successful", "Thank you! Your booking is paid.");
       router.dismissTo(`/booking/${id}`);
-    } else if (p.status === "pending") {
-      setError("Payment not completed. You can try again.");
-    } else {
-      setError("The payment didn't go through. Please try another method.");
-    }
+    } else if (p.status === "pending") setError("The payment wasn't completed. You can try again.");
+    else setError("The payment didn't go through. Please try another method.");
   }
 
   async function payByCard() {
-    setBusy("card");
-    setError(null);
-    try {
-      const start = await api<CardStart>(`/bookings/${id}/payments`, { body: { method: "card" } });
-      const s = start.stripe;
-      await initStripe({ publishableKey: s.publishableKey, merchantIdentifier: "merchant.ae.xtremefm.app", urlScheme: "xtreme" });
-      const init = await initPaymentSheet({
-        merchantDisplayName: s.merchantDisplayName,
-        paymentIntentClientSecret: s.paymentIntentClientSecret,
-        customerId: s.customerId,
-        customerEphemeralKeySecret: s.customerEphemeralKeySecret,
-        applePay: { merchantCountryCode: s.merchantCountryCode },
-        googlePay: { merchantCountryCode: s.merchantCountryCode, currencyCode: s.currency, testEnv: s.publishableKey.startsWith("pk_test") },
-        returnURL: "xtreme://stripe-redirect",
-        appearance: { colors: { primary: colors.gold, background: colors.bg, componentBackground: colors.card, primaryText: colors.text } },
-      });
-      if (init.error) throw new Error(init.error.message);
-      const result = await presentPaymentSheet();
-      if (result.error) {
-        if (result.error.code !== "Canceled") setError(result.error.message);
-        return;
-      }
-      await finish(start.paymentId);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Card payment failed");
-    } finally {
-      setBusy(null);
+    const start = await api<CardStart>(`/bookings/${id}/payments`, { body: { method: "card" } });
+    if (DEMO || !start.stripe) return finish(start.paymentId);
+    const s = start.stripe;
+    await initStripe({ publishableKey: s.publishableKey, merchantIdentifier: "merchant.ae.xtremefm.app", urlScheme: "xtreme" });
+    const init = await initPaymentSheet({
+      merchantDisplayName: s.merchantDisplayName,
+      paymentIntentClientSecret: s.paymentIntentClientSecret,
+      customerId: s.customerId,
+      customerEphemeralKeySecret: s.customerEphemeralKeySecret,
+      applePay: { merchantCountryCode: s.merchantCountryCode },
+      googlePay: { merchantCountryCode: s.merchantCountryCode, currencyCode: s.currency, testEnv: s.publishableKey.startsWith("pk_test") },
+      returnURL: "xtreme://stripe-redirect",
+      appearance: { colors: { primary: colors.ink, background: colors.surface, componentBackground: colors.bg, primaryText: colors.text } },
+    });
+    if (init.error) throw new Error(init.error.message);
+    const result = await presentPaymentSheet();
+    if (result.error) {
+      if (result.error.code !== "Canceled") setError(result.error.message);
+      return;
     }
+    await finish(start.paymentId);
   }
 
   async function payByTamara() {
-    setBusy("tamara");
+    const start = await api<TamaraStart>(`/bookings/${id}/payments`, { body: { method: "tamara" } });
+    if (!DEMO && start.tamara) await WebBrowser.openAuthSessionAsync(start.tamara.checkoutUrl, start.tamara.returnUrlPrefix);
+    await finish(start.paymentId);
+  }
+
+  async function confirm() {
+    if (method === "cash") return router.dismissTo(`/booking/${id}`);
+    setBusy(true);
     setError(null);
     try {
-      const start = await api<TamaraStart>(`/bookings/${id}/payments`, { body: { method: "tamara" } });
-      await WebBrowser.openAuthSessionAsync(start.tamara.checkoutUrl, start.tamara.returnUrlPrefix);
-      await finish(start.paymentId);
+      if (method === "card") await payByCard();
+      else await payByTamara();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Tamara payment failed");
+      setError(e instanceof Error ? e.message : "Payment failed");
     } finally {
-      setBusy(null);
+      setBusy(false);
     }
   }
 
-  useEffect(() => {
-    if (!options) return;
-    if (preselected === "card") void payByCard();
-    if (preselected === "tamara") void payByTamara();
-  }, [options !== null]);
+  const total = options?.amount.totalAed;
+  const available = (m: string) => options?.methods.find((x) => x.method === m)?.available ?? false;
 
   return (
-    <Screen>
-      <Text variant="title">Pay for your booking</Text>
+    <Screen
+      edges={["left", "right"]}
+      footer={
+        <StickyFooter>
+          <Button title={method === "cash" ? "Pay on the day" : total != null ? `Pay ${aed(total)}` : "Pay"} onPress={confirm} loading={busy} disabled={!options} style={{ flex: 1 }} />
+        </StickyFooter>
+      }
+    >
       {!options && !error ? <InlineLoader label="Getting your payment options…" /> : null}
       {options ? (
-        <Card>
-          <Row style={{ justifyContent: "space-between" }}>
-            <Text variant="muted">Total</Text>
-            <Text variant="heading" style={{ color: colors.goldHi }}>
-              {aed(options.amount.totalAed)}
-            </Text>
-          </Row>
-          <Text variant="small">Includes VAT of {aed(options.amount.vatAed)}</Text>
-        </Card>
-      ) : null}
-      {options?.methods.map((m) =>
-        m.method === "cash" ? (
-          <Button key={m.method} title={m.label} variant="ghost" onPress={() => router.dismissTo(`/booking/${id}`)} />
-        ) : (
-          <Button
-            key={m.method}
-            title={m.label}
-            variant={m.method === "card" ? "primary" : "secondary"}
-            disabled={!m.available}
-            loading={busy === m.method}
-            onPress={m.method === "card" ? payByCard : payByTamara}
+        <>
+          <Card>
+            <Row style={{ justifyContent: "space-between" }}>
+              <Text variant="muted">Amount due</Text>
+              <Text variant="price">{aed(options.amount.totalAed)}</Text>
+            </Row>
+            <Divider />
+            <Text variant="small">Includes VAT of {aed(options.amount.vatAed)}</Text>
+          </Card>
+
+          <Text variant="heading">Choose how to pay</Text>
+          <OptionCard
+            selected={method === "card"}
+            disabled={!available("card")}
+            onPress={() => setMethod("card")}
+            title="Credit or debit card"
+            subtitle="Visa, Mastercard, Apple Pay, Google Pay"
+            icon={<RNText style={{ fontSize: 22 }}>💳</RNText>}
           />
-        ),
-      )}
+          <OptionCard
+            selected={method === "tamara"}
+            disabled={!available("tamara")}
+            onPress={() => setMethod("tamara")}
+            title="Pay in 4 with Tamara"
+            subtitle={total ? `4 interest-free payments of ${aed(Math.round((total / 4) * 100) / 100)}` : "Interest-free instalments"}
+            icon={<TamaraBadge />}
+          />
+          <OptionCard selected={method === "cash"} onPress={() => setMethod("cash")} title="Pay on the day" subtitle="Cash or card to the team" icon={<RNText style={{ fontSize: 22 }}>💵</RNText>} />
+
+          <View style={{ flexDirection: "row", alignItems: "center", gap: space(2), justifyContent: "center", marginTop: space(2) }}>
+            <RNText style={{ fontSize: 14 }}>🔒</RNText>
+            <Text variant="small" style={{ fontFamily: fonts.medium }}>
+              Payments are encrypted and processed securely.
+            </Text>
+          </View>
+          {DEMO ? <Notice>Demo build: no real payment is taken. Tapping Pay marks the booking as paid.</Notice> : null}
+        </>
+      ) : null}
       <ErrorText error={error} />
-      <Text variant="small">Card details are handled securely by Stripe and never stored by Xtreme. Cancelled bookings are refunded automatically.</Text>
     </Screen>
   );
 }

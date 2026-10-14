@@ -6,8 +6,8 @@ export default function AppLayout() {
     <Stack
       screenOptions={{
         headerStyle: { backgroundColor: colors.bg },
-        headerTintColor: colors.gold,
-        headerTitleStyle: { color: colors.text, fontFamily: fonts.display, fontSize: 15 },
+        headerTintColor: colors.text,
+        headerTitleStyle: { color: colors.text, fontFamily: fonts.bold, fontSize: 17 },
         headerShadowVisible: false,
         headerBackButtonDisplayMode: "minimal",
         contentStyle: { backgroundColor: colors.bg },
@@ -15,8 +15,8 @@ export default function AppLayout() {
     >
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="service/[key]" options={{ title: "Book a service" }} />
-      <Stack.Screen name="booking/[id]/index" options={{ title: "Booking" }} />
-      <Stack.Screen name="booking/[id]/track" options={{ title: "Live tracking" }} />
+      <Stack.Screen name="booking/[id]/index" options={{ title: "Booking details" }} />
+      <Stack.Screen name="booking/[id]/track" options={{ headerShown: false }} />
       <Stack.Screen name="booking/[id]/pay" options={{ title: "Payment", presentation: "modal" }} />
       <Stack.Screen name="phone" options={{ title: "Mobile number", presentation: "modal" }} />
     </Stack>

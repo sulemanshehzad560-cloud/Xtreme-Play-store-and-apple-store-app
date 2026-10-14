@@ -2,7 +2,7 @@
 
 **Xtreme-Home Partner** is the Xtreme Facilities Management app for iPhone and Android. Customers book any Xtreme service in a few taps, pay by card, Apple Pay, Google Pay or Tamara, and watch their team arrive live on a map. Staff use the same app to go on duty, receive jobs and update each job's status.
 
-<img src="docs/design-preview.png" alt="Welcome, home and loading screens" />
+<img src="docs/design-preview.png" alt="App screens" />
 
 <img src="docs/loading-animation.gif" width="300" alt="Loading animation: a mop cleaning a rug" />
 
@@ -48,3 +48,18 @@ npx expo run:ios       # or run:android; needs Xcode / Android Studio
 ```
 
 With `SMS_PROVIDER=console` the sign-in codes are printed in the API log.
+
+## Android test APK
+
+Every push that changes `mobile/` builds an installable APK on GitHub Actions (`.github/workflows/android-apk.yml`) and publishes it on the **Releases** page as **"Android test build"** (`Xtreme-Home-Partner-test.apk`). To install: open that page on an Android phone, download the APK, open it and allow installing from your browser.
+
+The test APK runs in **demo mode** with built-in sample data, so it needs no server:
+- any mobile number and any 6-digit code sign you in (`050 000 0002` opens the staff app);
+- a new booking moves by itself: confirmed after ~6 s, team assigned, then on the way at ~18 s with the van driving to you on the map, arrived, in progress and completed after ~2 minutes;
+- payments are simulated (no real card is charged).
+
+To build against a real server instead, run the workflow manually (Actions → android-apk → Run workflow) with `demo = false` and your API URL.
+
+## Design
+
+The look follows the home-services apps customers already know (Justlife, ServiceMarket, Urban Company and others): a light, clean layout with the Xtreme black and gold as accents, the area and a search bar at the top of the home screen, an offers carousel, a service icon grid, "most booked" cards with ratings and prices, a 4-step booking flow with a fixed price bar, and a map with a bottom sheet for live tracking. Type is Plus Jakarta Sans.

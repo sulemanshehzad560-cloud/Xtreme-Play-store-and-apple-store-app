@@ -1,53 +1,44 @@
-// Xtreme-Home Partner: black, gold and a cyan "tech" accent, with glass panels and glow.
+// Xtreme-Home Partner design tokens: a light, familiar service-app look with the
+// Xtreme black-and-gold brand used for the header, primary actions and highlights.
 export const colors = {
-  bg: "#030405",
-  bgDeep: "#000000",
-  card: "#0E0F10",
-  cardHi: "#17181A",
-  glass: "rgba(14,16,20,0.78)",
-  glassHi: "rgba(24,27,33,0.85)",
-  border: "#2A2723",
-  hairline: "rgba(226,193,112,0.18)",
-  gold: "#E2C170",
-  goldHi: "#F6DE9E",
-  goldLo: "#9C7A2E",
-  goldGlow: "rgba(226,193,112,0.55)",
-  cyan: "#5AD8EA",
-  cyanGlow: "rgba(90,216,234,0.55)",
-  onGold: "#120F08",
-  text: "#F6F0E3",
-  muted: "#A69D8A",
-  faint: "#6D6556",
-  ok: "#3DDC84",
-  warn: "#F2B64C",
-  err: "#FF6B61",
-  info: "#6FB3FF",
+  bg: "#F6F4EF",
+  surface: "#FFFFFF",
+  surfaceAlt: "#FBF7EC",
+  border: "#ECE6DA",
+  divider: "#F1ECE2",
+  ink: "#16130E", // brand black: header band, primary buttons
+  inkSoft: "#2A251D",
+  text: "#1C1914",
+  muted: "#6F685C",
+  faint: "#A39B8C",
+  gold: "#B98F35", // readable on white
+  goldBright: "#E2C170", // on black
+  goldSoft: "#FBF1DA",
+  goldLine: "#E9D6A6",
+  onInk: "#FFFFFF",
+  success: "#1E9E5A",
+  successSoft: "#E6F6EC",
+  warning: "#C77C02",
+  warningSoft: "#FDF1DC",
+  danger: "#D14343",
+  dangerSoft: "#FCE9E9",
+  info: "#2F6FDE",
+  infoSoft: "#E8F0FD",
+  star: "#F5A524",
 };
 
-/** Gradients used across the app. */
-export const gradients = {
-  gold: ["#FFF1C4", "#E2C170", "#A67F2E"] as const,
-  title: ["#FFF6DA", "#E2C170", "#C79A3E"] as const,
-  border: ["rgba(246,222,158,0.55)", "rgba(226,193,112,0.08)", "rgba(90,216,234,0.45)"] as const,
-  neon: ["#E2C170", "#5AD8EA"] as const,
-};
-
-/** Orbitron for display text, Exo 2 for reading text. Loaded in app/_layout.tsx. */
 export const fonts = {
-  display: "Orbitron_700Bold",
-  displayBlack: "Orbitron_900Black",
-  displayMedium: "Orbitron_500Medium",
-  body: "Exo2_400Regular",
-  bodyMedium: "Exo2_500Medium",
-  bodySemi: "Exo2_600SemiBold",
-  bodyBold: "Exo2_700Bold",
+  regular: "PlusJakartaSans_400Regular",
+  medium: "PlusJakartaSans_500Medium",
+  semibold: "PlusJakartaSans_600SemiBold",
+  bold: "PlusJakartaSans_700Bold",
+  extrabold: "PlusJakartaSans_800ExtraBold",
 };
 
-export const glow = (color: string, radius = 12) => ({
-  textShadowColor: color,
-  textShadowRadius: radius,
-  textShadowOffset: { width: 0, height: 0 },
-});
+export const shadow = {
+  card: { shadowColor: "#3A2E14", shadowOpacity: 0.07, shadowRadius: 14, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
+  raised: { shadowColor: "#3A2E14", shadowOpacity: 0.14, shadowRadius: 20, shadowOffset: { width: 0, height: 8 }, elevation: 6 },
+};
 
 export const space = (n: number) => n * 4;
-export const radius = { sm: 8, md: 14, lg: 22, pill: 999 };
+export const radius = { sm: 10, md: 14, lg: 18, xl: 24, pill: 999 };

@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
+import { useState } from "react";
 import {
   ActivityIndicator,
-  Animated,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,33 +14,40 @@ import {
   type TextStyle,
   type ViewStyle,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
-import MaskedView from "@react-native-masked-view/masked-view";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import { Backdrop } from "./Backdrop";
 import { MopLoader } from "./MopLoader";
-import { colors, fonts, glow, gradients, radius, space } from "../lib/theme";
+import { colors, fonts, radius, shadow, space } from "../lib/theme";
 import { STATUS_LABEL } from "../lib/format";
 import type { BookingStatus } from "../lib/types";
 
 // ------------------------------------------------------------------ layout
 
-export function Screen({ children, scroll = true, padded = true }: { children: ReactNode; scroll?: boolean; padded?: boolean }) {
+export function Screen({
+  children,
+  scroll = true,
+  padded = true,
+  edges = ["top", "left", "right"],
+  footer,
+}: {
+  children: ReactNode;
+  scroll?: boolean;
+  padded?: boolean;
+  edges?: ("top" | "left" | "right" | "bottom")[];
+  footer?: ReactNode;
+}) {
   const inner = <View style={[{ gap: space(4) }, padded && { padding: space(4) }]}>{children}</View>;
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <Backdrop />
-      <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
-        {scroll ? (
-          <ScrollView contentContainerStyle={{ paddingBottom: space(28) }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-            {inner}
-          </ScrollView>
-        ) : (
-          inner
-        )}
-      </SafeAreaView>
-    </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={edges}>
+      {scroll ? (
+        <ScrollView contentContainerStyle={{ paddingBottom: footer ? space(6) : space(10) }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          {inner}
+        </ScrollView>
+      ) : (
+        <View style={{ flex: 1 }}>{inner}</View>
+      )}
+      {footer}
+    </SafeAreaView>
   );
 }
 
@@ -48,82 +55,48 @@ export function Row({ children, style }: { children: ReactNode; style?: StylePro
   return <View style={[{ flexDirection: "row", alignItems: "center", gap: space(3) }, style]}>{children}</View>;
 }
 
+/** Bottom bar that stays put while the page scrolls: price on the left, action on the right. */
+export function StickyFooter({ children }: { children: ReactNode }) {
+  const insets = useSafeAreaInsets();
+  return <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, space(3)) }]}>{children}</View>;
+}
+
 // ------------------------------------------------------------------ text
 
-type Variant = "title" | "heading" | "body" | "muted" | "small" | "gold" | "label";
+type Variant = "display" | "title" | "heading" | "subheading" | "body" | "muted" | "small" | "label" | "price";
 
-const WEIGHT_FONT: Record<string, string> = {
-  "500": fonts.bodyMedium,
-  "600": fonts.bodySemi,
-  "700": fonts.bodyBold,
-  "800": fonts.bodyBold,
-  "900": fonts.bodyBold,
-  bold: fonts.bodyBold,
-};
+const WEIGHT: Record<string, string> = { "400": fonts.regular, "500": fonts.medium, "600": fonts.semibold, "700": fonts.bold, "800": fonts.extrabold, "900": fonts.extrabold, bold: fonts.bold };
 
-/**
- * Text with the app's type scale. Custom fonts carry their own weight, so a
- * `fontWeight` passed by a screen is translated into the matching Exo 2 face.
- */
-export function Text({ variant = "body", style, children, ...rest }: TextProps & { variant?: Variant }) {
+/** Text on the app's type scale. A `fontWeight` is mapped to the matching font face. */
+export function Text({ variant = "body", style, ...rest }: TextProps & { variant?: Variant }) {
   const flat = StyleSheet.flatten([styles.text, styles[variant], style]) as TextStyle;
-  if (flat.fontWeight && !StyleSheet.flatten(style as TextStyle)?.fontFamily && variant !== "title" && variant !== "heading" && variant !== "gold" && variant !== "label") {
-    flat.fontFamily = WEIGHT_FONT[String(flat.fontWeight)] ?? flat.fontFamily;
+  if (flat.fontWeight) {
+    if (!StyleSheet.flatten(style as TextStyle)?.fontFamily) flat.fontFamily = WEIGHT[String(flat.fontWeight)] ?? flat.fontFamily;
+    delete flat.fontWeight;
   }
-  delete flat.fontWeight;
-  if (variant === "title") return <GradientText style={flat}>{children}</GradientText>;
-  return (
-    <RNText style={flat} {...rest}>
-      {children}
-    </RNText>
-  );
+  return <RNText style={flat} {...rest} />;
 }
 
-/** Text filled with a gold gradient. */
-export function GradientText({ children, style, colors: palette = gradients.title }: { children: ReactNode; style?: StyleProp<TextStyle>; colors?: readonly [string, string, ...string[]] }) {
+export function SectionHeader({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) {
   return (
-    <MaskedView maskElement={<RNText style={style}>{children}</RNText>}>
-      <LinearGradient colors={palette} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-        <RNText style={[style, { opacity: 0 }]}>{children}</RNText>
-      </LinearGradient>
-    </MaskedView>
-  );
-}
-
-/** "XTREME-HOME PARTNER" wordmark with a soft gold glow. */
-export function Wordmark({ size = 20 }: { size?: number }) {
-  return (
-    <RNText style={[{ fontFamily: fonts.displayBlack, fontSize: size, letterSpacing: size * 0.14, color: colors.gold }, glow(colors.goldGlow, 14)]}>
-      XTREME<RNText style={{ color: colors.cyan }}>-</RNText>HOME PARTNER
-    </RNText>
-  );
-}
-
-/** HUD-style section label: small caps, wide spacing, a fading rule after it. */
-export function SectionLabel({ children }: { children: string }) {
-  return (
-    <Row style={{ gap: space(2) }}>
-      <View style={{ width: 6, height: 6, backgroundColor: colors.cyan, transform: [{ rotate: "45deg" }], ...glowBox(colors.cyan) }} />
-      <RNText style={[styles.label, { color: colors.goldHi }]}>{children.toUpperCase()}</RNText>
-      <LinearGradient colors={["rgba(226,193,112,0.5)", "rgba(226,193,112,0)"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ flex: 1, height: 1 }} />
+    <Row style={{ justifyContent: "space-between", marginTop: space(2) }}>
+      <Text variant="heading">{title}</Text>
+      {action ? (
+        <Text onPress={onAction} style={{ color: colors.gold, fontFamily: fonts.bold, fontSize: 14 }}>
+          {action}
+        </Text>
+      ) : null}
     </Row>
   );
 }
 
 // ------------------------------------------------------------------ surfaces
 
-/** Glass panel with a gold-to-cyan hairline border and HUD corner brackets. */
-export function Card({ children, onPress, style, hud = true }: { children: ReactNode; onPress?: () => void; style?: StyleProp<ViewStyle>; hud?: boolean }) {
-  const body = (
-    <LinearGradient colors={gradients.border} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.cardBorder, style]}>
-      <View style={styles.cardInner}>
-        {children}
-        {hud ? <Corners /> : null}
-      </View>
-    </LinearGradient>
-  );
+export function Card({ children, onPress, style, tone = "plain" }: { children: ReactNode; onPress?: () => void; style?: StyleProp<ViewStyle>; tone?: "plain" | "gold" | "ink" }) {
+  const toneStyle = tone === "gold" ? styles.cardGold : tone === "ink" ? styles.cardInk : null;
+  const body = <View style={[styles.card, toneStyle, style]}>{children}</View>;
   return onPress ? (
-    <Pressable onPress={onPress} style={({ pressed }) => pressed && { opacity: 0.9, transform: [{ scale: 0.985 }] }}>
+    <Pressable onPress={onPress} accessibilityRole="button" style={({ pressed }) => pressed && { opacity: 0.92, transform: [{ scale: 0.99 }] }}>
       {body}
     </Pressable>
   ) : (
@@ -131,15 +104,55 @@ export function Card({ children, onPress, style, hud = true }: { children: React
   );
 }
 
-function Corners() {
-  const c = { position: "absolute" as const, width: 12, height: 12, borderColor: colors.cyan, opacity: 0.7 };
+export function Divider() {
+  return <View style={{ height: 1, backgroundColor: colors.divider, marginVertical: space(1) }} />;
+}
+
+/** Round icon badge with a soft gold background (service and list icons). */
+export function IconBadge({ glyph, size = 44, tone = "gold" }: { glyph: string; size?: number; tone?: "gold" | "plain" | "ink" }) {
+  const bg = tone === "gold" ? colors.goldSoft : tone === "ink" ? colors.ink : colors.bg;
   return (
-    <>
-      <View pointerEvents="none" style={[c, { top: 6, left: 6, borderTopWidth: 1.5, borderLeftWidth: 1.5 }]} />
-      <View pointerEvents="none" style={[c, { top: 6, right: 6, borderTopWidth: 1.5, borderRightWidth: 1.5 }]} />
-      <View pointerEvents="none" style={[c, { bottom: 6, left: 6, borderBottomWidth: 1.5, borderLeftWidth: 1.5 }]} />
-      <View pointerEvents="none" style={[c, { bottom: 6, right: 6, borderBottomWidth: 1.5, borderRightWidth: 1.5 }]} />
-    </>
+    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: bg, alignItems: "center", justifyContent: "center" }}>
+      <RNText style={{ fontSize: size * 0.48 }}>{glyph}</RNText>
+    </View>
+  );
+}
+
+export function Avatar({ name, size = 44 }: { name: string | null | undefined; size?: number }) {
+  const initials = (name ?? "?")
+    .split(" ")
+    .map((p) => p[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+  return (
+    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: colors.goldLine }}>
+      <RNText style={{ color: colors.goldBright, fontFamily: fonts.bold, fontSize: size * 0.36 }}>{initials}</RNText>
+    </View>
+  );
+}
+
+export function Stars({ value, size = 14 }: { value: number; size?: number }) {
+  return (
+    <RNText style={{ fontSize: size, color: colors.star, letterSpacing: 1 }}>
+      {"★".repeat(Math.round(value))}
+      <RNText style={{ color: colors.border }}>{"★".repeat(5 - Math.round(value))}</RNText>
+    </RNText>
+  );
+}
+
+/** Settings-style row: icon, title, subtitle, chevron. */
+export function ListItem({ icon, title, subtitle, onPress, danger, right }: { icon?: string; title: string; subtitle?: string; onPress?: () => void; danger?: boolean; right?: ReactNode }) {
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" style={({ pressed }) => [styles.listItem, pressed && { backgroundColor: colors.surfaceAlt }]}>
+      {icon ? <IconBadge glyph={icon} size={38} tone={danger ? "plain" : "gold"} /> : null}
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontFamily: fonts.semibold, color: danger ? colors.danger : colors.text }}>{title}</Text>
+        {subtitle ? <Text variant="small">{subtitle}</Text> : null}
+      </View>
+      {right ?? (onPress ? <Text style={{ color: colors.faint, fontSize: 22 }}>›</Text> : null)}
+    </Pressable>
   );
 }
 
@@ -152,210 +165,222 @@ export function Button({
   loading,
   disabled,
   icon,
+  size = "lg",
+  style,
 }: {
   title: string;
   onPress: () => void;
-  variant?: "primary" | "secondary" | "ghost" | "danger";
+  variant?: "primary" | "gold" | "secondary" | "ghost" | "danger";
   loading?: boolean;
   disabled?: boolean;
   icon?: ReactNode;
+  size?: "lg" | "sm";
+  style?: StyleProp<ViewStyle>;
 }) {
   const off = disabled || loading;
-  const press = () => {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-    onPress();
-  };
-  const textColor = variant === "primary" ? colors.onGold : variant === "danger" ? colors.err : variant === "secondary" ? colors.cyan : colors.gold;
+  const fg = variant === "primary" ? colors.onInk : variant === "gold" ? colors.ink : variant === "danger" ? colors.danger : variant === "ghost" ? colors.gold : colors.text;
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={title}
       accessibilityState={{ disabled: off, busy: loading }}
-      onPress={off ? undefined : press}
-      style={({ pressed }) => [
-        styles.button,
-        styles[`btn_${variant}`],
-        pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
-        off && { opacity: 0.45 },
-      ]}
+      onPress={
+        off
+          ? undefined
+          : () => {
+              void Haptics.selectionAsync().catch(() => undefined);
+              onPress();
+            }
+      }
+      style={({ pressed }) => [styles.button, size === "sm" && styles.buttonSm, styles[`btn_${variant}`], pressed && { opacity: 0.85 }, off && { opacity: 0.45 }, style]}
     >
-      {variant === "primary" ? (
-        <LinearGradient colors={gradients.gold} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, { borderRadius: radius.md }]} />
-      ) : null}
       {loading ? (
-        <ActivityIndicator color={textColor} />
+        <ActivityIndicator color={fg} />
       ) : (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: space(2) }}>
+        <Row style={{ gap: space(2) }}>
           {icon}
-          <RNText
-            style={[
-              variant === "ghost" ? styles.ghostText : styles.buttonText,
-              { color: textColor },
-              variant === "secondary" && glow(colors.cyanGlow, 8),
-            ]}
-          >
-            {variant === "ghost" ? title : title.toUpperCase()}
-          </RNText>
-        </View>
+          <RNText style={{ color: fg, fontFamily: fonts.bold, fontSize: size === "sm" ? 14 : 16 }}>{title}</RNText>
+        </Row>
       )}
     </Pressable>
   );
 }
 
-export function Input(props: TextInputProps & { label?: string }) {
+export function Input(props: TextInputProps & { label?: string; prefix?: ReactNode }) {
   const [focused, setFocused] = useState(false);
+  const { label, prefix, style, ...rest } = props;
   return (
     <View style={{ gap: space(1.5) }}>
-      {props.label ? <RNText style={styles.inputLabel}>{props.label.toUpperCase()}</RNText> : null}
-      <TextInput
-        placeholderTextColor={colors.faint}
-        selectionColor={colors.cyan}
-        {...props}
-        onFocus={(e) => {
-          setFocused(true);
-          props.onFocus?.(e);
-        }}
-        onBlur={(e) => {
-          setFocused(false);
-          props.onBlur?.(e);
-        }}
-        style={[styles.input, focused && styles.inputFocused, props.style]}
-      />
+      {label ? <Text variant="label">{label}</Text> : null}
+      <View style={[styles.inputWrap, focused && { borderColor: colors.gold, backgroundColor: colors.surface }]}>
+        {prefix}
+        <TextInput
+          placeholderTextColor={colors.faint}
+          selectionColor={colors.gold}
+          {...rest}
+          onFocus={(e) => {
+            setFocused(true);
+            rest.onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setFocused(false);
+            rest.onBlur?.(e);
+          }}
+          style={[styles.input, style]}
+        />
+      </View>
     </View>
   );
 }
 
-export function Chip({ label, selected, onPress }: { label: string; selected?: boolean; onPress?: () => void }) {
+export function Chip({ label, selected, onPress, sub, icon }: { label: string; selected?: boolean; onPress?: () => void; sub?: string; icon?: string }) {
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityState={{ selected }} style={({ pressed }) => [styles.chip, selected && styles.chipOn, pressed && { opacity: 0.85 }]}>
-      {selected ? <LinearGradient colors={gradients.gold} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, { borderRadius: radius.pill }]} /> : null}
-      <RNText style={{ color: selected ? colors.onGold : colors.text, fontFamily: selected ? fonts.bodyBold : fonts.bodySemi, fontSize: 14 }}>{label}</RNText>
+      {icon ? <RNText style={{ fontSize: 22, textAlign: "center", marginBottom: 2 }}>{icon}</RNText> : null}
+      <RNText style={{ color: colors.text, fontFamily: selected ? fonts.bold : fonts.semibold, fontSize: 14, textAlign: "center" }}>{label}</RNText>
+      {sub ? <RNText style={{ color: selected ? colors.gold : colors.muted, fontFamily: fonts.medium, fontSize: 11, textAlign: "center" }}>{sub}</RNText> : null}
     </Pressable>
   );
 }
 
-const STATUS_COLOR: Record<BookingStatus, string> = {
-  requested: colors.warn,
-  confirmed: colors.info,
-  assigned: colors.cyan,
-  en_route: colors.gold,
-  arrived: colors.gold,
-  in_progress: colors.gold,
-  completed: colors.ok,
-  cancelled: colors.err,
+/** A selectable option card with a radio dot (plans, payment methods, addresses). */
+export function OptionCard({ selected, onPress, title, subtitle, right, icon, disabled }: { selected: boolean; onPress: () => void; title: string; subtitle?: string; right?: ReactNode; icon?: ReactNode; disabled?: boolean }) {
+  return (
+    <Pressable
+      onPress={disabled ? undefined : onPress}
+      accessibilityRole="radio"
+      accessibilityState={{ selected, disabled }}
+      style={[styles.option, selected && styles.optionOn, disabled && { opacity: 0.45 }]}
+    >
+      <View style={[styles.radio, selected && { borderColor: colors.gold }]}>{selected ? <View style={styles.radioDot} /> : null}</View>
+      {icon}
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontFamily: fonts.bold }}>{title}</Text>
+        {subtitle ? <Text variant="small">{subtitle}</Text> : null}
+      </View>
+      {right}
+    </Pressable>
+  );
+}
+
+const STATUS_TONE: Record<BookingStatus, [string, string]> = {
+  requested: [colors.warning, colors.warningSoft],
+  confirmed: [colors.info, colors.infoSoft],
+  assigned: [colors.info, colors.infoSoft],
+  en_route: [colors.gold, colors.goldSoft],
+  arrived: [colors.gold, colors.goldSoft],
+  in_progress: [colors.gold, colors.goldSoft],
+  completed: [colors.success, colors.successSoft],
+  cancelled: [colors.danger, colors.dangerSoft],
 };
 
-/** Status chip with a glowing dot that pulses while the job is live. */
 export function StatusPill({ status }: { status: BookingStatus }) {
-  const c = STATUS_COLOR[status];
-  const live = status === "en_route" || status === "arrived" || status === "in_progress";
+  const [fg, bg] = STATUS_TONE[status];
   return (
-    <View style={[styles.pill, { borderColor: c, backgroundColor: `${c}14` }]}>
-      <Pulse color={c} active={live} />
-      <RNText style={{ color: c, fontFamily: fonts.displayMedium, fontSize: 10, letterSpacing: 1.2 }}>{STATUS_LABEL[status].toUpperCase()}</RNText>
+    <View style={[styles.pill, { backgroundColor: bg }]}>
+      <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: fg }} />
+      <RNText style={{ color: fg, fontFamily: fonts.bold, fontSize: 12 }}>{STATUS_LABEL[status]}</RNText>
     </View>
   );
 }
 
-export function Pulse({ color, active = true, size = 7 }: { color: string; active?: boolean; size?: number }) {
-  const v = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    if (!active) return;
-    const loop = Animated.loop(Animated.timing(v, { toValue: 1, duration: 1400, useNativeDriver: true }));
-    loop.start();
-    return () => loop.stop();
-  }, [active]);
+/** Horizontal progress for multi-step flows. */
+export function StepBar({ steps, current }: { steps: string[]; current: number }) {
   return (
-    <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
-      {active ? (
-        <Animated.View
-          style={{
-            position: "absolute",
-            width: size,
-            height: size,
-            borderRadius: size,
-            backgroundColor: color,
-            opacity: v.interpolate({ inputRange: [0, 1], outputRange: [0.6, 0] }),
-            transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [1, 2.8] }) }],
-          }}
-        />
-      ) : null}
-      <View style={{ width: size, height: size, borderRadius: size, backgroundColor: color, ...glowBox(color) }} />
+    <View style={{ gap: space(2) }}>
+      <Row style={{ gap: space(1.5) }}>
+        {steps.map((_, i) => (
+          <View key={i} style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: i <= current ? colors.gold : colors.border }} />
+        ))}
+      </Row>
+      <Text variant="small">
+        Step {current + 1} of {steps.length} · <Text variant="small" style={{ color: colors.text, fontFamily: fonts.semibold }}>{steps[current]}</Text>
+      </Text>
     </View>
   );
 }
 
 export function ErrorText({ error }: { error: string | null }) {
-  return error ? <Text style={{ color: colors.err }}>{error}</Text> : null;
+  return error ? (
+    <View style={{ backgroundColor: colors.dangerSoft, borderRadius: radius.sm, padding: space(3) }}>
+      <Text style={{ color: colors.danger, fontSize: 14 }}>{error}</Text>
+    </View>
+  ) : null;
+}
+
+export function Notice({ children, tone = "gold" }: { children: ReactNode; tone?: "gold" | "info" }) {
+  return (
+    <View style={{ backgroundColor: tone === "gold" ? colors.goldSoft : colors.infoSoft, borderRadius: radius.md, padding: space(3), borderWidth: 1, borderColor: tone === "gold" ? colors.goldLine : "#CFE0FB" }}>
+      <Text style={{ fontSize: 14, color: colors.text }}>{children}</Text>
+    </View>
+  );
 }
 
 // ------------------------------------------------------------------ loading
 
-/** Full-screen brand loader (app start). */
+/** Brand intro shown while the app starts. */
 export function Loading() {
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg, alignItems: "center", justifyContent: "center", gap: space(6) }}>
-      <Backdrop intense />
+    <View style={{ flex: 1, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center", gap: space(8) }}>
       <View style={{ alignItems: "center", gap: space(2) }}>
-        <Wordmark size={21} />
-        <RNText style={{ color: colors.cyan, letterSpacing: 4, fontSize: 11, fontFamily: fonts.displayMedium }}>CLEANING · FACILITIES · ABU DHABI</RNText>
+        <RNText style={{ color: colors.goldBright, fontFamily: fonts.extrabold, fontSize: 26, letterSpacing: 0.5 }}>
+          Xtreme<RNText style={{ color: colors.onInk }}>-Home Partner</RNText>
+        </RNText>
+        <RNText style={{ color: "#BDB4A3", fontFamily: fonts.medium, fontSize: 13 }}>Cleaning & facilities services · Abu Dhabi</RNText>
       </View>
-      <MopLoader size={1.15} />
+      <MopLoader size={1.1} tone="dark" />
     </View>
   );
 }
 
-/** In-page loader for screens that are fetching data. */
 export function InlineLoader({ label }: { label?: string }) {
   return (
-    <View style={{ alignItems: "center", paddingVertical: space(10) }}>
-      <MopLoader size={0.7} label={label} />
+    <View style={{ alignItems: "center", paddingVertical: space(8) }}>
+      <MopLoader size={0.65} label={label} />
     </View>
   );
 }
 
-const glowBox = (color: string) => ({ shadowColor: color, shadowOpacity: 0.9, shadowRadius: 6, shadowOffset: { width: 0, height: 0 } });
-
 const styles = StyleSheet.create({
-  text: { color: colors.text, fontSize: 16, fontFamily: fonts.body, lineHeight: 22 },
-  title: { fontFamily: fonts.display, fontSize: 25, lineHeight: 32, letterSpacing: 0.8 },
-  heading: { fontFamily: fonts.display, fontSize: 17, lineHeight: 24, letterSpacing: 0.6, color: colors.text },
+  text: { color: colors.text, fontSize: 16, fontFamily: fonts.regular, lineHeight: 23 },
+  display: { fontFamily: fonts.extrabold, fontSize: 28, lineHeight: 35, letterSpacing: -0.4 },
+  title: { fontFamily: fonts.extrabold, fontSize: 24, lineHeight: 31, letterSpacing: -0.3 },
+  heading: { fontFamily: fonts.bold, fontSize: 18, lineHeight: 25 },
+  subheading: { fontFamily: fonts.semibold, fontSize: 16 },
   body: {},
   muted: { color: colors.muted },
   small: { color: colors.muted, fontSize: 13, lineHeight: 18 },
-  gold: { fontFamily: fonts.displayMedium, color: colors.gold, fontSize: 12, letterSpacing: 1.6, textTransform: "uppercase" },
-  label: { fontFamily: fonts.displayMedium, fontSize: 11, letterSpacing: 2.5, color: colors.cyan },
-  button: { minHeight: 54, borderRadius: radius.md, alignItems: "center", justifyContent: "center", paddingHorizontal: space(5), overflow: "hidden" },
-  btn_primary: { shadowColor: colors.gold, shadowOpacity: 0.55, shadowRadius: 16, shadowOffset: { width: 0, height: 0 }, elevation: 8 },
-  btn_secondary: { backgroundColor: "rgba(90,216,234,0.06)", borderWidth: 1, borderColor: "rgba(90,216,234,0.55)" },
+  label: { fontFamily: fonts.semibold, fontSize: 13, color: colors.muted },
+  price: { fontFamily: fonts.extrabold, fontSize: 20, color: colors.text },
+  footer: {
+    backgroundColor: colors.surface,
+    paddingHorizontal: space(4),
+    paddingTop: space(3),
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space(3),
+    ...shadow.raised,
+  },
+  card: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: space(4), gap: space(2), borderWidth: 1, borderColor: colors.border, ...shadow.card },
+  cardGold: { backgroundColor: colors.surfaceAlt, borderColor: colors.goldLine },
+  cardInk: { backgroundColor: colors.ink, borderColor: colors.ink },
+  listItem: { flexDirection: "row", alignItems: "center", gap: space(3), paddingVertical: space(3), paddingHorizontal: space(1), borderRadius: radius.sm },
+  button: { minHeight: 54, borderRadius: radius.md, alignItems: "center", justifyContent: "center", paddingHorizontal: space(5) },
+  buttonSm: { minHeight: 40, paddingHorizontal: space(4), borderRadius: radius.sm },
+  btn_primary: { backgroundColor: colors.ink },
+  btn_gold: { backgroundColor: colors.goldBright },
+  btn_secondary: { backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.border },
   btn_ghost: { backgroundColor: "transparent", minHeight: 44 },
-  btn_danger: { backgroundColor: "rgba(255,107,97,0.06)", borderWidth: 1, borderColor: colors.err },
-  buttonText: { fontFamily: fonts.display, fontSize: 13, letterSpacing: 1.6 },
-  ghostText: { fontFamily: fonts.bodySemi, fontSize: 15 },
-  cardBorder: { borderRadius: radius.lg, padding: 1, shadowColor: "#000", shadowOpacity: 0.5, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 3 },
-  cardInner: { backgroundColor: colors.glass, borderRadius: radius.lg - 1, padding: space(4), gap: space(2) },
-  inputLabel: { fontFamily: fonts.displayMedium, fontSize: 10, letterSpacing: 2, color: colors.muted },
-  input: {
-    backgroundColor: colors.glass,
-    borderWidth: 1,
-    borderColor: colors.hairline,
-    borderRadius: radius.md,
-    color: colors.text,
-    fontSize: 17,
-    fontFamily: fonts.bodyMedium,
-    paddingHorizontal: space(4),
-    minHeight: 54,
-  },
-  inputFocused: { borderColor: colors.cyan, shadowColor: colors.cyan, shadowOpacity: 0.5, shadowRadius: 10, shadowOffset: { width: 0, height: 0 } },
-  chip: {
-    paddingHorizontal: space(4),
-    paddingVertical: space(2.5),
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.hairline,
-    backgroundColor: colors.glass,
-    overflow: "hidden",
-  },
-  chipOn: { borderColor: colors.goldHi, shadowColor: colors.gold, shadowOpacity: 0.6, shadowRadius: 10, shadowOffset: { width: 0, height: 0 } },
-  pill: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: space(2.5), paddingVertical: space(1), alignSelf: "flex-start" },
+  btn_danger: { backgroundColor: colors.surface, borderWidth: 1.5, borderColor: "#F2C4C4" },
+  inputWrap: { flexDirection: "row", alignItems: "center", backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: space(4), minHeight: 54, gap: space(2) },
+  input: { flex: 1, color: colors.text, fontSize: 16, fontFamily: fonts.medium, paddingVertical: space(3) },
+  chip: { paddingHorizontal: space(4), paddingVertical: space(2.5), borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface, minWidth: 64 },
+  chipOn: { borderColor: colors.gold, backgroundColor: colors.goldSoft },
+  option: { flexDirection: "row", alignItems: "center", gap: space(3), padding: space(4), borderRadius: radius.lg, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface },
+  optionOn: { borderColor: colors.gold, backgroundColor: colors.surfaceAlt },
+  radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: colors.faint, alignItems: "center", justifyContent: "center" },
+  radioDot: { width: 11, height: 11, borderRadius: 6, backgroundColor: colors.gold },
+  pill: { flexDirection: "row", alignItems: "center", gap: 6, borderRadius: radius.pill, paddingHorizontal: space(2.5), paddingVertical: space(1), alignSelf: "flex-start" },
 });

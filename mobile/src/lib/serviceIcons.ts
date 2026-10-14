@@ -1,6 +1,6 @@
 export const SERVICE_ICON: Record<string, string> = {
   regular: "🧹",
-  deep: "🫧",
+  deep: "🧽",
   move: "📦",
   postcon: "🏗️",
   kitbath: "🚿",
@@ -8,11 +8,36 @@ export const SERVICE_ICON: Record<string, string> = {
   ac: "❄️",
   pest: "🐜",
   tank: "💧",
-  facade: "🏢",
+  facade: "🪟",
   kitchenex: "🍳",
   laundry: "🧺",
-  drapery: "🪟",
+  drapery: "🏮",
   helper: "🤝",
   fm: "🛠️",
   disinfect: "🧴",
 };
+
+/** Short names for the category grid. */
+export const SERVICE_SHORT: Record<string, string> = {
+  regular: "Cleaning",
+  deep: "Deep clean",
+  move: "Move in/out",
+  postcon: "After build",
+  kitbath: "Kitchen & bath",
+  carpet: "Sofa & carpet",
+  ac: "AC ducts",
+  pest: "Pest control",
+  tank: "Water tank",
+  facade: "Windows",
+  kitchenex: "Kitchen hood",
+  laundry: "Laundry",
+  drapery: "Curtains",
+  helper: "Maids",
+  fm: "Facilities",
+  disinfect: "Disinfection",
+};
+
+/** Ratings shown on cards (to be replaced by live averages from reviews). */
+export const SERVICE_RATING: Record<string, number> = { regular: 4.9, deep: 4.8, move: 4.8, ac: 4.7, pest: 4.8, carpet: 4.7 };
+
+export const MOST_BOOKED = ["deep", "regular", "move", "ac", "carpet", "pest"];

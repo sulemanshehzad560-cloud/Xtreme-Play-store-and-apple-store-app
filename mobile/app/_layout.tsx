@@ -1,14 +1,20 @@
 import { useEffect, useState } from "react";
 import * as SplashScreen from "expo-splash-screen";
 import { useFonts } from "expo-font";
-import { Orbitron_500Medium, Orbitron_700Bold, Orbitron_900Black } from "@expo-google-fonts/orbitron";
-import { Exo2_400Regular, Exo2_500Medium, Exo2_600SemiBold, Exo2_700Bold } from "@expo-google-fonts/exo-2";
+import {
+  PlusJakartaSans_400Regular,
+  PlusJakartaSans_500Medium,
+  PlusJakartaSans_600SemiBold,
+  PlusJakartaSans_700Bold,
+  PlusJakartaSans_800ExtraBold,
+} from "@expo-google-fonts/plus-jakarta-sans";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StripeProvider } from "@stripe/stripe-react-native";
 import { Loading } from "@/components/ui";
 import { AuthProvider, useAuth } from "@/lib/auth";
+import { DEMO } from "@/lib/demo";
 import { registerPush } from "@/lib/push";
 import { closeSocket } from "@/lib/realtime";
 import { colors } from "@/lib/theme";
@@ -50,27 +56,35 @@ function Gate() {
   );
 }
 
+/** Stripe is only needed for real card payments; demo builds take payments in-app. */
+function Payments({ children }: { children: React.ReactElement }) {
+  if (DEMO) return children;
+  // The publishable key arrives with each payment, so none is needed up front.
+  return (
+    <StripeProvider publishableKey="" merchantIdentifier="merchant.ae.xtremefm.app" urlScheme="xtreme">
+      {children}
+    </StripeProvider>
+  );
+}
+
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
-    Orbitron_500Medium,
-    Orbitron_700Bold,
-    Orbitron_900Black,
-    Exo2_400Regular,
-    Exo2_500Medium,
-    Exo2_600SemiBold,
-    Exo2_700Bold,
+    PlusJakartaSans_400Regular,
+    PlusJakartaSans_500Medium,
+    PlusJakartaSans_600SemiBold,
+    PlusJakartaSans_700Bold,
+    PlusJakartaSans_800ExtraBold,
   });
   // The native logo splash stays up until the fonts are ready, so text never flashes in a fallback font.
   if (!fontsLoaded && !fontError) return null;
   return (
     <SafeAreaProvider>
-      {/* The publishable key arrives with each payment, so none is needed up front. */}
-      <StripeProvider publishableKey="" merchantIdentifier="merchant.ae.xtremefm.app" urlScheme="xtreme">
+      <Payments>
         <AuthProvider>
-          <StatusBar style="light" />
+          <StatusBar style="dark" />
           <Gate />
         </AuthProvider>
-      </StripeProvider>
+      </Payments>
     </SafeAreaProvider>
   );
 }
