@@ -1,4 +1,5 @@
 import * as Location from "expo-location";
+import { Alert } from "react-native";
 import * as TaskManager from "expo-task-manager";
 import { api } from "./api";
 
@@ -19,7 +20,27 @@ TaskManager.defineTask<{ locations: Location.LocationObject[] }>(LOCATION_TASK, 
   await api("/staff/me/location", { body: { pings } }).catch(() => undefined);
 });
 
+/**
+ * Prominent disclosure required by Google Play (and good practice on iOS): explains the
+ * background location use in our own words before the system permission prompts.
+ */
+export const LOCATION_DISCLOSURE =
+  "Xtreme-Home Partner collects your location data to show customers and the Xtreme office where you are and when you will arrive, " +
+  "even when the app is closed or not in use. This happens only while you are on duty and stops when you go off duty. " +
+  "Your location is not used for advertising.";
+
+function confirmDisclosure(): Promise<boolean> {
+  return new Promise((resolve) =>
+    Alert.alert("Share your location while on duty", LOCATION_DISCLOSURE, [
+      { text: "Not now", style: "cancel", onPress: () => resolve(false) },
+      { text: "Continue", onPress: () => resolve(true) },
+    ], { cancelable: true, onDismiss: () => resolve(false) }),
+  );
+}
+
 export async function startSharingLocation(): Promise<boolean> {
+  const current = await Location.getBackgroundPermissionsAsync();
+  if (current.status !== "granted" && !(await confirmDisclosure())) return false;
   const fg = await Location.requestForegroundPermissionsAsync();
   if (fg.status !== "granted") return false;
   const bg = await Location.requestBackgroundPermissionsAsync();
