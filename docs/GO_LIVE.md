@@ -24,8 +24,14 @@ Then:
 Open **`https://api.xtreme-fmgroup.com/admin`** and sign in with the admin mobile number.
 - **Dispatch board**: new requests → confirm → assign a team (lead + helpers, matched by skills) → live → completed. Set prices for survey-based services, cancel, refund.
 - **Live map**: every on-duty team member's position, coloured by status, and the addresses of live jobs. Updates in real time.
-- **Staff**: add team members by mobile number (they then sign in to the same app and see the staff screens), deactivate leavers.
+- **Staff**: the staff directory. Add team members by mobile number (they then sign in to the same app and see the staff screens) with job title, team, email, emergency contact, joining date, skills and internal notes. Edit any detail, change someone's sign-in number (their old sessions end), deactivate leavers, see each person's change history, and download the whole directory as a CSV for HR.
+- **Customers**: search by name, phone or email; suspend or restore an account.
 - **Payments**: every card / Tamara payment and refund.
+- **Admin & IT**:
+  - *Dashboard access*: give office managers and IT staff admin access by mobile number, or remove it (you can't remove yourself or the last admin).
+  - *Company contacts in the app*: phone, WhatsApp, email, website, address and social links that customers see. Changes reach the app within minutes, no app update needed.
+  - *Connected services*: database and Redis health, and which integrations (SMS, Google, Apple, Facebook, Stripe, Tamara, push) are set up. Keys stay on the server and are never displayed.
+  - *Audit log*: every change made in the dashboard, with who did it, when, and the old and new values.
 
 ## 3. Build the store apps
 

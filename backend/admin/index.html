@@ -35,7 +35,9 @@
         <button class="tab active" data-tab="board">Dispatch board</button>
         <button class="tab" data-tab="map">Live map</button>
         <button class="tab" data-tab="staff">Staff</button>
+        <button class="tab" data-tab="customers">Customers</button>
         <button class="tab" data-tab="payments">Payments</button>
+        <button class="tab" data-tab="admin">Admin &amp; IT</button>
       </nav>
       <div class="me"><span id="live-dot" class="dot"></span><span id="me-name"></span><button id="logout" class="btn ghost small">Sign out</button></div>
     </header>
@@ -56,8 +58,40 @@
       </div>
       <div id="tab-map" class="tab-panel hidden"><div id="map"></div><aside id="map-list"></aside></div>
       <div id="tab-staff" class="tab-panel hidden">
-        <div class="toolbar"><button class="btn primary" id="add-staff">+ Add staff member</button></div>
+        <div class="toolbar">
+          <input id="staff-search" placeholder="Search name, code, phone, team…" />
+          <select id="staff-filter"><option value="active">Active staff</option><option value="all">Everyone</option><option value="inactive">Inactive</option></select>
+          <button class="btn outline" id="export-staff">⬇ Download CSV</button>
+          <button class="btn primary" id="add-staff">+ Add staff member</button>
+        </div>
         <table class="table" id="staff-table"></table>
+      </div>
+      <div id="tab-customers" class="tab-panel hidden">
+        <div class="toolbar"><input id="customer-search" placeholder="Search customer name, phone or email…" /></div>
+        <table class="table" id="customers-table"></table>
+      </div>
+      <div id="tab-admin" class="tab-panel hidden">
+        <div class="grid2">
+          <section class="panel">
+            <div class="panel-head"><h2>Dashboard access</h2><button class="btn primary small" id="add-admin">+ Add admin</button></div>
+            <p class="muted">Office managers and IT staff who can sign in here. They sign in with their mobile number.</p>
+            <table class="table" id="admins-table"></table>
+          </section>
+          <section class="panel">
+            <div class="panel-head"><h2>Company contacts in the app</h2></div>
+            <p class="muted">Shown on the app's help, account and booking screens. Changes reach customers within minutes, no app update needed.</p>
+            <form id="company-form" class="form-grid"></form>
+          </section>
+          <section class="panel">
+            <div class="panel-head"><h2>Connected services</h2><button class="btn outline small" id="refresh-system">Recheck</button></div>
+            <div id="system"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head"><h2>Audit log</h2></div>
+            <p class="muted">Every change made in this dashboard: who, what and when.</p>
+            <div id="audit"></div>
+          </section>
+        </div>
       </div>
       <div id="tab-payments" class="tab-panel hidden"><table class="table" id="payments-table"></table></div>
     </main>

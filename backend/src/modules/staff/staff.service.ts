@@ -1,10 +1,10 @@
-import { and, desc, eq, gte, isNull, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, lte, ne, sql } from "drizzle-orm";
 import type { Database } from "../../db/client.js";
-import { locationPings, staffProfiles, users, type StaffStatus } from "../../db/schema.js";
+import { authIdentities, locationPings, staffProfiles, users, type StaffStatus } from "../../db/schema.js";
 import { badRequest, conflict, notFound } from "../../lib/errors.js";
 import { distanceMeters, estimateEtaMinutes, etaMinutesForDistance, type LatLng } from "../../lib/geo.js";
 import { rooms, type RealtimeHub } from "../tracking/realtime.js";
-import type { BookingService } from "../bookings/booking.service.js";
+import { isUniqueViolation, type BookingService } from "../bookings/booking.service.js";
 
 export interface LocationPing {
   lat: number;
@@ -193,47 +193,75 @@ export class StaffService {
 
   // ------------------------------------------------------------ admin
 
-  async create(input: {
-    phone: string;
-    displayName: string;
-    employeeCode: string;
-    teamName?: string | undefined;
-    skills: string[];
-    photoUrl?: string | undefined;
-  }) {
-    return this.db.transaction(async (tx) => {
-      const [existing] = await tx.select().from(users).where(and(eq(users.phone, input.phone), isNull(users.deletedAt))).limit(1);
-      if (existing && existing.role !== "customer") throw conflict("phone_in_use", "This number already belongs to a staff or admin account");
-      const user =
-        existing ??
-        (await tx.insert(users).values({ phone: input.phone, fullName: input.displayName, role: "staff" }).returning())[0]!;
-      if (existing) await tx.update(users).set({ role: "staff", updatedAt: new Date() }).where(eq(users.id, existing.id));
-      const [profile] = await tx
-        .insert(staffProfiles)
-        .values({
-          userId: user.id,
-          displayName: input.displayName,
-          employeeCode: input.employeeCode,
-          teamName: input.teamName ?? null,
-          skills: input.skills,
-          photoUrl: input.photoUrl ?? null,
-        })
-        .returning();
-      return profile!;
-    });
+  async create(input: StaffInput & { phone: string; displayName: string; employeeCode: string }) {
+    try {
+      return await this.db.transaction(async (tx) => {
+        const [existing] = await tx.select().from(users).where(and(eq(users.phone, input.phone), isNull(users.deletedAt))).limit(1);
+        if (existing && existing.role !== "customer") throw conflict("phone_in_use", "This number already belongs to a staff or admin account");
+        const user =
+          existing ??
+          (await tx.insert(users).values({ phone: input.phone, fullName: input.displayName, role: "staff" }).returning())[0]!;
+        if (existing) await tx.update(users).set({ role: "staff", updatedAt: new Date() }).where(eq(users.id, existing.id));
+        const { phone: _phone, ...profile } = input;
+        const [row] = await tx
+          .insert(staffProfiles)
+          .values({ userId: user.id, ...profile, skills: input.skills ?? [] })
+          .returning();
+        return row!;
+      });
+    } catch (err) {
+      if (isUniqueViolation(err)) throw conflict("employee_code_in_use", "Another staff member already has this employee code");
+      throw err;
+    }
   }
 
-  async update(
-    staffId: string,
-    patch: Partial<{ displayName: string; teamName: string | null; skills: string[]; photoUrl: string | null; active: boolean }>,
-  ) {
+  /**
+   * Edits a staff record. Changing the mobile number changes the number they sign in
+   * with, so it is checked against every other account first.
+   */
+  async update(staffId: string, patch: StaffInput & { phone?: string | undefined }) {
+    const { phone, ...profile } = patch;
+    try {
+      return await this.db.transaction(async (tx) => {
+        if (phone) {
+          const [taken] = await tx
+            .select({ id: users.id })
+            .from(users)
+            .where(and(eq(users.phone, phone), ne(users.id, staffId), isNull(users.deletedAt)))
+            .limit(1);
+          if (taken) throw conflict("phone_in_use", "This number already belongs to another account");
+          await tx.update(users).set({ phone, phoneVerifiedAt: null, updatedAt: new Date() }).where(eq(users.id, staffId));
+          // Their old phone sign-in no longer applies; the new number signs in with a fresh code.
+          await tx.delete(authIdentities).where(and(eq(authIdentities.userId, staffId), eq(authIdentities.provider, "phone")));
+        }
+        if (profile.displayName) await tx.update(users).set({ fullName: profile.displayName }).where(eq(users.id, staffId));
+        const changes = Object.fromEntries(Object.entries(profile).filter(([, v]) => v !== undefined));
+        const [row] = Object.keys(changes).length
+          ? await tx
+              .update(staffProfiles)
+              .set({ ...changes, ...(profile.active === false ? { status: "off_duty" as const, statusChangedAt: new Date() } : {}) })
+              .where(eq(staffProfiles.userId, staffId))
+              .returning()
+          : await tx.select().from(staffProfiles).where(eq(staffProfiles.userId, staffId)).limit(1);
+        if (!row) throw notFound("Staff member");
+        return row;
+      });
+    } catch (err) {
+      if (isUniqueViolation(err)) throw conflict("employee_code_in_use", "Another staff member already has this employee code");
+      throw err;
+    }
+  }
+
+  async detail(staffId: string) {
     const [row] = await this.db
-      .update(staffProfiles)
-      .set({ ...patch, ...(patch.active === false ? { status: "off_duty" as const, statusChangedAt: new Date() } : {}) })
+      .select({ staff: staffProfiles, phone: users.phone })
+      .from(staffProfiles)
+      .innerJoin(users, eq(users.id, staffProfiles.userId))
       .where(eq(staffProfiles.userId, staffId))
-      .returning();
+      .limit(1);
     if (!row) throw notFound("Staff member");
-    return row;
+    const job = await this.bookingsSvc.currentJobFor(staffId);
+    return { ...adminStaffDetail(row.staff), phone: row.phone, currentBooking: job ? { id: job.id, reference: job.reference, status: job.status } : null };
   }
 
   async listForAdmin() {
@@ -246,7 +274,7 @@ export class StaffService {
     return Promise.all(
       rows.map(async ({ staff, phone }) => {
         const job = await this.bookingsSvc.currentJobFor(staff.userId);
-        return { ...adminStaffView(staff), phone, currentBooking: job ? { id: job.id, reference: job.reference, status: job.status } : null };
+        return { ...adminStaffDetail(staff), phone, currentBooking: job ? { id: job.id, reference: job.reference, status: job.status } : null };
       }),
     );
   }
@@ -286,4 +314,32 @@ export function adminStaffView(s: typeof staffProfiles.$inferSelect) {
         ? { lat: s.lastLat, lng: s.lastLng, heading: s.lastHeading, accuracy: s.lastAccuracy, at: s.lastLocationAt.toISOString() }
         : null,
   };
+}
+
+/** Full record for admins: adds HR and contact details staff don't see about themselves. */
+export function adminStaffDetail(s: typeof staffProfiles.$inferSelect) {
+  return {
+    ...adminStaffView(s),
+    jobTitle: s.jobTitle,
+    email: s.email,
+    emergencyContactName: s.emergencyContactName,
+    emergencyContactPhone: s.emergencyContactPhone,
+    joinedOn: s.joinedOn,
+    notes: s.notes,
+  };
+}
+
+export interface StaffInput {
+  displayName?: string | undefined;
+  employeeCode?: string | undefined;
+  teamName?: string | null | undefined;
+  jobTitle?: string | null | undefined;
+  email?: string | null | undefined;
+  emergencyContactName?: string | null | undefined;
+  emergencyContactPhone?: string | null | undefined;
+  joinedOn?: string | null | undefined;
+  notes?: string | null | undefined;
+  skills?: string[] | undefined;
+  photoUrl?: string | null | undefined;
+  active?: boolean | undefined;
 }

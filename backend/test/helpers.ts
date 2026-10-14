@@ -21,7 +21,7 @@ export interface TestContext {
 export const testEnv = (extra: Record<string, string> = {}) =>
   loadEnv({
     NODE_ENV: "test",
-    LOG_LEVEL: "silent",
+    LOG_LEVEL: process.env.TEST_LOG ?? "silent",
     DATABASE_URL: TEST_DATABASE_URL,
     JWT_SECRET: "test-secret-test-secret-test-secret-42",
     OTP_PEPPER: "test-pepper-test-pepper",
@@ -65,7 +65,7 @@ export async function signInPhone(t: TestContext, phone = nextPhone(), fullName 
   const code = t.sms.outbox.findLast((m) => m.to === phone)!.body.slice(0, 6);
   const res = await t.app.inject({ method: "POST", url: "/v1/auth/otp/verify", payload: { phone, code, fullName } });
   if (res.statusCode !== 200) throw new Error(`otp verify failed: ${res.body}`);
-  const session = res.json() as { accessToken: string; refreshToken: string; user: { id: string } };
+  const session = res.json() as { accessToken: string; refreshToken: string; user: { id: string; role: string } };
   return { ...session, phone, auth: { authorization: `Bearer ${session.accessToken}` } };
 }
 

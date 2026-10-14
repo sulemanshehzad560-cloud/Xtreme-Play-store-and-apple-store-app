@@ -17,6 +17,7 @@ import type { BnplGateway, CardGateway } from "./modules/payments/gateways.js";
 import { PaymentService } from "./modules/payments/payment.service.js";
 import { StripeGateway } from "./modules/payments/stripe.gateway.js";
 import { TamaraGateway } from "./modules/payments/tamara.gateway.js";
+import { AdminService } from "./modules/admin/admin.service.js";
 import { StaffService } from "./modules/staff/staff.service.js";
 import { RealtimeHub } from "./modules/tracking/realtime.js";
 import { UserService } from "./modules/users/user.service.js";
@@ -40,6 +41,7 @@ export interface Container {
   card: CardGateway;
   bnpl: BnplGateway;
   payments: PaymentService;
+  admin: AdminService;
 }
 
 export interface ContainerOverrides {
@@ -102,5 +104,6 @@ export function createContainer(env: Env, log: FastifyBaseLogger, overrides: Con
     },
     log,
   );
-  return { env, db, pool, hub, sms, push, verifiers, tokens, otp, auth, notifications, bookings, staff, users, card, bnpl, payments };
+  const admin = new AdminService(db, tokens, env);
+  return { env, db, pool, hub, sms, push, verifiers, tokens, otp, auth, notifications, bookings, staff, users, card, bnpl, payments, admin };
 }

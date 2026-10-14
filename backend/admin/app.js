@@ -204,6 +204,7 @@ const confirmBooking = (b) => act(() => api(`/admin/bookings/${b.id}/confirm`, {
 
 function modal(html, onSubmit) {
   const dlg = $("#modal");
+  dlg.onclose = () => dlg.classList.remove("wide");
   $("#modal-body").innerHTML = html;
   $("#modal-body").onsubmit = async (e) => {
     if (e.submitter?.value === "cancel") return;
@@ -288,50 +289,229 @@ async function refundBooking(b) {
   );
 }
 
-// ------------------------------------------------------------------ staff
+// ------------------------------------------------------------------ staff directory
+
+const SKILLS = {
+  regular: "Regular cleaning", deep: "Deep cleaning", move: "Move in / out", postcon: "Post-construction",
+  kitbath: "Kitchen & bathroom", carpet: "Carpet & sofa", ac: "AC ducts", pest: "Pest control",
+  tank: "Water tank", facade: "Facade & windows", kitchenex: "Kitchen exhaust", laundry: "Laundry",
+  drapery: "Curtains", helper: "Nanny & helper", fm: "Facilities mgmt", disinfect: "Disinfection",
+};
 
 function renderStaff() {
-  $("#staff-table").innerHTML = `<tr><th>Name</th><th>Code</th><th>Phone</th><th>Team</th><th>Status</th><th>Current job</th><th>Last seen</th><th></th></tr>${state.staff
+  const term = $("#staff-search").value.trim().toLowerCase();
+  const filter = $("#staff-filter").value;
+  const rows = state.staff.filter(
+    (s) =>
+      (filter === "all" || (filter === "active" ? s.active : !s.active)) &&
+      (!term || [s.displayName, s.employeeCode, s.phone, s.teamName, s.jobTitle, s.email].join(" ").toLowerCase().includes(term)),
+  );
+  $("#staff-table").innerHTML = `<tr><th>Name</th><th>Code</th><th>Mobile</th><th>Role / team</th><th>Status</th><th>Emergency contact</th><th>Joined</th><th></th></tr>${rows
     .map(
-      (s) => `<tr>
-      <td><b>${esc(s.displayName)}</b></td><td>${esc(s.employeeCode)}</td><td>${esc(s.phone ?? "")}</td><td>${esc(s.teamName ?? "")}</td>
-      <td><span class="pill" style="background:${STAFF_COLOR[s.status]}22;color:${STAFF_COLOR[s.status]}">${STAFF_LABEL[s.status]}</span>${s.active ? "" : ' <span class="pill cancelled">inactive</span>'}</td>
-      <td>${s.currentBooking ? esc(s.currentBooking.reference) : "—"}</td>
-      <td>${s.location ? when(s.location.at) : "—"}</td>
-      <td><button class="btn outline small" data-staff="${s.id}" data-active="${s.active}">${s.active ? "Deactivate" : "Activate"}</button></td></tr>`,
+      (s) => `<tr class="clickable" data-open="${s.id}">
+      <td><b>${esc(s.displayName)}</b>${s.email ? `<br><small class="muted">${esc(s.email)}</small>` : ""}</td>
+      <td>${esc(s.employeeCode)}</td><td>${esc(s.phone ?? "")}</td>
+      <td>${esc(s.jobTitle ?? "—")}${s.teamName ? `<br><small class="muted">${esc(s.teamName)}</small>` : ""}</td>
+      <td><span class="pill" style="background:${STAFF_COLOR[s.status]}22;color:${STAFF_COLOR[s.status]}">${STAFF_LABEL[s.status]}</span>${s.active ? "" : ' <span class="pill cancelled">inactive</span>'}${s.currentBooking ? `<br><small class="muted">on ${esc(s.currentBooking.reference)}</small>` : ""}</td>
+      <td>${s.emergencyContactName ? `${esc(s.emergencyContactName)}<br><small class="muted">${esc(s.emergencyContactPhone ?? "")}</small>` : '<small class="muted">—</small>'}</td>
+      <td>${esc(s.joinedOn ?? "—")}</td>
+      <td><button class="btn outline small" data-edit="${s.id}">Edit</button></td></tr>`,
+    )
+    .join("") || '<tr><td colspan="8" class="muted">No staff match.</td></tr>'}`;
+}
+$("#staff-search").addEventListener("input", renderStaff);
+$("#staff-filter").addEventListener("change", renderStaff);
+$("#staff-table").addEventListener("click", (e) => {
+  const row = e.target.closest("[data-edit],[data-open]");
+  if (!row) return;
+  staffForm(state.staff.find((s) => s.id === (row.dataset.edit ?? row.dataset.open)));
+});
+$("#add-staff").addEventListener("click", () => staffForm(null));
+$("#export-staff").addEventListener("click", async () => {
+  const res = await fetch("/v1/admin/staff.csv", { headers: { Authorization: `Bearer ${session.accessToken}` } });
+  if (!res.ok) return toast("Export failed");
+  const url = URL.createObjectURL(await res.blob());
+  Object.assign(document.createElement("a"), { href: url, download: `xtreme-staff-${new Date().toISOString().slice(0, 10)}.csv` }).click();
+  URL.revokeObjectURL(url);
+});
+
+/** One form for adding and editing: contact, job, emergency contact, skills, notes. */
+async function staffForm(s) {
+  const v = (k) => esc(s?.[k] ?? "");
+  const history = s ? await api(`/admin/audit?targetType=staff&targetId=${s.id}&limit=20`).catch(() => []) : [];
+  $("#modal").classList.add("wide");
+  modal(
+    `<h2>${s ? `Edit ${esc(s.displayName)}` : "Add staff member"}</h2>
+     ${s ? "" : '<p class="muted">They sign in to the Xtreme-Home Partner app with this mobile number and see the staff screens.</p>'}
+     <div class="form-grid">
+       <label>Full name<input name="displayName" required minlength="2" value="${v("displayName")}" /></label>
+       <label>Employee code<input name="employeeCode" required value="${v("employeeCode")}" /></label>
+       <label>Mobile number (sign-in)<input name="phone" required value="${v("phone")}" placeholder="050 123 4567" /></label>
+       <label>Email<input name="email" type="email" value="${v("email")}" /></label>
+       <label>Job title<input name="jobTitle" value="${v("jobTitle")}" placeholder="e.g. Senior cleaner" /></label>
+       <label>Team<input name="teamName" value="${v("teamName")}" placeholder="e.g. Gold Team" /></label>
+       <label>Emergency contact name<input name="emergencyContactName" value="${v("emergencyContactName")}" /></label>
+       <label>Emergency contact phone<input name="emergencyContactPhone" value="${v("emergencyContactPhone")}" /></label>
+       <label>Joined on<input name="joinedOn" type="date" value="${v("joinedOn")}" /></label>
+       <label>Status<select name="active"><option value="true" ${s?.active !== false ? "selected" : ""}>Active</option><option value="false" ${s?.active === false ? "selected" : ""}>Inactive (can't sign in to jobs)</option></select></label>
+       <label class="full">Skills (empty = can do every service)
+         <div class="checklist" style="grid-template-columns:repeat(4,1fr);max-height:none">${Object.entries(SKILLS).map(([k, label]) => `<label style="padding:6px 8px;font-size:13px"><input type="checkbox" name="skills" value="${k}" ${s?.skills?.includes(k) ? "checked" : ""}/>${label}</label>`).join("")}</div>
+       </label>
+       <label class="full">Internal notes<textarea name="notes" rows="3">${v("notes")}</textarea></label>
+     </div>
+     ${
+       history.length
+         ? `<details><summary class="muted">Change history (${history.length})</summary>${history.map(logLine).join("")}</details>`
+         : ""
+     }
+     <div class="modal-actions"><button class="btn outline" value="cancel" formnovalidate>Close</button><button class="btn primary">${s ? "Save changes" : "Add staff member"}</button></div>`,
+    async (form) => {
+      const body = {
+        displayName: form.get("displayName"),
+        employeeCode: form.get("employeeCode"),
+        phone: form.get("phone"),
+        email: form.get("email") || null,
+        jobTitle: form.get("jobTitle") || null,
+        teamName: form.get("teamName") || null,
+        emergencyContactName: form.get("emergencyContactName") || null,
+        emergencyContactPhone: form.get("emergencyContactPhone") || null,
+        joinedOn: form.get("joinedOn") || null,
+        notes: form.get("notes") || null,
+        skills: form.getAll("skills"),
+      };
+      if (s) {
+        await api(`/admin/staff/${s.id}`, { method: "PATCH", body: { ...body, active: form.get("active") === "true" } });
+        toast("Staff details saved");
+      } else {
+        await api("/admin/staff", { body });
+        toast("Staff member added");
+      }
+    },
+  );
+}
+
+// ------------------------------------------------------------------ customers
+
+async function loadCustomers() {
+  const q = $("#customer-search").value.trim();
+  const rows = await api(`/admin/customers?limit=100${q ? `&q=${encodeURIComponent(q)}` : ""}`);
+  $("#customers-table").innerHTML = `<tr><th>Name</th><th>Mobile</th><th>Email</th><th>Bookings</th><th>Joined</th><th></th></tr>${rows
+    .map(
+      (u) => `<tr><td><b>${esc(u.fullName ?? "—")}</b>${u.blocked ? ' <span class="pill cancelled">suspended</span>' : ""}</td>
+      <td>${esc(u.phone ?? "—")}</td><td>${esc(u.email ?? "—")}</td><td>${u.bookings}</td><td>${when(u.createdAt)}</td>
+      <td><button class="btn ${u.blocked ? "outline" : "danger"} small" data-block="${u.id}" data-blocked="${u.blocked}">${u.blocked ? "Restore" : "Suspend"}</button></td></tr>`,
+    )
+    .join("") || '<tr><td colspan="6" class="muted">No customers found.</td></tr>'}`;
+}
+let customerTimer = null;
+$("#customer-search").addEventListener("input", () => {
+  clearTimeout(customerTimer);
+  customerTimer = setTimeout(() => loadCustomers().catch((e) => toast(e.message)), 300);
+});
+$("#customers-table").addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-block]");
+  if (!btn) return;
+  const blocked = btn.dataset.blocked !== "true";
+  if (blocked && !confirm("Suspend this customer? They are signed out and can't book until restored.")) return;
+  api(`/admin/users/${btn.dataset.block}/block`, { body: { blocked } })
+    .then(() => (toast(blocked ? "Customer suspended" : "Customer restored"), loadCustomers()))
+    .catch((err) => toast(err.message));
+});
+
+// ------------------------------------------------------------------ admin & IT
+
+const ACTION_LABEL = {
+  "staff.created": "added staff member",
+  "staff.updated": "edited staff member",
+  "staff.deactivated": "deactivated staff member",
+  "staff.activated": "re-activated staff member",
+  "staff.exported": "downloaded the staff list",
+  "admin.added": "gave admin access",
+  "admin.removed": "removed admin access",
+  "settings.company_updated": "changed company contacts",
+  "user.blocked": "suspended a customer",
+  "user.unblocked": "restored a customer",
+};
+function logLine(l) {
+  const who = l.actor ? esc(l.actor.name ?? l.actor.phone) : "System";
+  const fields = l.details && typeof l.details === "object" ? Object.entries(l.details).filter(([, d]) => d && typeof d === "object" && "to" in d) : [];
+  const name = l.details?.name ? ` <b>${esc(l.details.name)}</b>` : "";
+  return `<div class="log"><span><b>${who}</b> ${ACTION_LABEL[l.action] ?? esc(l.action)}${name}</span>
+    ${fields.length ? `<span>${fields.map(([k, d]) => `<code>${esc(k)}</code> ${esc(d.from ?? "—")} → ${esc(d.to ?? "—")}`).join("<br>")}</span>` : ""}
+    <small>${when(l.at)}</small></div>`;
+}
+
+async function loadAdminTab() {
+  const [admins, company, system, audit] = await Promise.all([api("/admin/admins"), api("/admin/settings/company"), api("/admin/system"), api("/admin/audit?limit=80")]);
+  $("#admins-table").innerHTML = `<tr><th>Name</th><th>Mobile</th><th>Since</th><th></th></tr>${admins
+    .map(
+      (a) => `<tr><td><b>${esc(a.fullName ?? "—")}</b>${a.id === session.user.id ? ' <span class="pill confirmed">you</span>' : ""}</td><td>${esc(a.phone ?? "")}</td><td>${when(a.createdAt)}</td>
+      <td>${a.id === session.user.id ? "" : `<button class="btn danger small" data-revoke="${a.id}">Remove</button>`}</td></tr>`,
     )
     .join("")}`;
+
+  const fields = [
+    ["phoneDisplay", "Mobile / WhatsApp (as shown)"],
+    ["phone", "Mobile (international, e.g. +971501234567)"],
+    ["landlineDisplay", "Landline (as shown)"],
+    ["landline", "Landline (international)"],
+    ["whatsapp", "WhatsApp link (https://wa.me/…)"],
+    ["email", "Email"],
+    ["website", "Website"],
+    ["addressLine1", "Office address"],
+    ["tagline", "Tagline"],
+    ["facebook", "Facebook page"],
+    ["instagram", "Instagram page"],
+  ];
+  $("#company-form").innerHTML =
+    fields.map(([k, label]) => `<label class="${k === "tagline" || k === "addressLine1" ? "full" : ""}">${label}<input name="${k}" value="${esc(company[k])}" required /></label>`).join("") +
+    '<div class="full modal-actions"><button class="btn primary">Save contacts</button></div>';
+
+  const st = (ok) => (ok === true ? '<span class="state ok">Connected</span>' : ok === false ? '<span class="state no">Not set up</span>' : '<span class="state no">Optional</span>');
+  const health = (h) => (h.ok === true ? `<span class="state ok">OK · ${h.ms} ms</span>` : h.ok === false ? `<span class="state bad">Down</span>` : '<span class="state no">Not used</span>');
+  $("#system").innerHTML = `
+    <div class="svc"><b>Database</b>${health(system.health.database)}</div>
+    <div class="svc"><b>Redis (live tracking across servers)</b>${health(system.health.redis)}</div>
+    ${system.integrations.map((i) => `<div class="svc"><b>${esc(i.name)}</b><small class="muted">${esc(i.provider)}${i.mode ? ` · ${esc(i.mode)}` : ""}</small>${st(i.connected)}</div>`).join("")}
+    <div class="svc"><b>App Store / Play reviewer sign-in</b>${st(system.reviewerLogin.configured)}</div>
+    <p class="muted">Environment ${esc(system.environment)} · version ${esc(system.version)} · up ${Math.round(system.uptimeSeconds / 3600)} h. Keys are set on the server (see docs/GO_LIVE.md); they are never shown here.</p>`;
+
+  $("#audit").innerHTML = audit.map(logLine).join("") || '<p class="muted">No changes yet.</p>';
 }
-$("#staff-table").addEventListener("click", (e) => {
-  const btn = e.target.closest("button[data-staff]");
-  if (!btn) return;
-  const active = btn.dataset.active !== "true";
-  act(() => api(`/admin/staff/${btn.dataset.staff}`, { method: "PATCH", body: { active } }), active ? "Staff activated" : "Staff deactivated");
+
+$("#admins-table").addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-revoke]");
+  if (!btn || !confirm("Remove this person's dashboard access? They are signed out immediately.")) return;
+  api(`/admin/admins/${btn.dataset.revoke}`, { method: "DELETE" })
+    .then(() => (toast("Admin access removed"), loadAdminTab()))
+    .catch((err) => toast(err.message));
 });
-$("#add-staff").addEventListener("click", () =>
+$("#add-admin").addEventListener("click", () => {
+  $("#modal").classList.remove("wide");
   modal(
-    `<h2>Add staff member</h2>
-     <p class="muted">They sign in to the Xtreme-Home Partner app with this mobile number and see the staff screens.</p>
-     <label>Full name<input name="name" required minlength="2" /></label>
+    `<h2>Add admin</h2>
+     <p class="muted">For office managers and IT staff. They sign in to this dashboard with a code sent to this number.</p>
+     <label>Full name<input name="fullName" required minlength="2" /></label>
      <label>Mobile number<input name="phone" required placeholder="050 123 4567" /></label>
-     <label>Employee code<input name="code" required /></label>
-     <label>Team<input name="team" placeholder="e.g. Gold Team" /></label>
-     <label>Skills (service keys, comma-separated; empty = all)<input name="skills" placeholder="regular, deep, move" /></label>
-     <div class="modal-actions"><button class="btn outline" value="cancel" formnovalidate>Close</button><button class="btn primary">Add</button></div>`,
+     <div class="modal-actions"><button class="btn outline" value="cancel" formnovalidate>Close</button><button class="btn primary">Give access</button></div>`,
     async (form) => {
-      await api("/admin/staff", {
-        body: {
-          displayName: form.get("name"),
-          phone: form.get("phone"),
-          employeeCode: form.get("code"),
-          teamName: form.get("team") || undefined,
-          skills: String(form.get("skills") || "").split(",").map((x) => x.trim()).filter(Boolean),
-        },
-      });
-      toast("Staff member added");
+      await api("/admin/admins", { body: { fullName: form.get("fullName"), phone: form.get("phone") } });
+      toast("Admin access granted");
+      await loadAdminTab();
     },
-  ),
-);
+  );
+});
+$("#company-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try {
+    await api("/admin/settings/company", { method: "PUT", body: Object.fromEntries(new FormData(e.target)) });
+    toast("Company contacts updated");
+    await loadAdminTab();
+  } catch (err) {
+    toast(err.message);
+  }
+});
+$("#refresh-system").addEventListener("click", () => loadAdminTab().catch((err) => toast(err.message)));
 
 // ------------------------------------------------------------------ payments
 
@@ -381,6 +561,8 @@ document.querySelectorAll(".tab").forEach((t) =>
   t.addEventListener("click", () => {
     document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("active", x === t));
     document.querySelectorAll(".tab-panel").forEach((p) => p.classList.toggle("hidden", p.id !== `tab-${t.dataset.tab}`));
+    if (t.dataset.tab === "customers") loadCustomers().catch((e) => toast(e.message));
+    if (t.dataset.tab === "admin") loadAdminTab().catch((e) => toast(e.message));
     if (t.dataset.tab === "map") {
       if (!map) {
         map = L.map("map").setView([24.4539, 54.3773], 11);

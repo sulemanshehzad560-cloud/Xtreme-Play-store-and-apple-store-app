@@ -96,43 +96,97 @@ export async function adminRoutes(app: FastifyInstance, c: Container) {
 
   // Staff
   r.get("/admin/staff", { schema: { tags, summary: "All staff with live status and position" } }, async () => c.staff.listForAdmin());
+  const staffFields = {
+    displayName: z.string().trim().min(2).max(60),
+    employeeCode: z.string().trim().min(1).max(30),
+    teamName: z.string().trim().max(60).nullish(),
+    jobTitle: z.string().trim().max(60).nullish(),
+    email: z.email().max(160).nullish().or(z.literal("").transform(() => null)),
+    emergencyContactName: z.string().trim().max(80).nullish(),
+    emergencyContactPhone: z.string().trim().max(20).nullish(),
+    joinedOn: z.iso.date().nullish().or(z.literal("").transform(() => null)),
+    notes: z.string().trim().max(2000).nullish(),
+    skills: z.array(z.string().max(40)).max(30),
+    photoUrl: z.url().nullish(),
+  };
+  const optionalPhone = (v: string | null | undefined) => (v ? normalizePhone(v, c.env.OTP_DEFAULT_REGION) : v);
+
   r.post(
     "/admin/staff",
     {
       schema: {
         tags,
         summary: "Add a staff member (they sign in with this mobile number)",
-        body: z.object({
-          phone: phoneInput,
-          displayName: z.string().trim().min(2).max(60),
-          employeeCode: z.string().trim().min(1).max(30),
-          teamName: z.string().trim().max(60).optional(),
-          skills: z.array(z.string().max(40)).max(30).default([]),
-          photoUrl: z.url().optional(),
-        }),
+        body: z.object({ phone: phoneInput, ...staffFields, skills: staffFields.skills.default([]) }),
       },
     },
-    async (req, reply) =>
-      reply.status(201).send(adminStaffView(await c.staff.create({ ...req.body, phone: normalizePhone(req.body.phone, c.env.OTP_DEFAULT_REGION) }))),
+    async (req, reply) => {
+      const { phone, emergencyContactPhone, ...rest } = req.body;
+      const created = await c.staff.create({
+        ...rest,
+        skills: [...new Set(rest.skills)].sort(),
+        phone: normalizePhone(phone, c.env.OTP_DEFAULT_REGION),
+        emergencyContactPhone: optionalPhone(emergencyContactPhone),
+      });
+      await c.admin.audit(req.user.id, "staff.created", "staff", created.userId, { name: created.displayName, employeeCode: created.employeeCode });
+      return reply.status(201).send(await c.staff.detail(created.userId));
+    },
   );
+  r.get("/admin/staff/:id", { schema: { tags, summary: "A staff member's full record", params: uuidParam } }, async (req) => c.staff.detail(req.params.id));
   r.patch(
     "/admin/staff/:id",
     {
       schema: {
         tags,
-        summary: "Edit a staff member or deactivate them",
+        summary: "Edit a staff member's details, sign-in number, or deactivate them",
         params: uuidParam,
-        body: z.object({
-          displayName: z.string().trim().min(2).max(60).optional(),
-          teamName: z.string().trim().max(60).nullable().optional(),
-          skills: z.array(z.string().max(40)).max(30).optional(),
-          photoUrl: z.url().nullable().optional(),
-          active: z.boolean().optional(),
-        }),
+        body: z.object({ phone: phoneInput.optional(), active: z.boolean().optional(), ...staffFields }).partial(),
       },
     },
-    async (req) => adminStaffView(await c.staff.update(req.params.id, req.body)),
+    async (req) => {
+      const before = await c.staff.detail(req.params.id);
+      const { phone, emergencyContactPhone, ...rest } = req.body;
+      if (rest.skills) rest.skills = [...new Set(rest.skills)].sort();
+      const newPhone = phone ? normalizePhone(phone, c.env.OTP_DEFAULT_REGION) : undefined;
+      await c.staff.update(req.params.id, {
+        ...rest,
+        ...(newPhone && newPhone !== before.phone ? { phone: newPhone } : {}),
+        ...(emergencyContactPhone !== undefined ? { emergencyContactPhone: optionalPhone(emergencyContactPhone) } : {}),
+      });
+      // Deactivated staff and changed numbers lose their current sessions immediately.
+      if (req.body.active === false || (newPhone && newPhone !== before.phone)) await c.tokens.revokeAllForUser(req.params.id);
+      const after = await c.staff.detail(req.params.id);
+      const changed = Object.fromEntries(
+        Object.keys(req.body)
+          .filter((k) => {
+            // Compare lists without regard to order (e.g. skills).
+            const norm = (v: unknown) => JSON.stringify(Array.isArray(v) ? [...v].sort() : v ?? null);
+            return norm((before as Record<string, unknown>)[k]) !== norm((after as Record<string, unknown>)[k]);
+          })
+          .map((k) => [k, { from: (before as Record<string, unknown>)[k] ?? null, to: (after as Record<string, unknown>)[k] ?? null }]),
+      );
+      if (Object.keys(changed).length) {
+        const action = req.body.active === false ? "staff.deactivated" : req.body.active === true && !before.active ? "staff.activated" : "staff.updated";
+        await c.admin.audit(req.user.id, action, "staff", req.params.id, changed);
+      }
+      return after;
+    },
   );
+  r.get("/admin/staff.csv", { schema: { tags, summary: "Download the staff directory as CSV" } }, async (req, reply) => {
+    const rows = await c.staff.listForAdmin();
+    const cols = ["displayName", "employeeCode", "phone", "email", "jobTitle", "teamName", "skills", "joinedOn", "emergencyContactName", "emergencyContactPhone", "active", "status", "notes"] as const;
+    const cell = (v: unknown) => {
+      const text = Array.isArray(v) ? v.join("; ") : v == null ? "" : String(v);
+      // Quote everything and neutralise formula prefixes so the file opens safely in Excel.
+      return `"${(/^[=+\-@]/.test(text) ? `'${text}` : text).replace(/"/g, '""')}"`;
+    };
+    const csv = [cols.join(","), ...rows.map((r) => cols.map((k) => cell((r as Record<string, unknown>)[k])).join(","))].join("\r\n");
+    await c.admin.audit(req.user.id, "staff.exported", "staff", null, { rows: rows.length });
+    return reply
+      .header("Content-Type", "text/csv; charset=utf-8")
+      .header("Content-Disposition", `attachment; filename="xtreme-staff-${new Date().toISOString().slice(0, 10)}.csv"`)
+      .send("\ufeff" + csv);
+  });
   r.get(
     "/admin/staff/:id/track",
     { schema: { tags, summary: "A staff member's route over a time range", params: uuidParam, querystring: z.object({ from: isoDate, to: isoDate }) } },
@@ -187,7 +241,65 @@ export async function adminRoutes(app: FastifyInstance, c: Container) {
         .returning({ id: users.id });
       if (!u) throw notFound("User");
       if (req.body.blocked) await c.tokens.revokeAllForUser(u.id);
+      await c.admin.audit(req.user.id, req.body.blocked ? "user.blocked" : "user.unblocked", "user", u.id);
       return reply.status(204).send();
     },
+  );
+
+  // Admin access (office managers and IT)
+  r.get("/admin/admins", { schema: { tags, summary: "People with dashboard access" } }, async () => c.admin.listAdmins());
+  r.post(
+    "/admin/admins",
+    { schema: { tags, summary: "Give a mobile number dashboard access", body: z.object({ phone: phoneInput, fullName: z.string().trim().min(2).max(80), email: z.email().optional() }) } },
+    async (req, reply) => {
+      const user = await c.admin.addAdmin(req.user.id, { ...req.body, phone: normalizePhone(req.body.phone, c.env.OTP_DEFAULT_REGION) });
+      return reply.status(201).send({ id: user.id, fullName: user.fullName, phone: user.phone });
+    },
+  );
+  r.delete("/admin/admins/:id", { schema: { tags, summary: "Remove someone's dashboard access", params: uuidParam } }, async (req, reply) => {
+    await c.admin.removeAdmin(req.user.id, req.params.id);
+    return reply.status(204).send();
+  });
+
+  // Customers
+  r.get(
+    "/admin/customers",
+    { schema: { tags, summary: "Search customers", querystring: z.object({ q: z.string().max(80).optional(), limit: z.coerce.number().int().min(1).max(200).default(50) }) } },
+    async (req) => c.admin.searchCustomers(req.query.q, req.query.limit),
+  );
+
+  // Company contacts shown in the app
+  const contactFields = z.object({
+    phone: z.string().trim().regex(/^\+\d{8,15}$/, "Use international format, e.g. +971501234567"),
+    phoneDisplay: z.string().trim().min(5).max(30),
+    landline: z.string().trim().regex(/^\+\d{8,15}$/, "Use international format, e.g. +97126756844"),
+    landlineDisplay: z.string().trim().min(5).max(30),
+    whatsapp: z.url().refine((u) => u.startsWith("https://wa.me/"), "Use a https://wa.me/ link"),
+    email: z.email(),
+    website: z.url(),
+    addressLine1: z.string().trim().min(3).max(120),
+    tagline: z.string().trim().min(3).max(120),
+    facebook: z.url(),
+    instagram: z.url(),
+  });
+  r.get("/admin/settings/company", { schema: { tags, summary: "Company contact details shown in the app" } }, async () => c.admin.company());
+  r.put(
+    "/admin/settings/company",
+    { schema: { tags, summary: "Update company contact details (the app picks them up within minutes)", body: contactFields.partial() } },
+    async (req) => c.admin.updateCompany(req.user.id, req.body),
+  );
+
+  // IT: connected services, health and the audit trail
+  r.get("/admin/system", { schema: { tags, summary: "Connected services and health checks" } }, async () => c.admin.system());
+  r.get(
+    "/admin/audit",
+    {
+      schema: {
+        tags,
+        summary: "Audit log of admin actions",
+        querystring: z.object({ limit: z.coerce.number().int().min(1).max(500).default(100), targetType: z.string().max(30).optional(), targetId: z.string().max(60).optional() }),
+      },
+    },
+    async (req) => c.admin.auditList(req.query),
   );
 }

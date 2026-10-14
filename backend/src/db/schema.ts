@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   bigserial,
+  date,
   boolean,
   check,
   doublePrecision,
@@ -176,6 +177,13 @@ export const staffProfiles = pgTable(
     displayName: text("display_name").notNull(),
     photoUrl: text("photo_url"),
     teamName: text("team_name"),
+    // HR / contact details, managed by admins in the dashboard.
+    jobTitle: text("job_title"),
+    email: text("email"),
+    emergencyContactName: text("emergency_contact_name"),
+    emergencyContactPhone: text("emergency_contact_phone"),
+    joinedOn: date("joined_on", { mode: "string" }),
+    notes: text("notes"),
     skills: text("skills").array().notNull().default(sql`'{}'::text[]`),
     status: staffStatus("status").notNull().default("off_duty"),
     statusChangedAt: ts("status_changed_at").notNull().defaultNow(),
@@ -363,6 +371,31 @@ export const paymentWebhookEvents = pgTable(
   },
   (t) => [primaryKey({ columns: [t.provider, t.eventId] })],
 );
+
+// ---------------------------------------------------------------- administration
+
+/** Who changed what in the back office (staff, admins, settings). */
+export const auditLogs = pgTable(
+  "audit_logs",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    actorId: uuid("actor_id").references(() => users.id, { onDelete: "set null" }),
+    action: text("action").notNull(),
+    targetType: text("target_type").notNull(),
+    targetId: text("target_id"),
+    details: jsonb("details").$type<Record<string, unknown>>(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("audit_logs_created_idx").on(t.createdAt), index("audit_logs_target_idx").on(t.targetType, t.targetId)],
+);
+
+/** Settings editable from the dashboard without a code change (e.g. company contacts). */
+export const appSettings = pgTable("app_settings", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").$type<Record<string, unknown>>().notNull(),
+  updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+});
 
 // ---------------------------------------------------------------- notifications
 

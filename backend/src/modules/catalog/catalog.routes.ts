@@ -15,8 +15,23 @@ export async function catalogRoutes(app: FastifyInstance, c: Container) {
   const r = app.withTypeProvider<ZodTypeProvider>();
 
   r.get("/company", { schema: { tags, summary: "Company contact details and branding" } }, async (_req, reply) => {
-    reply.header("Cache-Control", "public, max-age=3600");
-    return { ...COMPANY, serviceAreas: SERVICE_AREAS };
+    reply.header("Cache-Control", "public, max-age=300");
+    // Contacts are editable by admins in the dashboard; code values are the defaults.
+    const c2 = await c.admin.company();
+    return {
+      ...COMPANY,
+      tagline: c2.tagline,
+      phone: c2.phone,
+      phoneDisplay: c2.phoneDisplay,
+      landline: c2.landline,
+      landlineDisplay: c2.landlineDisplay,
+      whatsapp: c2.whatsapp,
+      email: c2.email,
+      website: c2.website,
+      address: { ...COMPANY.address, line1: c2.addressLine1 },
+      social: { facebook: c2.facebook, instagram: c2.instagram },
+      serviceAreas: SERVICE_AREAS,
+    };
   });
 
   r.get("/catalog/services", { schema: { tags, summary: "Services and price list" } }, async (_req, reply) => {
