@@ -1,0 +1,29 @@
+# Local development: `docker compose up` gives Postgres, Redis and the API on :8080.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: xtreme
+      POSTGRES_PASSWORD: xtreme
+      POSTGRES_DB: xtreme
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U xtreme"]
+      interval: 5s
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+  api:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://xtreme:xtreme@db:5432/xtreme
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: development
+    ports: ["8080:8080"]
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_started }
+volumes:
+  pgdata:

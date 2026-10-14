@@ -2,6 +2,7 @@ import { and, eq, isNull, ne } from "drizzle-orm";
 import type { Database } from "../../db/client.js";
 import { authIdentities, users, type User } from "../../db/schema.js";
 import { conflict, forbidden, notFound, unauthorized } from "../../lib/errors.js";
+import { isUniqueViolation } from "../bookings/booking.service.js";
 import { toPublicUser, type PublicUser } from "../users/mappers.js";
 import type { OtpService } from "./otp.js";
 import type { SocialProfile, SocialProvider, SocialVerifier } from "./providers/types.js";
@@ -123,7 +124,11 @@ export class AuthService {
   }
 
   /** Finds the account behind an identity, creating the account on first sign-in. */
-  private async resolveUser(identity: Identity, newUser: () => Partial<typeof users.$inferInsert>) {
+  private async resolveUser(
+    identity: Identity,
+    newUser: () => Partial<typeof users.$inferInsert>,
+    retried = false,
+  ): Promise<{ user: User; isNew: boolean }> {
     const [existing] = await this.db
       .select({ userId: authIdentities.userId })
       .from(authIdentities)
@@ -156,7 +161,19 @@ export class AuthService {
 
     // Accounts are never merged automatically by email: provider emails can be
     // unverified or recycled. Users link methods explicitly from their profile.
-    const user = await this.db.transaction(async (tx) => {
+    let user: User;
+    try {
+      user = await this.createWithIdentity(identity, newUser);
+    } catch (err) {
+      // Two first sign-ins raced (e.g. a double tap): the other one created the account.
+      if (isUniqueViolation(err) && !retried) return this.resolveUser(identity, newUser, true);
+      throw err;
+    }
+    return { user, isNew: true };
+  }
+
+  private async createWithIdentity(identity: Identity, newUser: () => Partial<typeof users.$inferInsert>) {
+    return this.db.transaction(async (tx) => {
       const [created] = await tx.insert(users).values(newUser()).returning();
       await tx.insert(authIdentities).values({
         userId: created!.id,
@@ -166,7 +183,6 @@ export class AuthService {
       });
       return created!;
     });
-    return { user, isNew: true };
   }
 
   private async attachIdentity(userId: string, identity: Identity) {
