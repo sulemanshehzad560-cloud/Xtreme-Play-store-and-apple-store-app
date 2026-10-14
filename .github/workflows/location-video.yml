@@ -1,0 +1,88 @@
+name: location-video
+# Records the background-location demo video that Google Play asks for (staff go on duty,
+# disclosure, permission screens, notification, customer live tracking) on an Android emulator.
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/extreme-app-backend-bronaz]
+    paths: [".maestro/location-video/**", ".github/workflows/location-video.yml", ".github/scripts/record-location-video.sh"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: location-video
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults: { run: { working-directory: mobile } }
+    env:
+      EXPO_PUBLIC_DEMO: "1"
+      EXPO_PUBLIC_API_URL: http://localhost:8080
+      NODE_OPTIONS: --max-old-space-size=6144
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: mobile/package-lock.json }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci --legacy-peer-deps
+      - run: npx expo prebuild --platform android --no-install --clean
+      - name: Give Gradle enough memory
+        working-directory: mobile/android
+        run: |
+          sed -i '/^org.gradle.jvmargs=/d' gradle.properties
+          printf '\norg.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8\n' >> gradle.properties
+      - name: Build emulator APK (x86_64)
+        working-directory: mobile/android
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=x86_64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: emulator-apk
+          path: mobile/android/app/build/outputs/apk/release/app-release.apk
+
+  record:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: emulator-apk, path: apk }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Install Maestro
+        run: curl -fsSL "https://get.maestro.mobile.dev" | bash
+      - name: Record on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: bash .github/scripts/record-location-video.sh apk/app-release.apk video
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: location-video
+          path: |
+            video/
+            ~/.maestro/tests/
+      - name: Publish the video on the "location-video" release
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          NOTES="Background location demo video for Google Play (from commit ${GITHUB_SHA::7}). Upload it to YouTube as Unlisted and paste the link into Play Console."
+          gh release view location-video >/dev/null 2>&1 || gh release create location-video --target "$GITHUB_SHA" --prerelease --title "Play Console location video" --notes "$NOTES"
+          gh release edit location-video --target "$GITHUB_SHA" --notes "$NOTES"
+          gh release upload location-video video/Xtreme-Home-Partner-background-location.mp4 --clobber

@@ -5,7 +5,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Card, InlineLoader, Row, Screen, StatusPill, Text } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { DEMO } from "@/lib/demo";
 import { STAFF_LABEL, when } from "@/lib/format";
 import { ServiceIcon } from "@/components/art/ServiceIcon";
 import { startSharingLocation, stopSharingLocation } from "@/lib/staff-location";
@@ -28,7 +27,8 @@ export default function StaffHome() {
   async function setDuty(status: "available" | "on_break" | "off_duty") {
     setBusy(true);
     try {
-      if (status === "available" && !DEMO) {
+      // Demo builds also run the real permission flow, so testers and store reviewers see it.
+      if (status === "available") {
         const ok = await startSharingLocation();
         if (!ok) {
           Alert.alert("Location needed", "Allow location 'Always' so customers can see you arriving. You can change this in Settings.");
@@ -36,7 +36,7 @@ export default function StaffHome() {
         }
       }
       const next = await api<Me>("/staff/me/status", { method: "PUT", body: { status } });
-      if (status === "off_duty" && !DEMO) await stopSharingLocation();
+      if (status === "off_duty") await stopSharingLocation();
       me.setData(next);
     } catch (e) {
       Alert.alert("Could not update", e instanceof Error ? e.message : "");

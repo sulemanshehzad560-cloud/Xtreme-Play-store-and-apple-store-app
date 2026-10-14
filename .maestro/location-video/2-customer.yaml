@@ -1,0 +1,64 @@
+# Customer books, then watches the team arriving on the live map.
+appId: ae.xtremefm.app
+---
+- scrollUntilVisible:
+    element: "Sign out"
+    direction: DOWN
+- tapOn: "Sign out"
+- extendedWaitUntil:
+    visible: "Continue with mobile number"
+    timeout: 20000
+- tapOn: "Continue with mobile number"
+- inputText: "501234567"
+- tapOn: "Send code"
+- extendedWaitUntil:
+    visible: "Enter the code"
+    timeout: 20000
+- inputText: "123456"
+- tapOn:
+    text: "Verify & continue"
+    optional: true
+- extendedWaitUntil:
+    visible: "Deep clean"
+    timeout: 30000
+- tapOn: "Deep clean"
+- extendedWaitUntil:
+    visible: "Property type"
+    timeout: 20000
+- tapOn: "Continue"
+- tapOn: "10:00 AM"
+- tapOn: "Continue"
+- extendedWaitUntil:
+    visible: "Where should we come?"
+    timeout: 10000
+- tapOn: "Al Reem Island"
+- tapOn: "e.g. Sky Tower"
+- inputText: "Sky Tower"
+- hideKeyboard
+- tapOn: "Continue"
+- extendedWaitUntil:
+    visible: "Booking summary"
+    timeout: 10000
+- scrollUntilVisible:
+    element: "Pay on the day"
+    direction: DOWN
+- tapOn: "Pay on the day"
+- tapOn: "Confirm booking"
+- extendedWaitUntil:
+    visible: "Booking confirmed!"
+    timeout: 20000
+- extendedWaitUntil: # the team is assigned and sets off
+    visible: "__pause__"
+    timeout: 25000
+    optional: true
+- back
+- tapOn: "Bookings"
+- tapOn: "Deep cleaning"
+- extendedWaitUntil:
+    visible: ".*Track your team live"
+    timeout: 30000
+- tapOn: ".*Track your team live"
+- extendedWaitUntil: # watch the team move on the map
+    visible: "__pause__"
+    timeout: 20000
+    optional: true

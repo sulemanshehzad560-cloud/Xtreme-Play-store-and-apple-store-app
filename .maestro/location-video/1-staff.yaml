@@ -1,0 +1,56 @@
+# Staff member goes on duty: our disclosure, then Android's location permission screens.
+appId: ae.xtremefm.app
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "Skip"
+    timeout: 90000
+- tapOn: "Skip"
+- tapOn: "Continue with mobile number"
+- inputText: "500000002"
+- tapOn: "Send code"
+- extendedWaitUntil:
+    visible: "Enter the code"
+    timeout: 20000
+- inputText: "123456"
+- tapOn:
+    text: "Verify & continue"
+    optional: true
+- extendedWaitUntil:
+    visible: "Go on duty"
+    timeout: 20000
+- waitForAnimationToEnd
+- tapOn: "Go on duty"
+- extendedWaitUntil:
+    visible: "Share your location while on duty"
+    timeout: 10000
+- extendedWaitUntil: # hold so the disclosure is readable
+    visible: "__pause__"
+    timeout: 4000
+    optional: true
+- tapOn: "(?i)continue"
+- extendedWaitUntil:
+    visible: "While using the app"
+    timeout: 15000
+- extendedWaitUntil:
+    visible: "__pause__"
+    timeout: 2000
+    optional: true
+- tapOn: "While using the app"
+- extendedWaitUntil:
+    visible: "Allow all the time"
+    timeout: 15000
+- extendedWaitUntil:
+    visible: "__pause__"
+    timeout: 2000
+    optional: true
+- tapOn: "Allow all the time"
+- extendedWaitUntil:
+    visible: "__pause__"
+    timeout: 1500
+    optional: true
+- back
+- extendedWaitUntil:
+    visible: "Go off duty"
+    timeout: 20000
