@@ -1,5 +1,6 @@
 import * as SecureStore from "expo-secure-store";
 import { API_URL } from "./config";
+import { DEMO, DemoError, demoApi } from "./demo";
 import type { Session } from "./types";
 
 const KEY = "xtreme.session";
@@ -27,12 +28,17 @@ export function onSessionChange(fn: (s: Session | null) => void) {
 
 export async function setSession(next: Session | null) {
   session = next;
+  if (DEMO) {
+    listeners.forEach((fn) => fn(next));
+    return;
+  }
   if (next) await SecureStore.setItemAsync(KEY, JSON.stringify(next));
   else await SecureStore.deleteItemAsync(KEY);
   listeners.forEach((fn) => fn(next));
 }
 
 export async function restoreSession(): Promise<Session | null> {
+  if (DEMO) return null; // demo data lives in memory, so every launch starts fresh
   const raw = await SecureStore.getItemAsync(KEY);
   session = raw ? (JSON.parse(raw) as Session) : null;
   return session;
@@ -67,6 +73,14 @@ async function refresh(): Promise<Session | null> {
 }
 
 export async function api<T>(path: string, init: { method?: string; body?: unknown; headers?: Record<string, string> } = {}, retry = true): Promise<T> {
+  if (DEMO) {
+    try {
+      return (await demoApi(path, init.method ?? (init.body ? "POST" : "GET"), init.body as Record<string, unknown> | undefined)) as T;
+    } catch (e) {
+      if (e instanceof DemoError) throw new ApiError(e.status, e.code, e.message);
+      throw e;
+    }
+  }
   const res = await fetch(`${API_URL}/v1${path}`, {
     method: init.method ?? (init.body ? "POST" : "GET"),
     headers: {

@@ -3,6 +3,7 @@ import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import Constants from "expo-constants";
 import { api } from "./api";
+import { DEMO } from "./demo";
 
 let registeredToken: string | null = null;
 
@@ -12,7 +13,7 @@ Notifications.setNotificationHandler({
 
 /** Asks for permission (once) and registers this device with the API. */
 export async function registerPush() {
-  if (!Device.isDevice) return;
+  if (DEMO || !Device.isDevice) return;
   if (Platform.OS === "android") {
     await Notifications.setNotificationChannelAsync("bookings", {
       name: "Booking updates",

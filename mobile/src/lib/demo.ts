@@ -1,0 +1,400 @@
+// Demo mode (EXPO_PUBLIC_DEMO=1): an in-app stand-in for the API, so a test build can be
+// clicked through end to end without a server. Bookings move through their statuses on a
+// timer and the assigned team "drives" to the customer, to show live tracking.
+
+import type { Booking, BookingStatus, Session, StaffStatus, TeamMember, User } from "./types";
+
+export const DEMO = process.env.EXPO_PUBLIC_DEMO === "1";
+export const DEMO_STAFF_PHONE = "+971500000002";
+
+type Json = Record<string, any>;
+
+const PRICES: Record<string, Record<string, [number, number, number | null]>> = {
+  apartment: { studio: [100, 300, 250], "1bhk": [120, 350, 325], "2bhk": [150, 450, 375], "3bhk": [190, 600, 425], "4bhk": [240, 850, 500] },
+  villa: { "2bhk": [300, 1100, 850], "3bhk": [350, 1300, 1050], "4bhk": [450, 1600, 1200], "5bhk": [600, 1900, 1350], "6bhk": [850, 2300, 1575] },
+  office: { small: [200, 600, null], medium: [320, 900, null], large: [500, 1400, null] },
+};
+const SIZE_LABELS: Record<string, string> = {
+  studio: "Studio", "1bhk": "1 BHK", "2bhk": "2 BHK", "3bhk": "3 BHK", "4bhk": "4 BHK", "5bhk": "5 BHK", "6bhk": "6 BHK",
+  small: "Small (up to 1,000 sq ft)", medium: "Medium (1,001–3,000 sq ft)", large: "Large (3,001–5,000 sq ft)",
+};
+
+const S = (key: string, name: string, tier: "regular" | "deep" | null, minutes: number, highlights: string[]) => ({
+  key,
+  name,
+  nameAr: "",
+  category: "cleaning",
+  pricing: tier ? { kind: "tiered", tier } : { kind: "inspection" },
+  durationMinutes: minutes,
+  highlights,
+  startingFromAed: tier === "regular" ? 100 : tier === "deep" ? 300 : null,
+});
+
+const SERVICES = [
+  S("regular", "Regular cleaning", "regular", 180, ["Trained, vetted cleaners", "All materials and equipment included", "Weekly, bi-weekly or one-off visits", "Same trusted team every visit"]),
+  S("deep", "Deep cleaning", "deep", 360, ["Kitchen degreasing and appliance exteriors", "Bathrooms descaled and disinfected", "Inside wardrobes, cabinets and windows", "Floors, skirting and upholstery vacuumed"]),
+  S("move", "Move-in / move-out cleaning", "deep", 360, ["Ready for handover inspection", "Inside cupboards, appliances and windows", "Bathrooms and kitchen fully sanitised", "Flexible timing around your move"]),
+  S("postcon", "Post-construction cleaning", null, 480, ["Fine dust removed from every surface", "Paint, cement and sticker residue cleaned", "Glass, frames and tracks detailed", "Waste cleared for handover"]),
+  S("kitbath", "Kitchen & bathroom cleaning", null, 180, ["Grease removed from hobs, hoods and tiles", "Limescale removed from taps and glass", "Grout and sealant cleaned", "Disinfected high-touch surfaces"]),
+  S("carpet", "Carpet & upholstery cleaning", null, 150, ["Deep extraction removes dust and allergens", "Stain treatment for sofas, rugs and mattresses", "Fabric-safe products", "Fast drying"]),
+  S("ac", "AC duct cleaning", null, 240, ["Ducts, vents and FCUs cleaned", "Removes dust, mould and odours", "Helps your AC cool efficiently", "Done with minimal disruption"]),
+  S("pest", "Pest control", null, 90, ["Cockroaches, ants, bed bugs and more", "Safe for families and pets when used as directed", "Targeted, low-odour treatments", "Follow-up visit available"]),
+  S("tank", "Water tank cleaning", null, 180, ["Tanks drained, scrubbed and disinfected", "Sediment and slime removed", "Suitable for villas and buildings", "Report after every clean"]),
+  S("facade", "Facade & window cleaning", null, 300, ["Glass and cladding cleaned", "Trained, safety-equipped team", "Villas, shops and buildings", "One-off or scheduled"]),
+  S("kitchenex", "Kitchen exhaust & grease trap", null, 240, ["Hoods, filters and ducts degreased", "Grease traps pumped and cleaned", "Helps reduce fire risk", "Out-of-hours service"]),
+  S("laundry", "Bedroom laundry", null, 60, ["Bed linen and towels washed and folded", "Beds made fresh", "Collected and returned", "Add to any cleaning visit"]),
+  S("drapery", "Curtain & drapery care", null, 120, ["Curtains and blinds cleaned", "Dust and odours removed", "Taken down and rehung", "Fabric-safe methods"]),
+  S("helper", "Nanny & house helper", null, 240, ["Experienced, vetted helpers", "Hourly, part-time or full-time", "Cleaning, laundry and childcare support", "Flexible schedules"]),
+  S("fm", "Facilities management", null, 60, ["Cleaning, pest control and technical services", "Scheduled maintenance plans", "One point of contact", "Reports after every visit"]),
+  S("disinfect", "Disinfection", null, 120, ["High-touch surfaces disinfected", "Homes, offices and schools", "Approved disinfectants", "After illness or on schedule"]),
+];
+
+const COMPANY = {
+  name: "Xtreme Facilities Management",
+  phone: "+971503641714",
+  phoneDisplay: "+971 50 364 1714",
+  whatsapp: "https://wa.me/971503641714",
+  email: "sales@xtreme-fm.com",
+  website: "https://www.xtreme-fmgroup.com",
+  address: { line1: "Mazyad Offices T-1, Office 1102-4", city: "Abu Dhabi" },
+  serviceAreas: ["Al Reem Island", "Al Raha Beach", "Yas Island", "Saadiyat Island", "Khalifa City", "Mohammed Bin Zayed City", "Al Reef", "Masdar City", "Corniche", "Al Khalidiyah", "Mussafah", "Al Ain"],
+};
+
+// ------------------------------------------------------------------ state
+
+const TEAM: TeamMember[] = [
+  { id: "staff-1", displayName: "Ahmed K.", photoUrl: null, teamName: "Gold Team", status: "available", isLead: true },
+  { id: "staff-2", displayName: "Maria S.", photoUrl: null, teamName: "Gold Team", status: "available", isLead: false },
+];
+
+interface DemoBooking extends Omit<Booking, "status" | "team" | "trackable" | "canCancel" | "canReschedule" | "canPay"> {
+  createdMs: number;
+  cancelled: boolean;
+  forcedStatus?: BookingStatus;
+}
+
+let user: User | null = null;
+let staffStatus: StaffStatus = "off_duty";
+const addresses: Json[] = [];
+const bookings: DemoBooking[] = [];
+const notifications: Json[] = [];
+let seq = 100230;
+
+const uid = () => Math.random().toString(36).slice(2, 10);
+const now = () => Date.now();
+
+// Timeline of a demo booking, in seconds after it was placed.
+const STEPS: [number, BookingStatus][] = [
+  [0, "requested"],
+  [6, "confirmed"],
+  [12, "assigned"],
+  [18, "en_route"],
+  [78, "arrived"],
+  [90, "in_progress"],
+  [120, "completed"],
+];
+const DRIVE_START = 18;
+const DRIVE_SECONDS = 60;
+
+function statusOf(b: DemoBooking): BookingStatus {
+  if (b.cancelled) return "cancelled";
+  if (b.forcedStatus) return b.forcedStatus;
+  const t = (now() - b.createdMs) / 1000;
+  let s: BookingStatus = "requested";
+  for (const [at, st] of STEPS) if (t >= at) s = st;
+  return s;
+}
+
+function teamFor(status: BookingStatus): TeamMember[] {
+  if (["requested", "confirmed", "cancelled"].includes(status)) return [];
+  const st: StaffStatus = status === "en_route" ? "en_route" : status === "arrived" || status === "in_progress" ? "on_job" : "available";
+  return TEAM.map((m) => ({ ...m, status: st }));
+}
+
+function view(b: DemoBooking): Booking {
+  const status = statusOf(b);
+  const terminal = status === "completed" || status === "cancelled";
+  const timeline = STEPS.filter(([at]) => (now() - b.createdMs) / 1000 >= at && !b.cancelled).map(([at, st]) => ({
+    type: "status",
+    to: st,
+    at: new Date(b.createdMs + at * 1000).toISOString(),
+  }));
+  if (b.cancelled) timeline.push({ type: "status", to: "cancelled", at: new Date().toISOString() });
+  return {
+    ...(b as any),
+    status,
+    team: teamFor(status),
+    trackable: ["en_route", "arrived", "in_progress"].includes(status),
+    canCancel: ["requested", "confirmed", "assigned"].includes(status),
+    canReschedule: ["requested", "confirmed"].includes(status),
+    canPay: b.priceAed != null && b.paymentStatus === "unpaid" && !terminal,
+    timeline,
+    customer: { fullName: user?.fullName ?? "Customer", phone: user?.phone ?? null },
+  };
+}
+
+/** Van position: starts ~3.5 km north-west and drives to the address. */
+function vanPosition(b: DemoBooking) {
+  const t = Math.min(1, Math.max(0, ((now() - b.createdMs) / 1000 - DRIVE_START) / DRIVE_SECONDS));
+  const start = { lat: b.address.lat + 0.026, lng: b.address.lng - 0.022 };
+  const mid = { lat: b.address.lat + 0.004, lng: b.address.lng - 0.02 };
+  // Two straight legs, like following a road.
+  const p = t < 0.55 ? lerp(start, mid, t / 0.55) : lerp(mid, b.address, (t - 0.55) / 0.45);
+  const heading = t < 0.55 ? 160 : 90;
+  return { ...p, heading, remaining: 1 - t };
+}
+
+const lerp = (a: { lat: number; lng: number }, b: { lat: number; lng: number }, t: number) => ({
+  lat: a.lat + (b.lat - a.lat) * t,
+  lng: a.lng + (b.lng - a.lng) * t,
+});
+
+function seedHistory() {
+  if (bookings.length) return;
+  const past = now() - 9 * 86_400_000;
+  bookings.push({
+    id: uid(),
+    reference: `XT-${seq++}`,
+    service: { key: "regular", name: "Regular cleaning" },
+    property: { type: "apartment", size: "2bhk" },
+    priceAed: 150,
+    pricing: "fixed",
+    paymentMethod: "card",
+    paymentStatus: "paid",
+    scheduledAt: new Date(past).toISOString(),
+    address: { label: "Home", area: "Al Reem Island", building: "Sky Tower", unit: "1204", lat: 24.4958, lng: 54.4035 },
+    notes: null,
+    review: { rating: 5 },
+    createdMs: past - 3_600_000,
+    cancelled: false,
+    forcedStatus: "completed",
+  });
+}
+
+function session(): Session {
+  return { accessToken: "demo", refreshToken: "demo", user: user!, isNewUser: false };
+}
+
+function signIn(partial: Partial<User>): Session {
+  user = {
+    id: "demo-user",
+    role: "customer",
+    fullName: null,
+    phone: null,
+    phoneVerified: false,
+    email: null,
+    avatarUrl: null,
+    locale: "en",
+    signInMethods: [],
+    ...partial,
+  };
+  seedHistory();
+  return session();
+}
+
+function notify(title: string, body: string) {
+  notifications.unshift({ id: uid(), title, body, read: false, createdAt: new Date().toISOString() });
+}
+
+class DemoError extends Error {
+  constructor(
+    public status: number,
+    public code: string,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+// ------------------------------------------------------------------ router
+
+export async function demoApi(path: string, method: string, body: Json | undefined): Promise<unknown> {
+  await new Promise((r) => setTimeout(r, 250 + Math.random() * 300)); // feel like a network
+  const [route, query = ""] = path.split("?");
+  const q = Object.fromEntries(new URLSearchParams(query));
+  const seg = route!.split("/").filter(Boolean);
+
+  // auth
+  if (route === "/auth/otp/request") return { phone: normalize(body!.phone), expiresIn: 300, resendIn: 30 };
+  if (route === "/auth/otp/verify") {
+    if (!/^\d{6}$/.test(body!.code)) throw new DemoError(400, "invalid_code", "Enter any 6 digits in demo mode");
+    const phone = normalize(body!.phone);
+    return signIn({
+      phone,
+      phoneVerified: true,
+      fullName: body!.fullName ?? (phone === DEMO_STAFF_PHONE ? "Ahmed K." : "Sara Al Mansoori"),
+      role: phone === DEMO_STAFF_PHONE ? "staff" : "customer",
+      signInMethods: ["phone"],
+    });
+  }
+  if (["/auth/google", "/auth/apple", "/auth/facebook"].includes(route!)) {
+    const provider = route!.split("/")[2]!;
+    return signIn({ fullName: body?.fullName ?? "Sara Al Mansoori", email: "sara@example.com", signInMethods: [provider] });
+  }
+  if (route === "/auth/logout" || route === "/auth/refresh") return session();
+
+  // public
+  if (route === "/company") return COMPANY;
+  if (route === "/catalog/services") {
+    return {
+      currency: "AED",
+      vatIncluded: true,
+      services: SERVICES,
+      propertySizes: Object.fromEntries(Object.entries(PRICES).map(([t, sizes]) => [t, Object.keys(sizes).map((key) => ({ key, label: SIZE_LABELS[key] }))])),
+    };
+  }
+  if (route === "/catalog/quote") {
+    const svc = SERVICES.find((s) => s.key === q.serviceKey);
+    const row = PRICES[q.propertyType!]?.[q.propertySize!];
+    if (!svc || !row) throw new DemoError(400, "invalid_quote", "Choose a property size");
+    if (svc.pricing.kind === "inspection") return { priceAed: null, pricing: "inspection", label: "Price confirmed after a free survey" };
+    const price = (svc.pricing as { tier: string }).tier === "regular" ? row[0] : q.plan === "amc" ? row[2] : row[1];
+    return { priceAed: price, pricing: "fixed", label: `AED ${price} per visit` };
+  }
+  if (route === "/staff/availability") return { onDuty: 14, available: 6, deployed: 8, onBreak: 0, nearbyAvailable: 3, nearestEtaMinutes: 12 };
+
+  if (!user) throw new DemoError(401, "unauthorized", "Sign in required");
+
+  // me
+  if (route === "/me" && method === "GET") return user;
+  if (route === "/me" && method === "PATCH") {
+    user = { ...user, ...(body?.fullName ? { fullName: body.fullName } : {}), ...(body && "email" in body ? { email: body.email } : {}) };
+    return user;
+  }
+  if (route === "/me" && method === "DELETE") {
+    user = null;
+    return undefined;
+  }
+  if (route === "/me/phone") {
+    user = { ...user, phone: normalize(body!.phone), phoneVerified: true, signInMethods: [...new Set([...user.signInMethods, "phone"])] };
+    return user;
+  }
+  if (seg[0] === "me" && seg[1] === "identities") {
+    user = { ...user, signInMethods: [...new Set([...user.signInMethods, seg[2]!])] };
+    return user;
+  }
+  if (route === "/me/addresses" && method === "GET") return addresses;
+  if (route === "/me/addresses" && method === "POST") {
+    const a = { id: uid(), ...body, isDefault: addresses.length === 0 };
+    addresses.push(a);
+    return a;
+  }
+  if (route === "/me/push-tokens") return undefined;
+  if (route === "/me/notifications") return notifications;
+
+  // bookings
+  if (route === "/bookings" && method === "POST") {
+    if (!user.phone) throw new DemoError(400, "phone_required", "Add and verify your mobile number so the team can reach you");
+    const svc = SERVICES.find((s) => s.key === body!.serviceKey)!;
+    const quote = (await demoApi(`/catalog/quote?serviceKey=${svc.key}&propertyType=${body!.propertyType}&propertySize=${body!.propertySize}&plan=${body!.plan ?? "one_off"}`, "GET", undefined)) as Json;
+    const addr = body!.addressId ? addresses.find((a) => a.id === body!.addressId) : body!.address;
+    const b: DemoBooking = {
+      id: uid(),
+      reference: `XT-${seq++}`,
+      service: { key: svc.key, name: svc.name },
+      property: { type: body!.propertyType, size: body!.propertySize },
+      priceAed: quote.priceAed,
+      pricing: quote.pricing,
+      paymentMethod: body!.paymentMethod ?? "cash",
+      paymentStatus: "unpaid",
+      scheduledAt: body!.scheduledAt,
+      address: { label: addr.label, area: addr.area, building: addr.building ?? null, unit: addr.unit ?? null, lat: addr.lat, lng: addr.lng },
+      notes: body!.notes ?? null,
+      review: null,
+      createdMs: now(),
+      cancelled: false,
+    };
+    bookings.unshift(b);
+    notify("Booking received", `${b.reference} · ${svc.name}. In demo mode it will progress on its own.`);
+    return view(b);
+  }
+  if (route === "/bookings" && method === "GET") {
+    const all = bookings.map(view);
+    const active = (s: BookingStatus) => !["completed", "cancelled"].includes(s);
+    const list = q.scope === "active" ? all.filter((b) => active(b.status)) : q.scope === "past" ? all.filter((b) => !active(b.status)) : all;
+    return list.slice(0, Number(q.limit ?? 50));
+  }
+  if (seg[0] === "bookings" && seg[1]) {
+    const b = bookings.find((x) => x.id === seg[1]);
+    if (!b) throw new DemoError(404, "not_found", "Booking not found");
+    const action = seg[2];
+    if (!action) return view(b);
+    if (action === "cancel") {
+      b.cancelled = true;
+      if (b.paymentStatus === "paid") b.paymentStatus = "refunded";
+      return view(b);
+    }
+    if (action === "review") {
+      b.review = { rating: body!.rating };
+      return view(b);
+    }
+    if (action === "tracking") return tracking(b);
+    if (action === "payment-options") {
+      return {
+        bookingId: b.id,
+        amount: { totalAed: b.priceAed, vatAed: Math.round((b.priceAed! - b.priceAed! / 1.05) * 100) / 100, vatIncluded: true, currency: "AED" },
+        methods: [
+          { method: "card", available: true, label: "Credit / debit card, Apple Pay or Google Pay" },
+          { method: "tamara", available: true, label: "Split into 4 interest-free payments" },
+          { method: "cash", available: true, label: "Pay the team on the day" },
+        ],
+      };
+    }
+    if (action === "payments" && method === "POST") return { paymentId: `pay_${b.id}`, provider: body!.method, demo: true };
+  }
+  if (seg[0] === "payments" && seg[2] === "sync") {
+    const b = bookings.find((x) => `pay_${x.id}` === seg[1]);
+    if (b) {
+      b.paymentStatus = "paid";
+      notify("Payment received", `Thank you! AED ${b.priceAed} received for ${b.reference}.`);
+    }
+    return { status: "captured" };
+  }
+
+  // staff
+  if (route === "/staff/me") return { displayName: user.fullName ?? "Team member", status: staffStatus, teamName: "Gold Team" };
+  if (route === "/staff/me/status") {
+    staffStatus = body!.status;
+    return { displayName: user.fullName, status: staffStatus, teamName: "Gold Team" };
+  }
+  if (route === "/staff/me/location") return { accepted: body?.pings?.length ?? 0 };
+  if (route === "/staff/me/jobs") return bookings.map(view).filter((b) => !["completed", "cancelled"].includes(b.status));
+  if (seg[0] === "staff" && seg[1] === "jobs") {
+    const b = bookings.find((x) => x.id === seg[2])!;
+    b.forcedStatus = body!.status;
+    return view(b);
+  }
+
+  throw new DemoError(404, "route_not_found", `${method} ${route} is not available in demo mode`);
+}
+
+export function tracking(b: DemoBooking) {
+  const v = view(b);
+  const live = v.trackable;
+  const pos = vanPosition(b);
+  return {
+    bookingId: b.id,
+    reference: b.reference,
+    status: v.status,
+    live,
+    destination: { lat: b.address.lat, lng: b.address.lng },
+    team: v.team,
+    location: live ? { lat: v.status === "en_route" ? pos.lat : b.address.lat, lng: v.status === "en_route" ? pos.lng : b.address.lng, heading: pos.heading, at: new Date().toISOString(), stale: false } : null,
+    etaMinutes: v.status === "en_route" ? Math.max(1, Math.round(pos.remaining * 14)) : null,
+  };
+}
+
+/** Lets the tracking screen poll the simulated van in demo mode. */
+export function demoTracking(bookingId: string) {
+  const b = bookings.find((x) => x.id === bookingId);
+  return b ? tracking(b) : null;
+}
+
+export { DemoError };
+
+function normalize(phone: string) {
+  const digits = String(phone).replace(/\D/g, "");
+  if (digits.startsWith("971")) return `+${digits}`;
+  if (digits.startsWith("0")) return `+971${digits.slice(1)}`;
+  return `+971${digits}`;
+}

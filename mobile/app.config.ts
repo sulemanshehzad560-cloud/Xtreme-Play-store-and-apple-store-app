@@ -31,7 +31,7 @@ const config: ExpoConfig = {
     package: "ae.xtremefm.app",
     versionCode: 1,
     adaptiveIcon: { foregroundImage: "./assets/adaptive-icon.png", backgroundColor: "#030405" },
-    config: { googleMaps: { apiKey: env.GOOGLE_MAPS_ANDROID_KEY } },
+    ...(env.GOOGLE_MAPS_ANDROID_KEY ? { config: { googleMaps: { apiKey: env.GOOGLE_MAPS_ANDROID_KEY } } } : {}),
     permissions: [
       "ACCESS_COARSE_LOCATION",
       "ACCESS_FINE_LOCATION",
@@ -64,7 +64,8 @@ const config: ExpoConfig = {
         clientToken: env.FACEBOOK_CLIENT_TOKEN ?? "placeholder",
         displayName: "Xtreme-Home Partner",
         scheme: `fb${env.FACEBOOK_APP_ID ?? "000000000000000"}`,
-        isAutoInitEnabled: true,
+        // Without a real app id (e.g. demo builds) the SDK must not start on launch.
+        isAutoInitEnabled: Boolean(env.FACEBOOK_APP_ID),
         advertiserIDCollectionEnabled: false,
         autoLogAppEventsEnabled: false,
       },
@@ -77,6 +78,8 @@ const config: ExpoConfig = {
     apiUrl: env.EXPO_PUBLIC_API_URL ?? "http://localhost:8080",
     googleWebClientId: env.GOOGLE_WEB_CLIENT_ID,
     googleIosClientId: env.GOOGLE_IOS_CLIENT_ID,
+    // Android needs a Google Maps key to draw maps; without one the app shows a drawn map instead.
+    androidMapsEnabled: Boolean(env.GOOGLE_MAPS_ANDROID_KEY),
     eas: { projectId: env.EAS_PROJECT_ID },
   },
 };

@@ -1,0 +1,64 @@
+name: android-apk
+# Builds an installable Android test APK and publishes it on the repository's Releases page.
+# Default is a demo build (sample data, no server needed). Run it manually with
+# demo=false and api_url=https://... to build against a real backend.
+on:
+  push:
+    branches: [claude/extreme-app-backend-bronaz]
+    paths: ["mobile/**", ".github/workflows/android-apk.yml"]
+  workflow_dispatch:
+    inputs:
+      demo:
+        description: "Demo mode (built-in sample data)"
+        default: "true"
+      api_url:
+        description: "Backend URL when demo is false"
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults: { run: { working-directory: mobile } }
+    env:
+      EXPO_PUBLIC_DEMO: ${{ (github.event.inputs.demo || 'true') == 'true' && '1' || '0' }}
+      EXPO_PUBLIC_API_URL: ${{ github.event.inputs.api_url || 'http://localhost:8080' }}
+      NODE_OPTIONS: --max-old-space-size=6144
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: mobile/package-lock.json }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci --legacy-peer-deps
+      - run: npx tsc --noEmit
+      - name: Generate native Android project
+        run: npx expo prebuild --platform android --no-install --clean
+      - name: Build APK (release variant, signed with the debug key so it installs directly)
+        working-directory: mobile/android
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
+      - name: Name the APK
+        run: |
+          mkdir -p ../dist
+          cp android/app/build/outputs/apk/release/app-release.apk ../dist/Xtreme-Home-Partner-test.apk
+          ls -la ../dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Xtreme-Home-Partner-test-apk
+          path: dist/Xtreme-Home-Partner-test.apk
+      - name: Publish to the "android-test" release
+        working-directory: .
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          NOTES="Test build of Xtreme-Home Partner from commit ${GITHUB_SHA::7} ($(date -u '+%Y-%m-%d %H:%M UTC')). Demo mode: ${EXPO_PUBLIC_DEMO}. Install on Android: download the APK on the phone, open it and allow installing from this source."
+          gh release view android-test >/dev/null 2>&1 || gh release create android-test --target "$GITHUB_SHA" --prerelease --title "Android test build" --notes "$NOTES"
+          gh release edit android-test --target "$GITHUB_SHA" --notes "$NOTES"
+          gh release upload android-test dist/Xtreme-Home-Partner-test.apk --clobber

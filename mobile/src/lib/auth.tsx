@@ -6,10 +6,11 @@ import { GoogleSignin, isSuccessResponse } from "@react-native-google-signin/goo
 import { AccessToken, AuthenticationToken, LoginManager } from "react-native-fbsdk-next";
 import { api, getSession, onSessionChange, restoreSession, setSession } from "./api";
 import { GOOGLE_IOS_CLIENT_ID, GOOGLE_WEB_CLIENT_ID } from "./config";
+import { DEMO } from "./demo";
 import { unregisterPush } from "./push";
 import type { Session, User } from "./types";
 
-GoogleSignin.configure({ webClientId: GOOGLE_WEB_CLIENT_ID, iosClientId: GOOGLE_IOS_CLIENT_ID });
+if (!DEMO) GoogleSignin.configure({ webClientId: GOOGLE_WEB_CLIENT_ID, iosClientId: GOOGLE_IOS_CLIENT_ID });
 
 interface AuthState {
   ready: boolean;
@@ -59,6 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     verifyCode: (phone, code, fullName) => start("/auth/otp/verify", { phone, code, fullName }),
 
     async signInWithGoogle() {
+      if (DEMO) return start("/auth/google", { idToken: "demo" });
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
       const res = await GoogleSignin.signIn();
       if (!isSuccessResponse(res) || !res.data.idToken) return null;
@@ -66,6 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
 
     async signInWithApple() {
+      if (DEMO) return start("/auth/apple", { identityToken: "demo" });
       const nonce = Crypto.randomUUID();
       const hashed = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, nonce);
       const cred = await AppleAuthentication.signInAsync({
@@ -78,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
 
     async signInWithFacebook() {
+      if (DEMO) return start("/auth/facebook", { accessToken: "demo" });
       // iOS uses Limited Login (no tracking prompt needed); Android uses classic login.
       if (Platform.OS === "ios") {
         const nonce = Crypto.randomUUID();
@@ -103,8 +107,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const s = getSession();
       await unregisterPush().catch(() => undefined);
       if (s) await api("/auth/logout", { body: { refreshToken: s.refreshToken } }).catch(() => undefined);
-      await GoogleSignin.signOut().catch(() => undefined);
-      LoginManager.logOut();
+      if (!DEMO) {
+        await GoogleSignin.signOut().catch(() => undefined);
+        LoginManager.logOut();
+      }
       await setSession(null);
     },
   };
