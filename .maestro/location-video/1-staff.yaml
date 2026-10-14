@@ -3,6 +3,8 @@ appId: ae.xtremefm.app
 ---
 - launchApp:
     clearState: true
+    permissions:
+      all: unset          # Maestro grants everything by default; we want the real permission prompts
 - extendedWaitUntil:
     visible: "Skip"
     timeout: 90000
