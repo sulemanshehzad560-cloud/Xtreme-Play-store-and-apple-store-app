@@ -45,7 +45,8 @@ The code uses **Twilio**. Create an account, register an **alphanumeric sender I
 Android signing fingerprints (public, safe to share):
 - EAS upload key SHA-1: `DD:52:35:F6:1B:79:86:B5:78:B9:F6:FD:71:C1:77:C1:9B:44:16:9E`
   (Facebook key hash: `3VI19ht5hrV4ufb9ccF3wZtEFp4=`)
-- Google Play app-signing key SHA-1: add here after the first Play upload (Play Console → App integrity), and register it in Google Cloud and Facebook as well.
+- Google Play app-signing key SHA-1: `88:03:5F:43:50:7F:66:C6:F5:A6:62:30:59:0C:97:23:4E:A2:82:68`
+  (Facebook key hash: `iANfQ1B/Zsb1pmIwWQyXI06igmg=`). Register it in Google Cloud (second Android OAuth client), the Android Maps key and Facebook.
 
 In Google Cloud Console (one project for Xtreme):
 - **OAuth consent screen** named *Xtreme-Home Partner*, with the logo.
