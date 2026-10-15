@@ -17,7 +17,7 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://xtreme-api-test.onrender.com"
       },
-      "environment": "preview",
+      "environment": "production",
       "android": {
         "buildType": "apk"
       }
