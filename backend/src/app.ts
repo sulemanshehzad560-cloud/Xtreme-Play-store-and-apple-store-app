@@ -83,6 +83,9 @@ export async function buildApp(env: Env, overrides: ContainerOverrides = {}): Pr
   app.get("/privacy", { schema: { hide: true } }, async (_req, reply) => reply.type("text/html; charset=utf-8").header("cache-control", "public, max-age=3600").send(privacyPage));
   app.get("/delete-account", { schema: { hide: true } }, async (_req, reply) => reply.redirect("/privacy#delete-account", 302));
 
+  // The bare address opens the office dashboard instead of a "route not found" error.
+  app.get("/", { schema: { hide: true } }, async (_req, reply) => reply.redirect("/admin/", 302));
+
   app.get("/health", { schema: { hide: true } }, async () => ({ ok: true }));
   app.get("/ready", { schema: { hide: true } }, async (_req, reply) => {
     try {

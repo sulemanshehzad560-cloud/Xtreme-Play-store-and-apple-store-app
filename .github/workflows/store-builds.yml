@@ -11,6 +11,9 @@ on:
       submit:
         description: "Upload to the stores when the build finishes (true/false)"
         default: "false"
+      profile:
+        description: "production (store builds) or preview (installable test APK on the test server)"
+        default: production
 
 jobs:
   build:
@@ -28,4 +31,4 @@ jobs:
       - run: npm ci --legacy-peer-deps
       - run: npx tsc --noEmit
       - name: Build
-        run: eas build --platform ${{ github.event.inputs.platform }} --profile production --non-interactive ${{ github.event.inputs.submit == 'true' && '--auto-submit' || '--no-wait' }}
+        run: eas build --platform ${{ github.event.inputs.platform }} --profile ${{ github.event.inputs.profile || 'production' }} --non-interactive ${{ github.event.inputs.submit == 'true' && '--auto-submit' || '--no-wait' }}

@@ -15,6 +15,7 @@ describe("dispatch dashboard", () => {
     const js = await t.app.inject({ method: "GET", url: "/admin/app.js" });
     expect(js.statusCode).toBe(200);
     expect((await t.app.inject({ method: "GET", url: "/admin" })).headers.location).toBe("/admin/");
+    expect((await t.app.inject({ method: "GET", url: "/" })).headers.location).toBe("/admin/");
   });
 });
 
