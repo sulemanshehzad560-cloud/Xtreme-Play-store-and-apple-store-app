@@ -12,7 +12,7 @@ on:
         description: "Upload to the stores when the build finishes (true/false)"
         default: "false"
       profile:
-        description: "production (store builds) or preview (installable test APK on the test server)"
+        description: "production (store builds), playtest (Play AAB on the test server) or preview (installable test APK on the test server)"
         default: production
 
 jobs:
