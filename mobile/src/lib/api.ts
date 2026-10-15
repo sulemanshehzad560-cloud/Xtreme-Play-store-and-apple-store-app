@@ -44,6 +44,21 @@ export async function restoreSession(): Promise<Session | null> {
   return session;
 }
 
+/** Long enough for a sleeping server to wake up, short enough that the app never hangs. */
+const REQUEST_TIMEOUT_MS = 45_000;
+
+async function request(url: string, init: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch {
+    throw new ApiError(0, "network", "Can't reach Xtreme right now. Check your internet connection and try again.");
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /**
  * Refresh tokens rotate and work once, so concurrent 401s must share one refresh call
  * (a second refresh with the same token would end the session).
@@ -52,7 +67,7 @@ async function refresh(): Promise<Session | null> {
   if (!session) return null;
   refreshing ??= (async () => {
     try {
-      const res = await fetch(`${API_URL}/v1/auth/refresh`, {
+      const res = await request(`${API_URL}/v1/auth/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refreshToken: session!.refreshToken }),
@@ -81,7 +96,7 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
       throw e;
     }
   }
-  const res = await fetch(`${API_URL}/v1${path}`, {
+  const res = await request(`${API_URL}/v1${path}`, {
     method: init.method ?? (init.body ? "POST" : "GET"),
     headers: {
       Accept: "application/json",
