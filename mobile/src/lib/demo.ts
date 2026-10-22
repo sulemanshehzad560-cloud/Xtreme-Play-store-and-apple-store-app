@@ -309,7 +309,7 @@ export async function demoApi(path: string, method: string, body: Json | undefin
       property: { type: body!.propertyType, size: body!.propertySize },
       priceAed: quote.priceAed,
       pricing: quote.pricing,
-      paymentMethod: body!.paymentMethod ?? "cash",
+      paymentMethod: body!.paymentMethod ?? "card",
       paymentStatus: "unpaid",
       scheduledAt: body!.scheduledAt,
       address: { label: addr.label, area: addr.area, building: addr.building ?? null, unit: addr.unit ?? null, lat: addr.lat, lng: addr.lng },
@@ -356,7 +356,6 @@ export async function demoApi(path: string, method: string, body: Json | undefin
         methods: [
           { method: "card", available: true, label: "Credit / debit card, Apple Pay or Google Pay" },
           { method: "tamara", available: true, label: "Split into 4 interest-free payments" },
-          { method: "cash", available: true, label: "Pay the team on the day" },
         ],
       };
     }

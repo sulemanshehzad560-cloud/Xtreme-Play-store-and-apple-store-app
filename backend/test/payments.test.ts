@@ -26,7 +26,7 @@ describe("card payments (Stripe)", () => {
 
     const options = (await get(`/v1/bookings/${booking.id}/payment-options`, me.auth)).json();
     expect(options.amount).toEqual({ totalAed: 450, vatAed: 21.43, vatIncluded: true, currency: "AED" });
-    expect(options.methods.map((m: { method: string; available: boolean }) => [m.method, m.available])).toEqual([["card", true], ["tamara", true], ["cash", true]]);
+    expect(options.methods.map((m: { method: string; available: boolean }) => [m.method, m.available])).toEqual([["card", true], ["tamara", true]]);
 
     const start = await post(`/v1/bookings/${booking.id}/payments`, me.auth, { method: "card" });
     expect(start.statusCode).toBe(201);

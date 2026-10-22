@@ -31,7 +31,8 @@ export async function bookingRoutes(app: FastifyInstance, c: Container) {
             addressId: z.uuid().optional(),
             address: addressInput.optional(),
             notes: z.string().trim().max(1000).optional(),
-            paymentMethod: z.enum(["card", "tamara", "cash", "card_on_site", "bank_transfer"]).default("cash"),
+            // Customers pay in the app (card / wallets or Tamara); there is no pay-on-the-day option.
+            paymentMethod: z.enum(["card", "tamara"]).default("card"),
           })
           .refine((b) => b.addressId || b.address, { message: "Give addressId or address", path: ["address"] }),
       },

@@ -15,7 +15,7 @@ import { useApi } from "@/lib/useApi";
 import { TamaraBadge } from "@/components/BrandIcons";
 
 type PropertyType = "apartment" | "villa" | "office";
-type Pay = "card" | "tamara" | "cash";
+type Pay = "card" | "tamara";
 interface Catalog {
   services: Service[];
   propertySizes: Record<PropertyType, { key: string; label: string }[]>;
@@ -99,10 +99,6 @@ export default function BookService() {
       .catch(() => setPrice(undefined));
   }, [service?.key, type, size, plan]);
 
-  useEffect(() => {
-    if (service && !fixed) setPay("cash");
-  }, [service?.key, fixed]);
-
   const newAddressOk = Boolean(completeAddress(draft));
   const canContinue = [true, hour != null, adding ? newAddressOk : Boolean(addressId), true][step];
 
@@ -125,7 +121,8 @@ export default function BookService() {
           plan,
           scheduledAt: abuDhabiTime(day, hour!),
           notes: notes.trim() || undefined,
-          paymentMethod: fixed ? pay : "cash",
+          // Survey-priced services are paid in the app once the price is set.
+          paymentMethod: fixed ? pay : "card",
           ...(useId ? { addressId: useId } : { address: newAddress }),
         },
       });
@@ -151,7 +148,7 @@ export default function BookService() {
 
   const selectedAddress = saved.data?.find((a) => a.id === addressId);
   const totalLabel = fixed ? (price != null ? aed(price) : "…") : "Free survey";
-  const cta = step < 3 ? "Continue" : fixed && pay !== "cash" && price != null ? `Pay ${aed(price)}` : "Confirm booking";
+  const cta = step < 3 ? "Continue" : fixed && price != null ? `Pay ${aed(price)}` : "Confirm booking";
 
   return (
     <Screen
@@ -322,11 +319,10 @@ export default function BookService() {
                 subtitle={price ? `4 interest-free payments of ${aed(Math.round((price / 4) * 100) / 100)}` : "Split into 4 interest-free payments"}
                 icon={<TamaraBadge />}
               />
-              <OptionCard selected={pay === "cash"} onPress={() => setPay("cash")} title="Pay on the day" subtitle="Cash or card to the team after the service" icon={<RNText style={{ fontSize: 22 }}>💵</RNText>} />
             </>
           ) : (
             <Card tone="gold">
-              <Text style={{ fontSize: 14 }}>Nothing to pay now. After the free survey you'll get the price in the app and can pay by card, Tamara or on the day.</Text>
+              <Text style={{ fontSize: 14 }}>Nothing to pay now. After the free survey you'll get the price in the app and can pay by card or Tamara.</Text>
             </Card>
           )}
 

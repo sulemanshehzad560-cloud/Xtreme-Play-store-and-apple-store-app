@@ -12,7 +12,7 @@ import { colors, fonts, space } from "@/lib/theme";
 
 interface Options {
   amount: { totalAed: number; vatAed: number };
-  methods: { method: "card" | "tamara" | "cash"; available: boolean; label: string }[];
+  methods: { method: "card" | "tamara"; available: boolean; label: string }[];
 }
 interface CardStart {
   paymentId: string;
@@ -35,7 +35,7 @@ export default function Pay() {
   const { id, method: preselected } = useLocalSearchParams<{ id: string; method?: "card" | "tamara" }>();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [options, setOptions] = useState<Options | null>(null);
-  const [method, setMethod] = useState<"card" | "tamara" | "cash">(preselected ?? "card");
+  const [method, setMethod] = useState<"card" | "tamara">(preselected ?? "card");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -85,7 +85,6 @@ export default function Pay() {
   }
 
   async function confirm() {
-    if (method === "cash") return router.dismissTo(`/booking/${id}`);
     setBusy(true);
     setError(null);
     try {
@@ -106,7 +105,7 @@ export default function Pay() {
       edges={["left", "right"]}
       footer={
         <StickyFooter>
-          <Button title={method === "cash" ? "Pay on the day" : total != null ? `Pay ${aed(total)}` : "Pay"} onPress={confirm} loading={busy} disabled={!options} style={{ flex: 1 }} />
+          <Button title={total != null ? `Pay ${aed(total)}` : "Pay"} onPress={confirm} loading={busy} disabled={!options} style={{ flex: 1 }} />
         </StickyFooter>
       }
     >
@@ -139,7 +138,6 @@ export default function Pay() {
             subtitle={total ? `4 interest-free payments of ${aed(Math.round((total / 4) * 100) / 100)}` : "Interest-free instalments"}
             icon={<TamaraBadge />}
           />
-          <OptionCard selected={method === "cash"} onPress={() => setMethod("cash")} title="Pay on the day" subtitle="Cash or card to the team" icon={<RNText style={{ fontSize: 22 }}>💵</RNText>} />
 
           <View style={{ flexDirection: "row", alignItems: "center", gap: space(2), justifyContent: "center", marginTop: space(2) }}>
             <RNText style={{ fontSize: 14 }}>🔒</RNText>

@@ -54,7 +54,6 @@ export class PaymentService {
       methods: [
         { method: "card", available: this.card.configured, label: "Credit / debit card, Apple Pay or Google Pay" },
         { method: "tamara", available: tamara.eligible, label: tamara.label ?? `Pay in ${this.config.tamaraInstalments} with Tamara` },
-        { method: "cash", available: true, label: "Pay the team on the day (cash or card)" },
       ],
     };
   }

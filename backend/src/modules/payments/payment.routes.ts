@@ -14,7 +14,7 @@ export async function paymentRoutes(app: FastifyInstance, c: Container) {
 
   r.get(
     "/bookings/:id/payment-options",
-    { preHandler: customer, schema: { tags, summary: "Ways to pay for this booking (card, Tamara, cash)", params: uuidParam } },
+    { preHandler: customer, schema: { tags, summary: "Ways to pay for this booking (card or Tamara)", params: uuidParam } },
     async (req) => c.payments.options(req.params.id, req.user),
   );
 

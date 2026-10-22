@@ -289,7 +289,7 @@ export default function Home() {
             {[
               ["disinfect", "Vetted & trained professionals", "Background-checked, uniformed and insured teams."],
               ["regular", "Satisfaction guarantee", "Not happy? We'll come back and make it right."],
-              ["fm", "Secure payments", "Card, Apple Pay, Google Pay, Tamara or cash on the day."],
+              ["fm", "Secure payments", "Card, Apple Pay, Google Pay or Tamara. No hidden charges."],
             ].map(([icon, t, d]) => (
               <Row key={t} style={{ alignItems: "flex-start", marginTop: space(1) }}>
                 <ServiceIcon name={icon!} size={40} />
