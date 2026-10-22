@@ -102,14 +102,14 @@ describe("admin access", () => {
 describe("company settings and system status", () => {
   it("lets admins change the contacts the app shows", async () => {
     const admin = await signInAs(t, "admin");
-    expect((await t.app.inject({ method: "GET", url: "/v1/company" })).json().email).toBe("sales@xtreme-fm.com");
+    expect((await t.app.inject({ method: "GET", url: "/v1/company" })).json().email).toBe("sales@xtreme-fmgroup.com");
     const bad = await req("PUT", "/v1/admin/settings/company", admin.auth, { whatsapp: "https://evil.example" });
     expect(bad.statusCode).toBe(400);
     await req("PUT", "/v1/admin/settings/company", admin.auth, { email: "hello@xtreme-fm.com", phoneDisplay: "+971 50 000 0000" });
     const company = (await t.app.inject({ method: "GET", url: "/v1/company" })).json();
     expect(company).toMatchObject({ email: "hello@xtreme-fm.com", phoneDisplay: "+971 50 000 0000", name: "Xtreme Facilities Management" });
     const log = (await req("GET", "/v1/admin/audit?targetType=settings", admin.auth)).json();
-    expect(log[0].details.email).toEqual({ from: "sales@xtreme-fm.com", to: "hello@xtreme-fm.com" });
+    expect(log[0].details.email).toEqual({ from: "sales@xtreme-fmgroup.com", to: "hello@xtreme-fm.com" });
   });
 
   it("reports connected services and health", async () => {

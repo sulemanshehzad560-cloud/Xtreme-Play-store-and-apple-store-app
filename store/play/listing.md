@@ -46,7 +46,7 @@ Sign in with your mobile number, Google or Facebook.
 SERVING ABU DHABI
 Al Reem Island, Al Raha Beach, Yas Island, Saadiyat Island and more.
 
-Questions? Chat with us on WhatsApp at +971 50 364 1714, call +971 2 675 6844 or email sales@xtreme-fm.com.
+Questions? Chat with us on WhatsApp at +971 50 364 1714, call +971 2 675 6844 or email sales@xtreme-fmgroup.com.
 www.xtreme-fmgroup.com
 
 ## Graphics
@@ -56,6 +56,6 @@ www.xtreme-fmgroup.com
 
 ## Category and contact
 - App category: House & Home
-- Email: sales@xtreme-fm.com
+- Email: sales@xtreme-fmgroup.com
 - Phone: +971 50 364 1714
 - Website: https://www.xtreme-fmgroup.com

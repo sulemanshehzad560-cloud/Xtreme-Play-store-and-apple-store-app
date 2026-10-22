@@ -51,7 +51,7 @@ const COMPANY = {
   phone: "+971503641714",
   phoneDisplay: "+971 50 364 1714",
   whatsapp: "https://wa.me/971503641714",
-  email: "sales@xtreme-fm.com",
+  email: "sales@xtreme-fmgroup.com",
   website: "https://www.xtreme-fmgroup.com",
   address: { line1: "Mazyad Offices T-1, Office 1102-4", city: "Abu Dhabi" },
   serviceAreas: ["Al Reem Island", "Al Raha Beach", "Yas Island", "Saadiyat Island", "Khalifa City", "Mohammed Bin Zayed City", "Al Reef", "Masdar City", "Corniche", "Al Khalidiyah", "Mussafah", "Al Ain"],

@@ -10,7 +10,7 @@ export const COMPANY = {
   landline: "+97126756844",
   landlineDisplay: "+971 2 675 6844",
   whatsapp: "https://wa.me/971503641714",
-  email: "sales@xtreme-fm.com",
+  email: "sales@xtreme-fmgroup.com",
   website: "https://www.xtreme-fmgroup.com",
   address: {
     line1: "Mazyad Offices T-1, Office 1102-4",
