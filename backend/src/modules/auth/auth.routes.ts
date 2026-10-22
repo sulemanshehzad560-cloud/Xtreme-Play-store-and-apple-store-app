@@ -42,6 +42,19 @@ export async function authRoutes(app: FastifyInstance, c: Container) {
   );
 
   r.post(
+    "/auth/staff/login",
+    {
+      ...strict,
+      schema: {
+        tags,
+        summary: "Staff sign-in with the Staff ID and password set by an admin",
+        body: z.object({ staffId: z.string().trim().min(1).max(40), password: z.string().min(1).max(200) }),
+      },
+    },
+    async (req) => c.auth.signInStaff(req.body.staffId, req.body.password, client(req)),
+  );
+
+  r.post(
     "/auth/google",
     { ...strict, schema: { tags, summary: "Sign in with a Google ID token", body: z.object({ idToken: z.string().min(20) }) } },
     async (req) => c.auth.signInWithSocial("google", req.body.idToken, client(req)),

@@ -224,6 +224,10 @@ export async function demoApi(path: string, method: string, body: Json | undefin
       signInMethods: ["phone"],
     });
   }
+  if (route === "/auth/staff/login") {
+    if (!body!.staffId || String(body!.password ?? "").length < 4) throw new DemoError(401, "unauthorized", "Staff ID or password is incorrect");
+    return signIn({ phone: DEMO_STAFF_PHONE, phoneVerified: true, fullName: "Ahmed K.", role: "staff", signInMethods: ["staff"] });
+  }
   if (["/auth/google", "/auth/apple", "/auth/facebook"].includes(route!)) {
     const provider = route!.split("/")[2]!;
     return signIn({ fullName: body?.fullName ?? "Sara Al Mansoori", email: "sara@example.com", signInMethods: [provider] });

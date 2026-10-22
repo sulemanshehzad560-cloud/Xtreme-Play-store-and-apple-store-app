@@ -180,6 +180,8 @@ function card(b) {
   if (b.pricing === "inspection" && b.paymentStatus === "unpaid" && b.status !== "completed") actions.push(`<button class="btn outline small" data-act="price" data-id="${b.id}">Set price</button>`);
   if (b.status !== "completed") actions.push(`<button class="btn danger small" data-act="cancel" data-id="${b.id}">Cancel</button>`);
   if (b.paymentStatus === "paid" || b.paymentStatus === "partially_refunded") actions.push(`<button class="btn outline small" data-act="refund" data-id="${b.id}">Refund</button>`);
+  if (b.status === "completed" && (b.paymentStatus === "paid" || b.paymentStatus === "partially_refunded"))
+    actions.push(`<button class="btn outline small" data-act="invoice" data-id="${b.id}">${b.invoiceSentAt ? "Resend invoice" : "Email invoice"}</button>`);
   return `<div class="card">
     <div class="row"><span class="title">${esc(b.service.name)}</span><span class="pill ${b.status}">${LABEL[b.status]}</span></div>
     <div class="meta">${esc(b.reference)} · ${when(b.scheduledAt)}</div>
@@ -189,6 +191,7 @@ function card(b) {
     <div class="row"><span class="pill ${b.paymentStatus}">${esc(b.paymentStatus.replace("_", " "))} · ${esc(b.paymentMethod.replace("_", " "))}</span></div>
     ${team ? `<div class="meta">🧑‍🔧 ${team}</div>` : ""}
     ${b.notes ? `<div class="meta">📝 ${esc(b.notes)}</div>` : ""}
+    ${b.invoiceSentAt ? `<div class="meta">✉️ Invoice emailed ${when(b.invoiceSentAt)}</div>` : ""}
     <div class="actions">${actions.join("")}</div>
   </div>`;
 }
@@ -197,9 +200,15 @@ $("#board").addEventListener("click", (e) => {
   const btn = e.target.closest("button[data-act]");
   if (!btn) return;
   const b = state.bookings.find((x) => x.id === btn.dataset.id);
-  ({ confirm: confirmBooking, assign: assignTeam, price: setPrice, cancel: cancelBooking, refund: refundBooking })[btn.dataset.act](b);
+  ({ confirm: confirmBooking, assign: assignTeam, price: setPrice, cancel: cancelBooking, refund: refundBooking, invoice: emailInvoice })[btn.dataset.act](b);
 });
 
+const emailInvoice = (b) =>
+  act(async () => {
+    const r = await api(`/admin/bookings/${b.id}/invoice/email`, { body: {} });
+    if (!r.sentTo) throw new Error("The customer has no email address yet. They were asked to add one in the app.");
+    toast(`Invoice emailed to ${r.sentTo}`);
+  });
 const confirmBooking = (b) => act(() => api(`/admin/bookings/${b.id}/confirm`, { body: {} }), `${b.reference} confirmed`);
 
 function modal(html, onSubmit) {
@@ -337,22 +346,36 @@ $("#export-staff").addEventListener("click", async () => {
 
 /** One form for adding and editing: contact, job, emergency contact, skills, notes. */
 async function staffForm(s) {
+  if (s) s = await api(`/admin/staff/${s.id}`);
   const v = (k) => esc(s?.[k] ?? "");
+  const login = s?.login;
   const history = s ? await api(`/admin/audit?targetType=staff&targetId=${s.id}&limit=20`).catch(() => []) : [];
   $("#modal").classList.add("wide");
   modal(
     `<h2>${s ? `Edit ${esc(s.displayName)}` : "Add staff member"}</h2>
-     ${s ? "" : '<p class="muted">They sign in to the Xtreme-Home Partner app with this mobile number and see the staff screens.</p>'}
+     ${s ? "" : '<p class="muted">They sign in to the Xtreme-Home Partner app under <b>Staff sign in</b> with their Staff ID (the employee code) and the password you set here.</p>'}
+     ${
+       s
+         ? `<div class="signin-box">
+              <div><b>App sign-in</b><div class="muted">Staff ID <code>${esc(login.staffId)}</code> · ${
+                login.locked ? '<span class="pill cancelled">locked after wrong passwords</span>' : login.hasPassword ? `password set ${login.passwordSetAt ? when(login.passwordSetAt) : ""}` : "no password yet"
+              }</div><div id="new-pw" class="muted"></div></div>
+              <button type="button" class="btn gold small" id="reset-pw">${login.hasPassword ? "Reset password" : "Create password"}</button>
+            </div>`
+         : ""
+     }
      <div class="form-grid">
        <label>Full name<input name="displayName" required minlength="2" value="${v("displayName")}" /></label>
        <label>Employee code<input name="employeeCode" required value="${v("employeeCode")}" /></label>
-       <label>Mobile number (sign-in)<input name="phone" required value="${v("phone")}" placeholder="050 123 4567" /></label>
+       <label>Mobile number<input name="phone" required value="${v("phone")}" placeholder="050 123 4567" /></label>
        <label>Email<input name="email" type="email" value="${v("email")}" /></label>
        <label>Job title<input name="jobTitle" value="${v("jobTitle")}" placeholder="e.g. Senior cleaner" /></label>
        <label>Team<input name="teamName" value="${v("teamName")}" placeholder="e.g. Gold Team" /></label>
        <label>Emergency contact name<input name="emergencyContactName" value="${v("emergencyContactName")}" /></label>
        <label>Emergency contact phone<input name="emergencyContactPhone" value="${v("emergencyContactPhone")}" /></label>
        <label>Joined on<input name="joinedOn" type="date" value="${v("joinedOn")}" /></label>
+       ${s ? "" : '<label>App password (optional)<input name="password" minlength="8" autocomplete="new-password" placeholder="At least 8 characters, or set it later" /></label>'}
+       <label>New order alerts<select name="notifyNewOrders"><option value="true" ${s?.notifyNewOrders !== false ? "selected" : ""}>On: push for every new order</option><option value="false" ${s?.notifyNewOrders === false ? "selected" : ""}>Off: only jobs assigned to them</option></select></label>
        <label>Status<select name="active"><option value="true" ${s?.active !== false ? "selected" : ""}>Active</option><option value="false" ${s?.active === false ? "selected" : ""}>Inactive (can't sign in to jobs)</option></select></label>
        <label class="full">Skills (empty = can do every service)
          <div class="checklist" style="grid-template-columns:repeat(4,1fr);max-height:none">${Object.entries(SKILLS).map(([k, label]) => `<label style="padding:6px 8px;font-size:13px"><input type="checkbox" name="skills" value="${k}" ${s?.skills?.includes(k) ? "checked" : ""}/>${label}</label>`).join("")}</div>
@@ -378,16 +401,28 @@ async function staffForm(s) {
         joinedOn: form.get("joinedOn") || null,
         notes: form.get("notes") || null,
         skills: form.getAll("skills"),
+        notifyNewOrders: form.get("notifyNewOrders") === "true",
       };
       if (s) {
         await api(`/admin/staff/${s.id}`, { method: "PATCH", body: { ...body, active: form.get("active") === "true" } });
         toast("Staff details saved");
       } else {
-        await api("/admin/staff", { body });
-        toast("Staff member added");
+        const password = form.get("password");
+        await api("/admin/staff", { body: { ...body, ...(password ? { password } : {}) } });
+        toast(password ? `Staff member added. Staff ID ${body.employeeCode}` : "Staff member added. Create their app password from Edit.");
       }
     },
   );
+  $("#reset-pw")?.addEventListener("click", async () => {
+    if (!confirm(`Create a new app password for ${s.displayName}? Their current password stops working and they are signed out.`)) return;
+    try {
+      const r = await api(`/admin/staff/${s.id}/password`, { body: {} });
+      $("#new-pw").innerHTML = `New password: <code class="pw">${esc(r.password)}</code> <button type="button" class="btn outline small" id="copy-pw">Copy</button><br/>Give it to ${esc(s.displayName)} privately. It is shown only once.`;
+      $("#copy-pw").onclick = () => navigator.clipboard.writeText(r.password).then(() => toast("Password copied"));
+    } catch (err) {
+      toast(err.message);
+    }
+  });
 }
 
 // ------------------------------------------------------------------ customers

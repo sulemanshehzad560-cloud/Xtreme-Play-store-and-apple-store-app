@@ -185,6 +185,13 @@ export const staffProfiles = pgTable(
     joinedOn: date("joined_on", { mode: "string" }),
     notes: text("notes"),
     skills: text("skills").array().notNull().default(sql`'{}'::text[]`),
+    // App sign-in for staff: Staff ID (employee code) + a password the admin sets.
+    passwordHash: text("password_hash"),
+    passwordSetAt: ts("password_set_at"),
+    failedLogins: smallint("failed_logins").notNull().default(0),
+    lockedUntil: ts("locked_until"),
+    // Push alert for every new customer order.
+    notifyNewOrders: boolean("notify_new_orders").notNull().default(true),
     status: staffStatus("status").notNull().default("off_duty"),
     statusChangedAt: ts("status_changed_at").notNull().defaultNow(),
     active: boolean("active").notNull().default(true),
@@ -263,6 +270,9 @@ export const bookings = pgTable(
     idempotencyKey: text("idempotency_key"),
     cancelReason: text("cancel_reason"),
     completedAt: ts("completed_at"),
+    // Tax invoice emailed to the customer (once, after the job is completed and paid).
+    invoiceSentAt: ts("invoice_sent_at"),
+    invoiceSentTo: text("invoice_sent_to"),
     cancelledAt: ts("cancelled_at"),
     createdAt: createdAt(),
     updatedAt: ts("updated_at").notNull().defaultNow(),

@@ -43,6 +43,7 @@ services:
       - key: PUSH_ENABLED
         value: "true"
       - { key: ADMIN_PHONE, sync: false }
+      - { key: COMPANY_TRN, sync: false }
 
 databases:
   - name: xtreme-db-test

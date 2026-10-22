@@ -45,6 +45,8 @@ function Gate() {
     const sub = Notifications.addNotificationResponseReceivedListener((res) => {
       const data = res.notification.request.content.data as { bookingId?: string; type?: string };
       if (!data?.bookingId) return;
+      // A new-order alert is for awareness; staff open job details once the office assigns them.
+      if (user.role === "staff" && data.type === "new_order") return router.push("/");
       router.push(user.role === "staff" ? `/job/${data.bookingId}` : `/booking/${data.bookingId}`);
     });
     return () => sub.remove();

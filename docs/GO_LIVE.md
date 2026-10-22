@@ -46,3 +46,22 @@ Open **`https://api.xtreme-fmgroup.com/admin`** and sign in with the admin mobil
 ## 4. Test before announcing
 
 Use the **android-apk** workflow with `demo = false` and your API URL to get an installable test APK that talks to the real server. Run one real booking end to end: book → confirm and assign in the dashboard → staff app "Start driving" → watch live tracking → complete → pay → rate.
+
+## Invoice emails (Zoho Mail, sales@xtreme-fmgroup.com)
+
+When a paid job is marked **Completed**, the server emails the customer a branded tax invoice (with the VAT breakdown) from `sales@xtreme-fmgroup.com`. It is sent once per booking; the office can resend it from the booking card (**Resend invoice**). Customers without an email are asked in the app to add one.
+
+1. **(you)** In Zoho Mail (signed in as sales@xtreme-fmgroup.com): *My Account → Security → App Passwords → Generate*, name it "Xtreme app". If SMTP access is turned off for the organisation, an admin enables it in Zoho Mail Admin Console → *Mail Settings → SMTP*.
+2. In Render → *Environment*, set:
+   - `MAIL_PROVIDER` = `smtp`
+   - `SMTP_HOST` = `smtppro.zoho.com` (organisation mailbox on your own domain; use `smtppro.zoho.eu` / `.in` if your Zoho account is in that region)
+   - `SMTP_PORT` = `465`
+   - `SMTP_USER` = `sales@xtreme-fmgroup.com`
+   - `SMTP_PASS` = the app password from step 1
+   - `MAIL_BCC` (optional) = an office address that should get a copy of every invoice
+   - `COMPANY_TRN` = your UAE TRN, printed on every invoice
+3. Check *Admin & IT → Connected services*: **Invoice emails** shows Zoho Mail as connected.
+
+## Staff sign-in
+
+Staff sign in under **Staff sign in** on the app's welcome screen with their **Staff ID** (the employee code) and a password set by an admin: dashboard → *Staff* → *Edit* → **Create password** (shown once, to hand over privately). Five wrong passwords lock the account for 15 minutes; **Reset password** unlocks it and signs the person out everywhere. *New order alerts* on the same form decides who gets a push for every new customer order.

@@ -51,6 +51,17 @@ services:
         value: "true"
       - { key: EXPO_ACCESS_TOKEN, sync: false }
       - { key: ADMIN_PHONE, sync: false }
+      - key: MAIL_PROVIDER
+        value: smtp
+      - key: SMTP_HOST
+        value: smtppro.zoho.com
+      - key: SMTP_PORT
+        value: "465"
+      - key: SMTP_USER
+        value: sales@xtreme-fmgroup.com
+      - { key: SMTP_PASS, sync: false } # Zoho app-specific password
+      - { key: MAIL_BCC, sync: false } # optional office copy of every invoice
+      - { key: COMPANY_TRN, sync: false } # UAE Tax Registration Number on invoices
 
 databases:
   - name: xtreme-db

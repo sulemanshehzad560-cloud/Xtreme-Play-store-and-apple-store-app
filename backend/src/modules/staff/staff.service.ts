@@ -1,4 +1,5 @@
 import { and, desc, eq, gte, isNull, lte, ne, sql } from "drizzle-orm";
+import { hashPassword } from "../../lib/password.js";
 import type { Database } from "../../db/client.js";
 import { authIdentities, locationPings, staffProfiles, users, type StaffStatus } from "../../db/schema.js";
 import { badRequest, conflict, notFound } from "../../lib/errors.js";
@@ -252,6 +253,17 @@ export class StaffService {
     }
   }
 
+  /** Sets (or resets) a staff member's app password and unlocks the account. */
+  async setPassword(staffId: string, password: string) {
+    const [row] = await this.db
+      .update(staffProfiles)
+      .set({ passwordHash: await hashPassword(password), passwordSetAt: new Date(), failedLogins: 0, lockedUntil: null })
+      .where(eq(staffProfiles.userId, staffId))
+      .returning({ employeeCode: staffProfiles.employeeCode });
+    if (!row) throw notFound("Staff member");
+    return row;
+  }
+
   async detail(staffId: string) {
     const [row] = await this.db
       .select({ staff: staffProfiles, phone: users.phone })
@@ -326,6 +338,14 @@ export function adminStaffDetail(s: typeof staffProfiles.$inferSelect) {
     emergencyContactPhone: s.emergencyContactPhone,
     joinedOn: s.joinedOn,
     notes: s.notes,
+    notifyNewOrders: s.notifyNewOrders,
+    // App sign-in: the Staff ID is the employee code; the password itself is never returned.
+    login: {
+      staffId: s.employeeCode,
+      hasPassword: Boolean(s.passwordHash),
+      passwordSetAt: s.passwordSetAt?.toISOString() ?? null,
+      locked: Boolean(s.lockedUntil && s.lockedUntil > new Date()),
+    },
   };
 }
 
@@ -342,4 +362,5 @@ export interface StaffInput {
   skills?: string[] | undefined;
   photoUrl?: string | null | undefined;
   active?: boolean | undefined;
+  notifyNewOrders?: boolean | undefined;
 }

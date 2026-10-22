@@ -15,6 +15,7 @@ COPY --from=build /app/dist ./dist
 COPY drizzle ./drizzle
 COPY admin ./admin
 COPY legal ./legal
+COPY public ./public
 COPY package.json ./
 USER node
 EXPOSE 8080

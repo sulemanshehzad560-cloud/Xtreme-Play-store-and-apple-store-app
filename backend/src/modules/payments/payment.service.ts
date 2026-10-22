@@ -24,6 +24,13 @@ const CURRENCY = COMPANY.currency;
 const SETTLED: PaymentStatus[] = ["captured", "partially_refunded", "refunded"];
 
 export class PaymentService {
+  private readonly paidListeners: ((bookingId: string) => Promise<void>)[] = [];
+
+  /** Called after a payment is captured (e.g. to email the invoice for a completed job). */
+  onPaid(listener: (bookingId: string) => Promise<void>) {
+    this.paidListeners.push(listener);
+  }
+
   constructor(
     private readonly db: Database,
     private readonly bookingsSvc: BookingService,
@@ -397,6 +404,7 @@ export class PaymentService {
     });
     // A booking cancelled while the customer was still paying gets its money back.
     if (booking?.status === "cancelled") await this.settleCancelledBooking(booking);
+    for (const listener of this.paidListeners) await listener(payment.bookingId).catch((err: unknown) => this.log.error({ err }, "paid listener failed"));
   }
 
   /** On cancellation: stop unfinished payments and refund what was paid. */

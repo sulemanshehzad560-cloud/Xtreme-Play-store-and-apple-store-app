@@ -211,6 +211,7 @@ export class AdminService {
         { key: "facebook", name: "Facebook sign-in", provider: "Facebook", connected: Boolean(e.FACEBOOK_APP_ID && e.FACEBOOK_APP_SECRET) },
         { key: "card", name: "Card, Apple Pay, Google Pay", provider: "Stripe", connected: Boolean(e.STRIPE_SECRET_KEY && e.STRIPE_PUBLISHABLE_KEY), mode: e.STRIPE_SECRET_KEY?.startsWith("sk_live") ? "live" : e.STRIPE_SECRET_KEY ? "test" : null },
         { key: "tamara", name: "Pay in 4", provider: "Tamara", connected: Boolean(e.TAMARA_API_TOKEN), mode: e.TAMARA_API_URL.includes("sandbox") ? "sandbox" : "live" },
+        { key: "mail", name: "Invoice emails", provider: e.MAIL_PROVIDER === "smtp" ? `Zoho Mail (${e.SMTP_USER ?? ""})` : "Not sending (console)", connected: e.MAIL_PROVIDER === "smtp" },
         { key: "push", name: "Push notifications", provider: "Expo (APNs / FCM)", connected: e.PUSH_ENABLED },
         { key: "realtime", name: "Live tracking across servers", provider: "Redis", connected: Boolean(e.REDIS_URL) },
       ],

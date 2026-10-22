@@ -1,4 +1,6 @@
 import type { FastifyBaseLogger } from "fastify";
+import { createMailer, type Mailer } from "./modules/mail/mailer.js";
+import { InvoiceMailer } from "./modules/mail/invoice-mailer.js";
 import type pg from "pg";
 import type { Env } from "./config/env.js";
 import { createDb, type Database } from "./db/client.js";
@@ -42,6 +44,8 @@ export interface Container {
   bnpl: BnplGateway;
   payments: PaymentService;
   admin: AdminService;
+  mailer: Mailer;
+  invoices: InvoiceMailer;
 }
 
 export interface ContainerOverrides {
@@ -51,6 +55,7 @@ export interface ContainerOverrides {
   bookingRules?: Partial<BookingRules>;
   card?: CardGateway;
   bnpl?: BnplGateway;
+  mailer?: Mailer;
 }
 
 export function createContainer(env: Env, log: FastifyBaseLogger, overrides: ContainerOverrides = {}): Container {
@@ -106,5 +111,11 @@ export function createContainer(env: Env, log: FastifyBaseLogger, overrides: Con
     log,
   );
   const admin = new AdminService(db, tokens, env);
-  return { env, db, pool, hub, sms, push, verifiers, tokens, otp, auth, notifications, bookings, staff, users, card, bnpl, payments, admin };
+  const mailer = overrides.mailer ?? createMailer(env, log);
+  const invoices = new InvoiceMailer(db, payments, notifications, mailer, { publicUrl: env.PUBLIC_URL }, log);
+  bookings.onStatusChange(async (booking) => {
+    if (booking.status === "completed") void invoices.sendIfDue(booking.id);
+  });
+  payments.onPaid((bookingId) => invoices.sendIfDue(bookingId));
+  return { env, db, pool, hub, sms, push, verifiers, tokens, otp, auth, notifications, bookings, staff, users, card, bnpl, payments, admin, mailer, invoices };
 }

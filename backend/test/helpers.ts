@@ -6,6 +6,7 @@ import type { Container } from "../src/container.js";
 import { users } from "../src/db/schema.js";
 import { ConsoleSms } from "../src/modules/auth/sms.js";
 import { NoopPush } from "../src/modules/notifications/push.js";
+import { ConsoleMailer } from "../src/modules/mail/mailer.js";
 import { FakeCard, FakeTamara, FakeVerifier } from "./fakes.js";
 import { TEST_DATABASE_URL } from "./global-setup.js";
 
@@ -16,6 +17,7 @@ export interface TestContext {
   push: NoopPush;
   card: FakeCard;
   tamara: FakeTamara;
+  mail: ConsoleMailer;
 }
 
 export const testEnv = (extra: Record<string, string> = {}) =>
@@ -36,7 +38,9 @@ export async function createTestApp(extra: Record<string, string> = {}): Promise
   const push = new NoopPush();
   const card = new FakeCard();
   const tamara = new FakeTamara();
+  const mail = new ConsoleMailer("Xtreme-Home Partner <sales@xtreme-fmgroup.com>");
   const app = await buildApp(testEnv(extra), {
+    mailer: mail,
     sms,
     push,
     card,
@@ -44,7 +48,7 @@ export async function createTestApp(extra: Record<string, string> = {}): Promise
     verifiers: { google: new FakeVerifier("google"), facebook: new FakeVerifier("facebook"), apple: new FakeVerifier("apple") },
   });
   await app.ready();
-  return { app, c: app.container, sms, push, card, tamara };
+  return { app, c: app.container, sms, push, card, tamara, mail };
 }
 
 export async function resetDb() {

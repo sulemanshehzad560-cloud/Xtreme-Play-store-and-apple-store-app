@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { generatePassword } from "../../lib/password.js";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { and, count, eq, gte, isNull, lt, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -94,6 +95,16 @@ export async function adminRoutes(app: FastifyInstance, c: Container) {
     async (req) => c.bookings.setPrice(req.params.id, req.user, req.body.priceAed),
   );
 
+  r.post(
+    "/admin/bookings/:id/invoice/email",
+    { schema: { tags, summary: "Email the tax invoice to the customer now (resend)", params: uuidParam } },
+    async (req) => {
+      const result = await c.invoices.resend(req.params.id);
+      await c.admin.audit(req.user.id, "invoice.emailed", "booking", req.params.id, { to: result.sentTo, reason: result.reason ?? null });
+      return result;
+    },
+  );
+
   // Staff
   r.get("/admin/staff", { schema: { tags, summary: "All staff with live status and position" } }, async () => c.staff.listForAdmin());
   const staffFields = {
@@ -108,7 +119,9 @@ export async function adminRoutes(app: FastifyInstance, c: Container) {
     notes: z.string().trim().max(2000).nullish(),
     skills: z.array(z.string().max(40)).max(30),
     photoUrl: z.url().nullish(),
+    notifyNewOrders: z.boolean().optional(),
   };
+  const staffPassword = z.string().min(8, "Use at least 8 characters").max(100);
   const optionalPhone = (v: string | null | undefined) => (v ? normalizePhone(v, c.env.OTP_DEFAULT_REGION) : v);
 
   r.post(
@@ -116,19 +129,20 @@ export async function adminRoutes(app: FastifyInstance, c: Container) {
     {
       schema: {
         tags,
-        summary: "Add a staff member (they sign in with this mobile number)",
-        body: z.object({ phone: phoneInput, ...staffFields, skills: staffFields.skills.default([]) }),
+        summary: "Add a staff member. They sign in with their Staff ID (employee code) and the password set here.",
+        body: z.object({ phone: phoneInput, ...staffFields, skills: staffFields.skills.default([]), password: staffPassword.optional() }),
       },
     },
     async (req, reply) => {
-      const { phone, emergencyContactPhone, ...rest } = req.body;
+      const { phone, emergencyContactPhone, password, ...rest } = req.body;
       const created = await c.staff.create({
         ...rest,
         skills: [...new Set(rest.skills)].sort(),
         phone: normalizePhone(phone, c.env.OTP_DEFAULT_REGION),
         emergencyContactPhone: optionalPhone(emergencyContactPhone),
       });
-      await c.admin.audit(req.user.id, "staff.created", "staff", created.userId, { name: created.displayName, employeeCode: created.employeeCode });
+      if (password) await c.staff.setPassword(created.userId, password);
+      await c.admin.audit(req.user.id, "staff.created", "staff", created.userId, { name: created.displayName, employeeCode: created.employeeCode, passwordSet: Boolean(password) });
       return reply.status(201).send(await c.staff.detail(created.userId));
     },
   );
@@ -170,6 +184,26 @@ export async function adminRoutes(app: FastifyInstance, c: Container) {
         await c.admin.audit(req.user.id, action, "staff", req.params.id, changed);
       }
       return after;
+    },
+  );
+  r.post(
+    "/admin/staff/:id/password",
+    {
+      schema: {
+        tags,
+        summary: "Set or reset a staff member's app password (leave empty to generate one). Signs them out everywhere.",
+        params: uuidParam,
+        body: z.object({ password: staffPassword.optional() }).default({}),
+      },
+    },
+    async (req) => {
+      const generated = !req.body.password;
+      const password = req.body.password ?? generatePassword();
+      const { employeeCode } = await c.staff.setPassword(req.params.id, password);
+      await c.tokens.revokeAllForUser(req.params.id);
+      await c.admin.audit(req.user.id, "staff.password_set", "staff", req.params.id, { generated });
+      // Shown to the admin once so they can hand it over; only the hash is stored.
+      return { staffId: employeeCode, password, generated };
     },
   );
   r.get("/admin/staff.csv", { schema: { tags, summary: "Download the staff directory as CSV" } }, async (req, reply) => {

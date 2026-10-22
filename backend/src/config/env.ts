@@ -68,6 +68,17 @@ const EnvSchema = z.object({
   TAMARA_NOTIFICATION_TOKEN: z.string().optional(),
   TAMARA_INSTALMENTS: z.coerce.number().int().min(2).max(12).default(4),
 
+  // Invoice emails. Zoho Mail SMTP for an organisation mailbox on your own domain:
+  // smtppro.zoho.com, port 465, the mailbox address and an app-specific password.
+  MAIL_PROVIDER: z.enum(["console", "smtp"]).default("console"),
+  MAIL_FROM: z.string().default("Xtreme-Home Partner <sales@xtreme-fmgroup.com>"),
+  MAIL_REPLY_TO: z.string().optional(),
+  MAIL_BCC: z.string().optional(),
+  SMTP_HOST: z.string().default("smtppro.zoho.com"),
+  SMTP_PORT: z.coerce.number().int().default(465),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+
   // Push notifications (Expo)
   EXPO_ACCESS_TOKEN: z.string().optional(),
   PUSH_ENABLED: bool,
@@ -102,5 +113,6 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     if (env.TAMARA_API_TOKEN && !env.TAMARA_NOTIFICATION_TOKEN) throw new Error("TAMARA_NOTIFICATION_TOKEN is required with TAMARA_API_TOKEN");
     if (env.CORS_ORIGINS.includes("*")) throw new Error("CORS_ORIGINS=* is not allowed in production");
   }
+  if (env.MAIL_PROVIDER === "smtp" && (!env.SMTP_USER || !env.SMTP_PASS)) throw new Error("MAIL_PROVIDER=smtp needs SMTP_USER and SMTP_PASS");
   return env;
 }

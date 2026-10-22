@@ -1,12 +1,18 @@
-import { and, eq, isNull, ne } from "drizzle-orm";
+import { and, eq, isNull, ne, sql } from "drizzle-orm";
 import type { Database } from "../../db/client.js";
-import { authIdentities, users, type User } from "../../db/schema.js";
-import { conflict, forbidden, notFound, unauthorized } from "../../lib/errors.js";
+import { authIdentities, staffProfiles, users, type User } from "../../db/schema.js";
+import { conflict, forbidden, notFound, tooManyRequests, unauthorized } from "../../lib/errors.js";
+import { verifyPassword } from "../../lib/password.js";
 import { isUniqueViolation } from "../bookings/booking.service.js";
 import { toPublicUser, type PublicUser } from "../users/mappers.js";
 import type { OtpService } from "./otp.js";
 import type { SocialProfile, SocialProvider, SocialVerifier } from "./providers/types.js";
 import type { ClientInfo, IssuedTokens, TokenService } from "./tokens.js";
+
+const MAX_STAFF_ATTEMPTS = 5;
+const LOCK_MINUTES = 15;
+// A valid hash of a random password, compared against when the Staff ID is unknown.
+const DUMMY_HASH = "scrypt$16384$8$1$ZHVtbXlzYWx0ZHVtbXlzYQ==$7PjQ4j3dMPYWqk7cNG1bUcQ0x4D5mQyH2sJ6S2Jp1yk=";
 
 export interface Session extends IssuedTokens {
   user: PublicUser;
@@ -37,6 +43,40 @@ export class AuthService {
       fullName: profile?.fullName ?? null,
     }));
     return this.session(user, isNew, client);
+  }
+
+  /**
+   * Staff sign in with the Staff ID (employee code) and password an admin set in the
+   * dashboard. Five wrong passwords lock the account for 15 minutes.
+   */
+  async signInStaff(staffId: string, password: string, client: ClientInfo): Promise<Session> {
+    const wrong = () => unauthorized("Staff ID or password is incorrect");
+    const [row] = await this.db
+      .select({ user: users, profile: staffProfiles })
+      .from(staffProfiles)
+      .innerJoin(users, eq(users.id, staffProfiles.userId))
+      .where(and(sql`lower(${staffProfiles.employeeCode}) = lower(${staffId.trim()})`, isNull(users.deletedAt)))
+      .limit(1);
+    if (!row || row.user.role !== "staff" || !row.profile.passwordHash) {
+      await verifyPassword(password, DUMMY_HASH); // same timing whether or not the ID exists
+      throw wrong();
+    }
+    const { user, profile } = row;
+    if (profile.lockedUntil && profile.lockedUntil > new Date()) {
+      const minutes = Math.ceil((profile.lockedUntil.getTime() - Date.now()) / 60_000);
+      throw tooManyRequests(`Too many wrong passwords. Try again in ${minutes} min or ask the office to reset it.`, minutes * 60);
+    }
+    if (!(await verifyPassword(password, profile.passwordHash))) {
+      const failed = profile.failedLogins + 1;
+      await this.db
+        .update(staffProfiles)
+        .set(failed >= MAX_STAFF_ATTEMPTS ? { failedLogins: 0, lockedUntil: new Date(Date.now() + LOCK_MINUTES * 60_000) } : { failedLogins: failed })
+        .where(eq(staffProfiles.userId, user.id));
+      throw wrong();
+    }
+    if (user.blockedAt || !profile.active) throw forbidden("This staff account is inactive. Please contact the office.", "account_inactive");
+    await this.db.update(staffProfiles).set({ failedLogins: 0, lockedUntil: null }).where(eq(staffProfiles.userId, user.id));
+    return this.session(user, false, client);
   }
 
   async signInWithSocial(

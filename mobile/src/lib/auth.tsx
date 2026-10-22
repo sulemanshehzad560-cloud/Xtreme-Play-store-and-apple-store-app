@@ -17,6 +17,7 @@ interface AuthState {
   user: User | null;
   requestCode(phone: string): Promise<{ phone: string; resendIn: number }>;
   verifyCode(phone: string, code: string, fullName?: string): Promise<Session>;
+  signInStaff(staffId: string, password: string): Promise<Session>;
   signInWithGoogle(): Promise<Session | null>;
   signInWithApple(): Promise<Session | null>;
   signInWithFacebook(): Promise<Session | null>;
@@ -58,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     requestCode: (phone) => api("/auth/otp/request", { body: { phone } }),
     verifyCode: (phone, code, fullName) => start("/auth/otp/verify", { phone, code, fullName }),
+    signInStaff: (staffId, password) => start("/auth/staff/login", { staffId, password }),
 
     async signInWithGoogle() {
       if (DEMO) return start("/auth/google", { idToken: "demo" });

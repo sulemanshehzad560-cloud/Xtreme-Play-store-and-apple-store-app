@@ -75,6 +75,9 @@ export async function buildApp(env: Env, overrides: ContainerOverrides = {}): Pr
     prefix: "/admin/",
     decorateReply: false,
   });
+  // The logo used in invoice emails.
+  const logoPng = readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../public/brand/logo.png"));
+  app.get("/brand/logo.png", { schema: { hide: true } }, async (_req, reply) => reply.type("image/png").header("cache-control", "public, max-age=86400").send(logoPng));
   app.get("/admin", { schema: { hide: true } }, async (_req, reply) => reply.redirect("/admin/", 302));
 
   // Public legal pages linked from the store listings (Google Play, App Store, Facebook Login).

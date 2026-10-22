@@ -153,8 +153,23 @@ export class BookingService {
       body: `${service.name} · ${place.snapshot.area} · ${formatWhen(booking.scheduledAt)}`,
       data: { type: "booking", bookingId: booking.id },
     });
+    void this.alertStaffOfNewOrder(booking, service.name, place.snapshot.area);
     this.hub.emit(rooms.admins, "booking:created", { bookingId: booking.id });
     return this.view(booking, customer);
+  }
+
+  /** Push "new order" to every active staff member who has new-order alerts switched on. */
+  private async alertStaffOfNewOrder(booking: Booking, serviceLabel: string, area: string) {
+    const rows = await this.db
+      .select({ id: staffProfiles.userId })
+      .from(staffProfiles)
+      .innerJoin(users, eq(users.id, staffProfiles.userId))
+      .where(and(eq(staffProfiles.active, true), eq(staffProfiles.notifyNewOrders, true), eq(users.role, "staff"), isNull(users.deletedAt), isNull(users.blockedAt)));
+    if (!rows.length) return;
+    await this.notifications.notify(
+      rows.map((r) => r.id),
+      { title: `New order ${booking.reference}`, body: `${serviceLabel} · ${area} · ${formatWhen(booking.scheduledAt)}`, data: { type: "new_order", bookingId: booking.id } },
+    );
   }
 
   async listForCustomer(customerId: string, opts: { scope: "active" | "past" | "all"; limit: number; before?: Date | undefined }) {
@@ -640,6 +655,7 @@ export class BookingService {
         priceAed: b.priceAed,
         paymentMethod: b.paymentMethod,
         paymentStatus: b.paymentStatus,
+        invoiceSentAt: b.invoiceSentAt?.toISOString() ?? null,
         canPay: b.priceAed != null && b.paymentStatus === "unpaid" && !TERMINAL.includes(b.status),
         scheduledAt: b.scheduledAt.toISOString(),
         durationMinutes: b.durationMinutes,
