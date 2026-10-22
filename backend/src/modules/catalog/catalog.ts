@@ -1,4 +1,4 @@
-// Service catalog and price list (AED per visit), matching the Xtreme price list.
+// Service catalog and price list (AED per visit, VAT included), matching the Xtreme price list.
 // Kept in code so prices are versioned and reviewed; the booking stores a price snapshot.
 
 export type PropertyType = "apartment" | "villa" | "office";
@@ -45,7 +45,7 @@ export interface CatalogService {
   name: string;
   nameAr: string;
   category: "cleaning" | "technical" | "staffing" | "facilities";
-  /** "tiered": fixed price from PRICE_TABLE; "inspection": priced after a survey. */
+  /** "tiered": fixed price from PRICE_TABLE; "inspection": the office confirms the price before the visit. */
   pricing: { kind: "tiered"; tier: "regular" | "deep" } | { kind: "inspection" };
   durationMinutes: number;
   highlights: string[];
@@ -71,137 +71,106 @@ export const SERVICES: CatalogService[] = [
     highlights: ["Kitchen degreasing and appliance exteriors", "Bathrooms descaled and disinfected", "Inside wardrobes, cabinets and windows", "Floors, skirting and upholstery vacuumed"],
   },
   {
-    key: "move",
-    name: "Move-in / move-out cleaning",
-    nameAr: "التنظيف عند الانتقال",
-    category: "cleaning",
-    pricing: { kind: "tiered", tier: "deep" },
-    durationMinutes: 360,
-    highlights: ["Ready for handover inspection", "Inside cupboards, appliances and windows", "Bathrooms and kitchen fully sanitised", "Flexible timing around your move"],
-  },
-  {
-    key: "postcon",
-    name: "Post-construction cleaning",
-    nameAr: "التنظيف بعد البناء",
+    key: "sofa",
+    name: "Sofa cleaning",
+    nameAr: "تنظيف الكنب",
     category: "cleaning",
     pricing: { kind: "inspection" },
-    durationMinutes: 480,
-    highlights: ["Fine dust removed from every surface", "Paint, cement and sticker residue cleaned", "Glass, frames and tracks detailed", "Waste cleared for handover"],
-  },
-  {
-    key: "kitbath",
-    name: "Kitchen & bathroom cleaning",
-    nameAr: "تنظيف المطابخ والحمامات",
-    category: "cleaning",
-    pricing: { kind: "inspection" },
-    durationMinutes: 180,
-    highlights: ["Grease removed from hobs, hoods and tiles", "Limescale removed from taps and glass", "Grout and sealant cleaned", "Disinfected high-touch surfaces"],
+    durationMinutes: 120,
+    highlights: ["Deep extraction lifts dust and allergens", "Stain and odour treatment", "Fabric-safe products for every material", "Fast drying"],
   },
   {
     key: "carpet",
-    name: "Carpet & upholstery cleaning",
-    nameAr: "تنظيف السجاد والمفروشات",
+    name: "Carpet cleaning",
+    nameAr: "تنظيف السجاد",
+    category: "cleaning",
+    pricing: { kind: "inspection" },
+    durationMinutes: 120,
+    highlights: ["Hot-water extraction for carpets and rugs", "Spot and stain treatment", "Refreshes colour and pile", "Fast drying"],
+  },
+  {
+    key: "glass",
+    name: "Glass & window cleaning",
+    nameAr: "تنظيف الزجاج والنوافذ",
     category: "cleaning",
     pricing: { kind: "inspection" },
     durationMinutes: 150,
-    highlights: ["Deep extraction removes dust and allergens", "Stain treatment for sofas, rugs and mattresses", "Fabric-safe products", "Fast drying"],
+    highlights: ["Windows, glass doors and mirrors", "Frames, tracks and sills wiped", "Streak-free finish", "Inside and reachable outside panes"],
   },
   {
-    key: "ac",
-    name: "AC duct cleaning",
-    nameAr: "تنظيف مجاري التكييف",
-    category: "technical",
-    pricing: { kind: "inspection" },
-    durationMinutes: 240,
-    highlights: ["Ducts, vents and FCUs cleaned", "Removes dust, mould and odours", "Helps your AC cool efficiently", "Done with minimal disruption"],
-  },
-  {
-    key: "pest",
-    name: "Pest control",
-    nameAr: "مكافحة الحشرات",
-    category: "technical",
-    pricing: { kind: "inspection" },
-    durationMinutes: 90,
-    highlights: ["Cockroaches, ants, bed bugs and more", "Safe for families and pets when used as directed", "Targeted, low-odour treatments", "Follow-up visit available"],
-  },
-  {
-    key: "tank",
-    name: "Water tank cleaning",
-    nameAr: "تنظيف وتعقيم خزانات المياه",
-    category: "technical",
+    key: "kitchen",
+    name: "Kitchen cleaning",
+    nameAr: "تنظيف المطبخ",
+    category: "cleaning",
     pricing: { kind: "inspection" },
     durationMinutes: 180,
-    highlights: ["Tanks drained, scrubbed and disinfected", "Sediment and slime removed", "Suitable for villas and buildings", "Report after every clean"],
+    highlights: ["Grease removed from hob, hood and tiles", "Appliance exteriors and sink polished", "Counters and cabinet fronts wiped", "Floor scrubbed and disinfected"],
   },
   {
-    key: "facade",
-    name: "Facade & window cleaning",
-    nameAr: "تنظيف الواجهات",
+    key: "bathroom",
+    name: "Bathroom cleaning",
+    nameAr: "تنظيف الحمامات",
     category: "cleaning",
     pricing: { kind: "inspection" },
-    durationMinutes: 300,
-    highlights: ["Glass and cladding cleaned", "Trained, safety-equipped team", "Villas, shops and buildings", "One-off or scheduled"],
+    durationMinutes: 90,
+    highlights: ["Limescale removed from taps, glass and tiles", "Toilet, basin and shower disinfected", "Grout and sealant cleaned", "Mirrors and fittings polished"],
   },
   {
-    key: "kitchenex",
-    name: "Kitchen exhaust & grease trap",
-    nameAr: "تنظيف شفاطات المطابخ ومصائد الدهون",
-    category: "technical",
-    pricing: { kind: "inspection" },
-    durationMinutes: 240,
-    highlights: ["Hoods, filters and ducts degreased", "Grease traps pumped and cleaned", "Helps reduce fire risk", "Out-of-hours service"],
-  },
-  {
-    key: "laundry",
-    name: "Bedroom laundry",
-    nameAr: "خدمة غسيل المفروشات",
+    key: "balcony",
+    name: "Balcony cleaning",
+    nameAr: "تنظيف الشرفة",
     category: "cleaning",
     pricing: { kind: "inspection" },
-    durationMinutes: 60,
-    highlights: ["Bed linen and towels washed and folded", "Beds made fresh", "Collected and returned", "Add to any cleaning visit"],
+    durationMinutes: 90,
+    highlights: ["Dust and sand washed away", "Railings and glass panels cleaned", "Floor scrubbed and drained", "Outdoor furniture wiped"],
   },
   {
-    key: "drapery",
-    name: "Curtain & drapery care",
-    nameAr: "تنظيف الستائر",
+    key: "wardrobe",
+    name: "Wardrobe cleaning",
+    nameAr: "تنظيف خزائن الملابس",
     category: "cleaning",
     pricing: { kind: "inspection" },
-    durationMinutes: 120,
-    highlights: ["Curtains and blinds cleaned", "Dust and odours removed", "Taken down and rehung", "Fabric-safe methods"],
+    durationMinutes: 90,
+    highlights: ["Shelves, rails and drawers cleaned inside", "Dust and odours removed", "Doors and mirrors polished", "Clothes neatly put back"],
   },
   {
-    key: "helper",
-    name: "Nanny & house helper",
-    nameAr: "خدمات المربيات والمساعدات المنزليات",
-    category: "staffing",
-    pricing: { kind: "inspection" },
-    durationMinutes: 240,
-    highlights: ["Experienced, vetted helpers", "Hourly, part-time or full-time", "Cleaning, laundry and childcare support", "Flexible schedules"],
-  },
-  {
-    key: "fm",
-    name: "Facilities management",
-    nameAr: "إدارة المرافق",
-    category: "facilities",
-    pricing: { kind: "inspection" },
-    durationMinutes: 60,
-    highlights: ["Cleaning, pest control and technical services", "Scheduled maintenance plans", "One point of contact", "Reports after every visit"],
-  },
-  {
-    key: "disinfect",
-    name: "Disinfection",
-    nameAr: "خدمات التعقيم",
+    key: "cupboard",
+    name: "Cupboard cleaning",
+    nameAr: "تنظيف الخزائن",
     category: "cleaning",
     pricing: { kind: "inspection" },
-    durationMinutes: 120,
-    highlights: ["High-touch surfaces disinfected", "Homes, offices and schools", "Approved disinfectants", "After illness or on schedule"],
+    durationMinutes: 90,
+    highlights: ["Kitchen and storage cupboards emptied and wiped", "Shelves and hinges degreased", "Food-safe products", "Items returned in order"],
   },
 ];
 
+/** Services no longer offered. Kept so older bookings still show a proper name. */
+const RETIRED_NAMES: Record<string, string> = {
+  move: "Move-in / move-out cleaning",
+  postcon: "Post-construction cleaning",
+  kitbath: "Kitchen & bathroom cleaning",
+  ac: "AC duct cleaning",
+  pest: "Pest control",
+  tank: "Water tank cleaning",
+  facade: "Facade & window cleaning",
+  kitchenex: "Kitchen exhaust & grease trap",
+  laundry: "Bedroom laundry",
+  drapery: "Curtain & drapery care",
+  helper: "Nanny & house helper",
+  fm: "Facilities management",
+  disinfect: "Disinfection",
+};
+
 const byKey = new Map(SERVICES.map((s) => [s.key, s]));
 
+/** A service customers can book today. */
 export function findService(key: string): CatalogService | undefined {
   return byKey.get(key);
+}
+
+/** Display name for any service key, including retired ones on older bookings. */
+export function serviceName(key: string): string {
+  return byKey.get(key)?.name ?? RETIRED_NAMES[key] ?? "Cleaning service";
 }
 
 export interface Quote {
@@ -227,7 +196,7 @@ export function quote(input: {
   if (!sizes[input.propertySize]) return { error: `Size "${input.propertySize}" is not valid for ${input.propertyType}` };
 
   if (service.pricing.kind === "inspection") {
-    return { priceAed: null, pricing: "inspection", tier: null, label: "Price confirmed after a free survey" };
+    return { priceAed: null, pricing: "inspection", tier: null, label: "Our team confirms the price before your visit" };
   }
   const row = sizes[input.propertySize]!;
   let tier: PricingTier = service.pricing.tier;

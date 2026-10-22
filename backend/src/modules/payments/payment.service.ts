@@ -5,12 +5,13 @@ import { bookingEvents, bookings, paymentWebhookEvents, payments, users, type Bo
 import { COMPANY } from "../../config/company.js";
 import { badRequest, conflict, notFound } from "../../lib/errors.js";
 import type { Actor, BookingService } from "../bookings/booking.service.js";
-import { findService } from "../catalog/catalog.js";
+import { serviceName } from "../catalog/catalog.js";
 import type { NotificationService } from "../notifications/notification.service.js";
 import type { BnplGateway, CardGateway } from "./gateways.js";
 
 export interface PaymentConfig {
   vatRate: number;
+  companyTrn?: string | undefined;
   publicUrl: string;
   appScheme: string;
   merchantName: string;
@@ -80,8 +81,8 @@ export class PaymentService {
         instalments: method === "tamara" ? this.config.tamaraInstalments : null,
       })
       .returning();
-    const serviceName = findService(booking.serviceKey)?.name ?? "Xtreme service";
-    const description = `${serviceName} · ${booking.reference}`;
+    const itemName = serviceName(booking.serviceKey);
+    const description = `${itemName} · ${booking.reference}`;
 
     try {
       if (method === "card") {
@@ -133,7 +134,7 @@ export class PaymentService {
         currency: CURRENCY,
         description,
         instalments: this.config.tamaraInstalments,
-        item: { reference: booking.id, name: serviceName, sku: booking.serviceKey },
+        item: { reference: booking.id, name: itemName, sku: booking.serviceKey },
         consumer: { firstName: firstName!, lastName: rest.join(" "), phone: user.phone!, email: user.email },
         address: {
           line1: [booking.address.unit, booking.address.building, booking.address.street, booking.address.area].filter(Boolean).join(", "),
@@ -173,6 +174,59 @@ export class PaymentService {
     await this.bookingsSvc.loadFor(bookingId, actor);
     const rows = await this.db.select().from(payments).where(eq(payments.bookingId, bookingId)).orderBy(desc(payments.createdAt));
     return rows.map((p) => this.view(p));
+  }
+
+  /**
+   * Tax invoice for a paid booking. Prices are VAT-inclusive, so the invoice is the one
+   * place the VAT amount is broken out.
+   */
+  async invoice(bookingId: string, actor: Actor) {
+    const booking = await this.bookingsSvc.loadFor(bookingId, actor);
+    if (!["paid", "partially_refunded", "refunded"].includes(booking.paymentStatus) || booking.priceAed == null) {
+      throw conflict("not_paid", "The invoice is available once the booking is paid");
+    }
+    const [paid] = await this.db
+      .select()
+      .from(payments)
+      .where(and(eq(payments.bookingId, booking.id), inArray(payments.status, ["captured", "partially_refunded", "refunded"])))
+      .orderBy(desc(payments.capturedAt))
+      .limit(1);
+    const [customer] = await this.db.select().from(users).where(eq(users.id, booking.customerId)).limit(1);
+    const totalMinor = paid?.amountMinor ?? booking.priceAed * 100;
+    const vatMinor = this.vatMinor(totalMinor);
+    const a = booking.address;
+    return {
+      invoiceNumber: `INV-${booking.reference.replace(/^XT-/, "")}`,
+      issuedAt: (paid?.capturedAt ?? booking.updatedAt).toISOString(),
+      bookingReference: booking.reference,
+      seller: {
+        name: COMPANY.name,
+        trn: this.config.companyTrn ?? null,
+        address: `${COMPANY.address.line1}, ${COMPANY.address.city}, ${COMPANY.address.country}`,
+        phone: COMPANY.phoneDisplay,
+        email: COMPANY.email,
+      },
+      customer: {
+        name: customer?.fullName ?? null,
+        phone: customer?.phone ?? null,
+        email: customer?.email ?? null,
+        address: [a.unit, a.building, a.street, a.area].filter(Boolean).join(", "),
+      },
+      lines: [
+        {
+          description: `${serviceName(booking.serviceKey)} (${booking.propertyType}, ${booking.propertySize.toUpperCase()})`,
+          serviceDate: booking.scheduledAt.toISOString(),
+          amountAed: totalMinor / 100,
+        },
+      ],
+      currency: CURRENCY,
+      vatRate: this.config.vatRate,
+      subtotalAed: (totalMinor - vatMinor) / 100,
+      vatAed: vatMinor / 100,
+      totalAed: totalMinor / 100,
+      refundedAed: (paid?.refundedMinor ?? 0) / 100,
+      payment: paid ? { method: paid.provider === "tamara" ? "Tamara" : "Card", paidAt: paid.capturedAt?.toISOString() ?? null } : null,
+    };
   }
 
   /** Called by the app after the payment screen closes, so it need not wait for the webhook. */

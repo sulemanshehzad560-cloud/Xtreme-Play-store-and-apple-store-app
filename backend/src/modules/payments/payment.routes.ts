@@ -34,6 +34,12 @@ export async function paymentRoutes(app: FastifyInstance, c: Container) {
   );
 
   r.get(
+    "/bookings/:id/invoice",
+    { preHandler: requireAuth(c, "customer", "admin"), schema: { tags, summary: "Tax invoice for a paid booking (VAT breakdown)", params: uuidParam } },
+    async (req) => c.payments.invoice(req.params.id, req.user),
+  );
+
+  r.get(
     "/bookings/:id/payments",
     { preHandler: requireAuth(c, "customer", "admin"), schema: { tags, summary: "Payments for a booking", params: uuidParam } },
     async (req) => c.payments.listForBooking(req.params.id, req.user),

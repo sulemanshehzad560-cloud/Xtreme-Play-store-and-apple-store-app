@@ -56,6 +56,8 @@ const EnvSchema = z.object({
 
   // Payments. Prices in the catalog are in AED and include VAT.
   VAT_RATE: z.coerce.number().min(0).max(1).default(0.05),
+  // UAE Tax Registration Number printed on tax invoices.
+  COMPANY_TRN: z.string().trim().optional(),
   APP_SCHEME: z.string().default("xtreme"),
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_PUBLISHABLE_KEY: z.string().optional(),

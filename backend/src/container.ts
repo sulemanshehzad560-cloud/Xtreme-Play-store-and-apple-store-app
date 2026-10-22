@@ -97,6 +97,7 @@ export function createContainer(env: Env, log: FastifyBaseLogger, overrides: Con
     bnpl,
     {
       vatRate: env.VAT_RATE,
+      companyTrn: env.COMPANY_TRN,
       publicUrl: env.PUBLIC_URL,
       appScheme: env.APP_SCHEME,
       merchantName: env.STRIPE_MERCHANT_NAME,

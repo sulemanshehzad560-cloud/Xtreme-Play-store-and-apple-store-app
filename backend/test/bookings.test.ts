@@ -42,7 +42,7 @@ describe("booking a service", () => {
 
     const amc = await book(t, me.auth, { plan: "amc", propertySize: "2bhk" });
     expect(amc.priceAed).toBe(375);
-    const survey = await book(t, me.auth, { serviceKey: "pest" });
+    const survey = await book(t, me.auth, { serviceKey: "sofa" });
     expect(survey.priceAed).toBeNull();
   });
 

@@ -48,6 +48,12 @@ describe("card payments (Stripe)", () => {
     expect(inbox.filter((n: { title: string }) => n.title === "Payment received")).toHaveLength(1);
     expect((await get(`/v1/bookings/${booking.id}/payments`, me.auth)).json()[0]).toMatchObject({ id: paymentId, status: "captured", amountAed: 450 });
 
+    // The tax invoice is the one place VAT is broken out (prices are VAT-inclusive).
+    const invoice = (await get(`/v1/bookings/${booking.id}/invoice`, me.auth)).json();
+    expect(invoice).toMatchObject({ totalAed: 450, vatAed: 21.43, subtotalAed: 428.57, vatRate: 0.05, currency: "AED", payment: { method: "Card" } });
+    expect(invoice.invoiceNumber).toMatch(/^INV-/);
+    expect(invoice.lines[0].description).toContain("Deep cleaning");
+
     // Can't pay twice.
     expect((await post(`/v1/bookings/${booking.id}/payments`, me.auth, { method: "card" })).json().error.code).toBe("already_paid");
   });
@@ -95,10 +101,16 @@ describe("card payments (Stripe)", () => {
     expect((await get(`/v1/bookings/${booking.id}`, me.auth)).json().paymentStatus).toBe("partially_refunded");
   });
 
+  it("has no invoice before payment", async () => {
+    const me = await profiled();
+    const booking = await book(t, me.auth);
+    expect((await get(`/v1/bookings/${booking.id}/invoice`, me.auth)).statusCode).toBe(409);
+  });
+
   it("only lets customers pay once a survey price is set", async () => {
     const me = await profiled();
     const admin = await signInAs(t, "admin");
-    const booking = await book(t, me.auth, { serviceKey: "pest" });
+    const booking = await book(t, me.auth, { serviceKey: "sofa" });
     expect((await post(`/v1/bookings/${booking.id}/payments`, me.auth, { method: "card" })).json().error.code).toBe("awaiting_quote");
     await post(`/v1/admin/bookings/${booking.id}/price`, admin.auth, { priceAed: 275 });
     expect((await post(`/v1/bookings/${booking.id}/payments`, me.auth, { method: "card" })).statusCode).toBe(201);

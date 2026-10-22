@@ -16,7 +16,7 @@ import {
 import { COMPANY } from "../../config/company.js";
 import { badRequest, conflict, forbidden, notFound } from "../../lib/errors.js";
 import { estimateEtaMinutes } from "../../lib/geo.js";
-import { findService, quote, type PropertyType } from "../catalog/catalog.js";
+import { findService, quote, serviceName, type PropertyType } from "../catalog/catalog.js";
 import type { NotificationService } from "../notifications/notification.service.js";
 import { rooms, type RealtimeHub } from "../tracking/realtime.js";
 import { ACTIVE, TERMINAL, TRACKABLE, canTransition, staffStatusFor } from "./state.js";
@@ -350,7 +350,7 @@ export class BookingService {
     });
     void this.notifications.notify([booking.customerId], {
       title: `Price for ${booking.reference}`,
-      body: `Your ${findService(booking.serviceKey)?.name.toLowerCase() ?? "service"} is quoted at ${COMPANY.currency} ${priceAed}.`,
+      body: `Your ${serviceName(booking.serviceKey).toLowerCase()} is quoted at ${COMPANY.currency} ${priceAed}.`,
       data: { type: "booking", bookingId },
     });
     return this.view(updated!, admin);
@@ -588,7 +588,7 @@ export class BookingService {
     if (booking.status === "assigned") {
       void this.notifications.notify(team, {
         title: `New job ${ref}`,
-        body: `${findService(booking.serviceKey)?.name ?? "Job"} · ${booking.address.area} · ${when}`,
+        body: `${serviceName(booking.serviceKey)} · ${booking.address.area} · ${when}`,
         data: { type: "job", bookingId: booking.id },
       });
     }
@@ -633,7 +633,7 @@ export class BookingService {
         id: b.id,
         reference: b.reference,
         status: b.status,
-        service: { key: b.serviceKey, name: service?.name ?? b.serviceKey, nameAr: service?.nameAr ?? null },
+        service: { key: b.serviceKey, name: serviceName(b.serviceKey), nameAr: service?.nameAr ?? null },
         property: { type: b.propertyType, size: b.propertySize },
         plan: b.plan,
         pricing: b.pricing,
