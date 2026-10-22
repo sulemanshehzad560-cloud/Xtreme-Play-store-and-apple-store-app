@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Dimensions, Linking, Pressable, RefreshControl, ScrollView, Text as RNText, TextInput, View } from "react-native";
+import { Dimensions, Image, Linking, Pressable, RefreshControl, ScrollView, Text as RNText, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Location from "expo-location";
 import { FadeIn, SkeletonCard } from "@/components/art/Motion";
-import { CoolAirScene, LivingRoomScene, PayInFourScene } from "@/components/art/Scenes";
+import { LivingRoomScene, PayInFourScene } from "@/components/art/Scenes";
 import { ServiceIcon } from "@/components/art/ServiceIcon";
+import { BrandMark } from "@/components/BrandMark";
+import { LineIcon } from "@/components/LineIcon";
 import { Card, Row, SectionHeader, StatusPill, Text } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
@@ -33,7 +35,7 @@ const SLIDE = W - space(8);
 const PROMOS = [
   { title: "Deep clean from AED 300", body: "Kitchen, bathrooms, inside cupboards. Every corner.", cta: "Book deep clean", service: "deep", bg: colors.ink, fg: "#fff", ctaBg: colors.goldBright, ctaFg: colors.ink, Art: LivingRoomScene },
   { title: "Pay in 4 with Tamara", body: "Split any booking into 4 interest-free payments.", cta: "Book now", service: "regular", bg: "#F3E3BC", fg: colors.ink, ctaBg: colors.ink, ctaFg: "#fff", Art: PayInFourScene },
-  { title: "Beat the heat: AC duct cleaning", body: "Cleaner, cooler air. Free survey.", cta: "Get a quote", service: "ac", bg: "#E3EEF6", fg: colors.ink, ctaBg: "#1F5F8B", ctaFg: "#fff", Art: CoolAirScene },
+  { title: "Fresh sofas & carpets", body: "Deep extraction lifts dust, stains and odours.", cta: "Book sofa cleaning", service: "sofa", bg: "#EFE6D6", fg: colors.ink, ctaBg: colors.ink, ctaFg: "#fff", Art: LivingRoomScene },
 ];
 
 export default function Home() {
@@ -107,22 +109,12 @@ export default function Home() {
         {/* Brand header: location, live team count, notifications, greeting */}
         <View style={{ backgroundColor: colors.ink, borderBottomLeftRadius: radius.xl + 4, borderBottomRightRadius: radius.xl + 4, paddingBottom: space(9), overflow: "hidden" }}>
           <View style={{ position: "absolute", right: -40, top: -30, width: 180, height: 180, borderRadius: 90, backgroundColor: "#2A231A" }} />
-          <View style={{ position: "absolute", right: 40, bottom: -60, width: 120, height: 120, borderRadius: 60, backgroundColor: "#211C15" }} />
+          <Image source={require("../../../assets/logo-mark.png")} style={{ position: "absolute", right: -30, bottom: -10, width: 210, height: 160, opacity: 0.08 }} resizeMode="contain" />
           <SafeAreaView edges={["top"]} style={{ paddingHorizontal: space(4), paddingTop: space(2), gap: space(4) }}>
             <Row style={{ justifyContent: "space-between" }}>
-              <Pressable onPress={() => router.push("/addresses")} style={{ flexDirection: "row", alignItems: "center", gap: space(2), flex: 1 }} accessibilityRole="button" accessibilityLabel="Service location">
-                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "#2A251D", alignItems: "center", justifyContent: "center" }}>
-                  <RNText style={{ fontSize: 16 }}>📍</RNText>
-                </View>
-                <View style={{ flexShrink: 1 }}>
-                  <RNText style={{ color: "#A79E8D", fontFamily: fonts.medium, fontSize: 12 }}>Service location</RNText>
-                  <RNText style={{ color: "#fff", fontFamily: fonts.bold, fontSize: 15 }} numberOfLines={1}>
-                    {area ?? "Set your address"} ▾
-                  </RNText>
-                </View>
-              </Pressable>
+              <BrandMark size={30} sub="by Xtreme Facilities Management" />
               <Pressable onPress={() => router.push("/notifications")} accessibilityRole="button" accessibilityLabel={`Notifications, ${unread} unread`} style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: "#2A251D", alignItems: "center", justifyContent: "center" }}>
-                <RNText style={{ fontSize: 18 }}>🔔</RNText>
+                <LineIcon name="bell" size={21} color="#F6F0E3" />
                 {unread ? (
                   <View style={{ position: "absolute", top: 4, right: 4, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: colors.danger, alignItems: "center", justifyContent: "center", paddingHorizontal: 4, borderWidth: 2, borderColor: colors.ink }}>
                     <RNText style={{ color: "#fff", fontFamily: fonts.bold, fontSize: 10 }}>{unread > 9 ? "9+" : unread}</RNText>
@@ -130,6 +122,13 @@ export default function Home() {
                 ) : null}
               </Pressable>
             </Row>
+            <Pressable onPress={() => router.push("/addresses")} style={{ flexDirection: "row", alignItems: "center", gap: space(2), alignSelf: "flex-start", backgroundColor: "#211D17", borderRadius: radius.pill, paddingLeft: space(2), paddingRight: space(4), paddingVertical: space(1.5), borderWidth: 1, borderColor: "#3A3328" }} accessibilityRole="button" accessibilityLabel="Service location">
+              <LineIcon name="pin" size={18} color={colors.goldBright} />
+              <RNText style={{ color: "#A79E8D", fontFamily: fonts.medium, fontSize: 12 }}>Service location</RNText>
+              <RNText style={{ color: "#fff", fontFamily: fonts.bold, fontSize: 13, flexShrink: 1 }} numberOfLines={1}>
+                {area ?? "Set your address"} ▾
+              </RNText>
+            </Pressable>
             <View style={{ gap: 2 }}>
               <RNText style={{ color: colors.goldBright, fontFamily: fonts.semibold, fontSize: 15 }}>Hi{first ? ` ${first}` : " there"} 👋</RNText>
               <RNText style={{ color: "#fff", fontFamily: fonts.extrabold, fontSize: 26, lineHeight: 33, letterSpacing: -0.4 }}>What can we help you with today?</RNText>
@@ -151,7 +150,7 @@ export default function Home() {
             <TextInput
               value={query}
               onChangeText={setQuery}
-              placeholder="Search services (e.g. sofa, AC, maid)"
+              placeholder="Search services (e.g. sofa, carpet, kitchen)"
               placeholderTextColor={colors.faint}
               style={{ flex: 1, fontFamily: fonts.medium, fontSize: 15, color: colors.text }}
               returnKeyType="search"
@@ -170,7 +169,7 @@ export default function Home() {
                 <Pressable key={s.key} onPress={() => open(s.key)} style={{ flexDirection: "row", alignItems: "center", gap: space(3), paddingVertical: space(2.5) }}>
                   <ServiceIcon name={s.key} size={40} />
                   <Text style={{ flex: 1, fontFamily: fonts.semibold }}>{s.name}</Text>
-                  <Text variant="small">{s.startingFromAed ? `from ${aed(s.startingFromAed)}` : "Free survey"}</Text>
+                  <Text variant="small">{s.startingFromAed ? `from ${aed(s.startingFromAed)}` : "On quote"}</Text>
                 </Pressable>
               ))}
             </Card>
@@ -278,7 +277,7 @@ export default function Home() {
                     <Text variant="small">
                       {ratingLabel(s)} · {Math.max(1, Math.round(s.durationMinutes / 60))} hrs
                     </Text>
-                    <Text style={{ fontFamily: fonts.bold, fontSize: 14, color: colors.gold }}>{s.startingFromAed ? `From ${aed(s.startingFromAed)}` : "Free survey"}</Text>
+                    <Text style={{ fontFamily: fonts.bold, fontSize: 14, color: colors.gold }}>{s.startingFromAed ? `From ${aed(s.startingFromAed)}` : "Price on quote"}</Text>
                   </View>
                 </Pressable>
               ))}
@@ -287,9 +286,9 @@ export default function Home() {
           <Card>
             <Text variant="heading">Why customers choose Xtreme</Text>
             {[
-              ["disinfect", "Vetted & trained professionals", "Background-checked, uniformed and insured teams."],
+              ["deep", "Vetted & trained professionals", "Background-checked, uniformed and insured teams."],
               ["regular", "Satisfaction guarantee", "Not happy? We'll come back and make it right."],
-              ["fm", "Secure payments", "Card, Apple Pay, Google Pay or Tamara. No hidden charges."],
+              ["sofa", "Secure payments", "Card, Apple Pay, Google Pay or Tamara. No gateway fees or hidden charges."],
             ].map(([icon, t, d]) => (
               <Row key={t} style={{ alignItems: "flex-start", marginTop: space(1) }}>
                 <ServiceIcon name={icon!} size={40} />

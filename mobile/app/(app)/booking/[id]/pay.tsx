@@ -118,7 +118,7 @@ export default function Pay() {
               <Text variant="price">{aed(options.amount.totalAed)}</Text>
             </Row>
             <Divider />
-            <Text variant="small">Includes VAT of {aed(options.amount.vatAed)}</Text>
+            <Text variant="small">No gateway fees or hidden charges</Text>
           </Card>
 
           <Text variant="heading">Choose how to pay</Text>

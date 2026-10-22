@@ -4,14 +4,14 @@
 Xtreme-Home Partner
 
 ## Short description (max 80)
-Book home cleaning & services in Abu Dhabi. Track your team live. Pay in 4.
+Book home cleaning in Abu Dhabi. Track your team live. No hidden charges.
 
 ## Full description (max 4000)
 Xtreme-Home Partner is the official app of Xtreme Facilities Management, Abu Dhabi. Book professional home and office services in a few taps, see when your team is on the way, and pay the way you like.
 
 BOOK IN SECONDS
 • Choose a service, your property type and size, and a date and time that suit you
-• See the full price including VAT before you confirm
+• See the full price before you confirm, with no gateway fees or hidden charges
 • Save your addresses for faster booking next time
 
 TRACK YOUR TEAM LIVE
@@ -25,18 +25,16 @@ PAY YOUR WAY, SECURELY
 • Card details are handled by a certified payment provider and are never stored on our servers
 
 OUR SERVICES
-• Regular cleaning and deep cleaning
-• Move-in / move-out and post-construction cleaning
-• Kitchen and bathroom cleaning
-• Carpet, upholstery, curtain and drapery care
-• AC duct cleaning and disinfection
-• Pest control
-• Water tank cleaning
-• Facade and window cleaning
-• Kitchen exhaust and grease trap cleaning
-• Bedroom laundry
-• Nanny and house helper
-• Facilities management for buildings and offices
+• Regular home cleaning
+• Deep cleaning
+• Sofa cleaning
+• Carpet cleaning
+• Glass and window cleaning
+• Kitchen cleaning
+• Bathroom cleaning
+• Balcony cleaning
+• Wardrobe cleaning
+• Cupboard cleaning
 
 STAY UPDATED
 • Notifications at every step of your booking

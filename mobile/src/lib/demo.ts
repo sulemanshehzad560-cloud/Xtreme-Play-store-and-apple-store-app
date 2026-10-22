@@ -29,27 +29,21 @@ const S = (key: string, name: string, tier: "regular" | "deep" | null, minutes: 
   highlights,
   startingFromAed: tier === "regular" ? 100 : tier === "deep" ? 300 : null,
   // Sample ratings for the demo build only; the live API reports real review averages.
-  rating: ({ regular: 4.9, deep: 4.8, move: 4.8, ac: 4.7, pest: 4.8, carpet: 4.7 } as Record<string, number>)[key] ?? null,
-  reviewCount: ({ regular: 214, deep: 187, move: 96, ac: 73, pest: 58, carpet: 41 } as Record<string, number>)[key] ?? 0,
+  rating: ({ regular: 4.9, deep: 4.8, sofa: 4.8, carpet: 4.7, kitchen: 4.8, bathroom: 4.7 } as Record<string, number>)[key] ?? null,
+  reviewCount: ({ regular: 214, deep: 187, sofa: 96, carpet: 73, kitchen: 58, bathroom: 41 } as Record<string, number>)[key] ?? 0,
 });
 
 const SERVICES = [
   S("regular", "Regular cleaning", "regular", 180, ["Trained, vetted cleaners", "All materials and equipment included", "Weekly, bi-weekly or one-off visits", "Same trusted team every visit"]),
   S("deep", "Deep cleaning", "deep", 360, ["Kitchen degreasing and appliance exteriors", "Bathrooms descaled and disinfected", "Inside wardrobes, cabinets and windows", "Floors, skirting and upholstery vacuumed"]),
-  S("move", "Move-in / move-out cleaning", "deep", 360, ["Ready for handover inspection", "Inside cupboards, appliances and windows", "Bathrooms and kitchen fully sanitised", "Flexible timing around your move"]),
-  S("postcon", "Post-construction cleaning", null, 480, ["Fine dust removed from every surface", "Paint, cement and sticker residue cleaned", "Glass, frames and tracks detailed", "Waste cleared for handover"]),
-  S("kitbath", "Kitchen & bathroom cleaning", null, 180, ["Grease removed from hobs, hoods and tiles", "Limescale removed from taps and glass", "Grout and sealant cleaned", "Disinfected high-touch surfaces"]),
-  S("carpet", "Carpet & upholstery cleaning", null, 150, ["Deep extraction removes dust and allergens", "Stain treatment for sofas, rugs and mattresses", "Fabric-safe products", "Fast drying"]),
-  S("ac", "AC duct cleaning", null, 240, ["Ducts, vents and FCUs cleaned", "Removes dust, mould and odours", "Helps your AC cool efficiently", "Done with minimal disruption"]),
-  S("pest", "Pest control", null, 90, ["Cockroaches, ants, bed bugs and more", "Safe for families and pets when used as directed", "Targeted, low-odour treatments", "Follow-up visit available"]),
-  S("tank", "Water tank cleaning", null, 180, ["Tanks drained, scrubbed and disinfected", "Sediment and slime removed", "Suitable for villas and buildings", "Report after every clean"]),
-  S("facade", "Facade & window cleaning", null, 300, ["Glass and cladding cleaned", "Trained, safety-equipped team", "Villas, shops and buildings", "One-off or scheduled"]),
-  S("kitchenex", "Kitchen exhaust & grease trap", null, 240, ["Hoods, filters and ducts degreased", "Grease traps pumped and cleaned", "Helps reduce fire risk", "Out-of-hours service"]),
-  S("laundry", "Bedroom laundry", null, 60, ["Bed linen and towels washed and folded", "Beds made fresh", "Collected and returned", "Add to any cleaning visit"]),
-  S("drapery", "Curtain & drapery care", null, 120, ["Curtains and blinds cleaned", "Dust and odours removed", "Taken down and rehung", "Fabric-safe methods"]),
-  S("helper", "Nanny & house helper", null, 240, ["Experienced, vetted helpers", "Hourly, part-time or full-time", "Cleaning, laundry and childcare support", "Flexible schedules"]),
-  S("fm", "Facilities management", null, 60, ["Cleaning, pest control and technical services", "Scheduled maintenance plans", "One point of contact", "Reports after every visit"]),
-  S("disinfect", "Disinfection", null, 120, ["High-touch surfaces disinfected", "Homes, offices and schools", "Approved disinfectants", "After illness or on schedule"]),
+  S("sofa", "Sofa cleaning", null, 120, ["Deep extraction lifts dust and allergens", "Stain and odour treatment", "Fabric-safe products for every material", "Fast drying"]),
+  S("carpet", "Carpet cleaning", null, 120, ["Hot-water extraction for carpets and rugs", "Spot and stain treatment", "Refreshes colour and pile", "Fast drying"]),
+  S("glass", "Glass & window cleaning", null, 150, ["Windows, glass doors and mirrors", "Frames, tracks and sills wiped", "Streak-free finish", "Inside and reachable outside panes"]),
+  S("kitchen", "Kitchen cleaning", null, 180, ["Grease removed from hob, hood and tiles", "Appliance exteriors and sink polished", "Counters and cabinet fronts wiped", "Floor scrubbed and disinfected"]),
+  S("bathroom", "Bathroom cleaning", null, 90, ["Limescale removed from taps, glass and tiles", "Toilet, basin and shower disinfected", "Grout and sealant cleaned", "Mirrors and fittings polished"]),
+  S("balcony", "Balcony cleaning", null, 90, ["Dust and sand washed away", "Railings and glass panels cleaned", "Floor scrubbed and drained", "Outdoor furniture wiped"]),
+  S("wardrobe", "Wardrobe cleaning", null, 90, ["Shelves, rails and drawers cleaned inside", "Dust and odours removed", "Doors and mirrors polished", "Clothes neatly put back"]),
+  S("cupboard", "Cupboard cleaning", null, 90, ["Kitchen and storage cupboards emptied and wiped", "Shelves and hinges degreased", "Food-safe products", "Items returned in order"]),
 ];
 
 const COMPANY = {
@@ -250,7 +244,7 @@ export async function demoApi(path: string, method: string, body: Json | undefin
     const svc = SERVICES.find((s) => s.key === q.serviceKey);
     const row = PRICES[q.propertyType!]?.[q.propertySize!];
     if (!svc || !row) throw new DemoError(400, "invalid_quote", "Choose a property size");
-    if (svc.pricing.kind === "inspection") return { priceAed: null, pricing: "inspection", label: "Price confirmed after a free survey" };
+    if (svc.pricing.kind === "inspection") return { priceAed: null, pricing: "inspection", label: "Our team confirms the price before your visit" };
     const price = (svc.pricing as { tier: string }).tier === "regular" ? row[0] : q.plan === "amc" ? row[2] : row[1];
     return { priceAed: price, pricing: "fixed", label: `AED ${price} per visit` };
   }
@@ -357,6 +351,24 @@ export async function demoApi(path: string, method: string, body: Json | undefin
           { method: "card", available: true, label: "Credit / debit card, Apple Pay or Google Pay" },
           { method: "tamara", available: true, label: "Split into 4 interest-free payments" },
         ],
+      };
+    }
+    if (action === "invoice") {
+      if (b.paymentStatus !== "paid" || b.priceAed == null) throw new DemoError(409, "not_paid", "The invoice is available once the booking is paid");
+      const vat = Math.round((b.priceAed - b.priceAed / 1.05) * 100) / 100;
+      return {
+        invoiceNumber: `INV-${b.reference.replace(/^XT-/, "")}`,
+        issuedAt: new Date().toISOString(),
+        bookingReference: b.reference,
+        seller: { name: COMPANY.name, trn: null, address: `${COMPANY.address.line1}, ${COMPANY.address.city}, United Arab Emirates`, phone: COMPANY.phoneDisplay, email: COMPANY.email },
+        customer: { name: user?.fullName ?? null, phone: user?.phone ?? null, email: user?.email ?? null, address: [b.address.unit, b.address.building, b.address.area].filter(Boolean).join(", ") },
+        lines: [{ description: `${b.service.name} (${b.property.type}, ${b.property.size.toUpperCase()})`, serviceDate: b.scheduledAt, amountAed: b.priceAed }],
+        vatRate: 0.05,
+        subtotalAed: Math.round((b.priceAed - vat) * 100) / 100,
+        vatAed: vat,
+        totalAed: b.priceAed,
+        refundedAed: 0,
+        payment: { method: b.paymentMethod === "tamara" ? "Tamara" : "Card", paidAt: new Date().toISOString() },
       };
     }
     if (action === "payments" && method === "POST") return { paymentId: `pay_${b.id}`, provider: body!.method, demo: true };

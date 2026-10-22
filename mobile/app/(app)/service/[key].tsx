@@ -5,7 +5,6 @@ import * as Crypto from "expo-crypto";
 import { Button, Card, Chip, Divider, ErrorText, InlineLoader, Input, OptionCard, Row, Screen, StepBar, StickyFooter, Text } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
 import { aed, SIZE_LABEL } from "@/lib/format";
-import { SERVICE_ICON } from "@/lib/serviceIcons";
 import { ratingLabel } from "@/lib/rating";
 import { ServiceIcon } from "@/components/art/ServiceIcon";
 import { AddressPicker, completeAddress, type NewAddress } from "@/components/AddressPicker";
@@ -147,7 +146,7 @@ export default function BookService() {
   }
 
   const selectedAddress = saved.data?.find((a) => a.id === addressId);
-  const totalLabel = fixed ? (price != null ? aed(price) : "…") : "Free survey";
+  const totalLabel = fixed ? (price != null ? aed(price) : "…") : "On quote";
   const cta = step < 3 ? "Continue" : fixed && price != null ? `Pay ${aed(price)}` : "Confirm booking";
 
   return (
@@ -156,7 +155,7 @@ export default function BookService() {
       footer={
         <StickyFooter>
           <View style={{ flex: 1 }}>
-            <Text variant="small">{fixed ? "Total (incl. VAT)" : "Price"}</Text>
+            <Text variant="small">{fixed ? "Total" : "Price"}</Text>
             <Text variant="price">{totalLabel}</Text>
           </View>
           <Button title={cta} onPress={() => (step < 3 ? setStep(step + 1) : submit())} disabled={!canContinue} loading={busy} style={{ flex: 1.3 }} />
@@ -234,7 +233,7 @@ export default function BookService() {
           {!fixed ? (
             <Card>
               <Text style={{ fontFamily: fonts.bold }}>How pricing works</Text>
-              <Text variant="small">This service is priced after a free survey. You get the price in the app before any work starts, then pay in the app or on the day.</Text>
+              <Text variant="small">Our team confirms the price with you before the visit. You get it in the app and pay by card or Tamara. No gateway fees or hidden charges.</Text>
             </Card>
           ) : null}
         </>
@@ -298,7 +297,7 @@ export default function BookService() {
         <>
           <Card>
             <Text variant="heading">Booking summary</Text>
-            <SummaryRow icon={SERVICE_ICON[service.key] ?? "✨"} label="Service" value={`${service.name}${plan === "amc" ? " · Annual plan" : ""}`} />
+            <SummaryRow icon={<ServiceIcon name={service.key} size={26} tile={false} />} label="Service" value={`${service.name}${plan === "amc" ? " · Annual plan" : ""}`} />
             <SummaryRow icon="🏠" label="Property" value={`${PROPERTY.find(([t]) => t === type)![1]} · ${SIZE_LABEL[size] ?? size}`} />
             <SummaryRow icon="🗓️" label="Date & time" value={`${day.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} · ${hour != null ? hourLabel(hour) : ""}`} />
             <SummaryRow
@@ -322,14 +321,14 @@ export default function BookService() {
             </>
           ) : (
             <Card tone="gold">
-              <Text style={{ fontSize: 14 }}>Nothing to pay now. After the free survey you'll get the price in the app and can pay by card or Tamara.</Text>
+              <Text style={{ fontSize: 14 }}>Nothing to pay now. Our team confirms the price in the app before your visit, then you pay by card or Tamara.</Text>
             </Card>
           )}
 
           {fixed && price != null ? (
             <Card>
               <PriceRow label={`${service.name} (${SIZE_LABEL[size] ?? size})`} value={aed(price)} />
-              <PriceRow label="VAT (5%, included)" value={aed(Math.round((price - price / 1.05) * 100) / 100)} muted />
+              <PriceRow label="Gateway fees" value="AED 0" muted />
               <Divider />
               <PriceRow label="Total" value={aed(price)} bold />
             </Card>
@@ -343,10 +342,10 @@ export default function BookService() {
   );
 }
 
-function SummaryRow({ icon, label, value }: { icon: string; label: string; value: string }) {
+function SummaryRow({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (
     <Row style={{ alignItems: "flex-start", marginTop: space(1) }}>
-      <RNText style={{ fontSize: 18, width: 26 }}>{icon}</RNText>
+      <View style={{ width: 26, alignItems: "center" }}>{typeof icon === "string" ? <RNText style={{ fontSize: 18 }}>{icon}</RNText> : icon}</View>
       <View style={{ flex: 1 }}>
         <Text variant="small">{label}</Text>
         <Text style={{ fontFamily: fonts.semibold, fontSize: 15 }}>{value}</Text>

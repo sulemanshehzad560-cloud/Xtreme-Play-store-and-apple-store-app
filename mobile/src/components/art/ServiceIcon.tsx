@@ -71,7 +71,7 @@ function Glyph({ name }: { name: string }) {
           <Path d={drop(36, 45, 0.6)} fill={CREAM} strokeWidth={1.6} />
         </G>
       );
-    case "carpet": // sofa
+    case "sofa": // sofa
       return (
         <G {...common}>
           <Rect x={10} y={13} width={28} height={15} rx={5} fill={GOLD} />
@@ -128,6 +128,7 @@ function Glyph({ name }: { name: string }) {
           <Path d={sparkle(40, 9, 4)} fill={GOLD} strokeWidth={1.4} />
         </G>
       );
+    case "kitchen":
     case "kitchenex": // cooker hood over a pan
       return (
         <G {...common}>
@@ -182,6 +183,86 @@ function Glyph({ name }: { name: string }) {
         <G {...common}>
           <Path d="M24 5 L39 11 V22 C39 32 32 39 24 43 C16 39 9 32 9 22 V11 Z" fill={GOLD} />
           <Path d="M21 15 H27 V21 H33 V27 H27 V33 H21 V27 H15 V21 H21 Z" fill={CREAM} strokeWidth={1.6} />
+        </G>
+      );
+    case "carpet": // rug with fringe
+      return (
+        <G {...common}>
+          <Rect x={9} y={8} width={30} height={32} rx={2} fill={GOLD} />
+          <Rect x={14} y={13} width={20} height={22} rx={1} fill={CREAM} />
+          <Path d="M24 17 L30 24 L24 31 L18 24 Z" fill={GOLD} strokeWidth={1.6} />
+          {[12, 17, 22, 27, 32, 36].map((x) => (
+            <G key={x}>
+              <Line x1={x} y1={8} x2={x} y2={4} strokeWidth={1.6} />
+              <Line x1={x} y1={40} x2={x} y2={44} strokeWidth={1.6} />
+            </G>
+          ))}
+        </G>
+      );
+    case "glass": // window with squeegee
+      return (
+        <G {...common}>
+          <Rect x={6} y={7} width={27} height={33} rx={2} fill={CREAM} />
+          <Line x1={19.5} y1={7} x2={19.5} y2={40} />
+          <Line x1={6} y1={23} x2={33} y2={23} />
+          <Path d="M10 18 L15 12 M23 34 L29 27" stroke={GOLD} strokeWidth={2.6} />
+          <Line x1={44} y1={21} x2={37} y2={31} />
+          <Line x1={32} y1={29} x2={41} y2={35} strokeWidth={4} />
+          <Path d={sparkle(40, 10, 4)} fill={GOLD} strokeWidth={1.4} />
+        </G>
+      );
+    case "bathroom": // bathtub with shower drops
+      return (
+        <G {...common}>
+          <Path d="M8 9 Q8 5 12 5 Q16 5 16 9" fill="none" />
+          <Path d="M13 12 L16 9 L19 12 Z" fill={GOLD} strokeWidth={1.6} />
+          <Path d={drop(14, 19, 0.55)} fill={GOLD} strokeWidth={1.4} />
+          <Path d={drop(19, 17, 0.55)} fill={GOLD} strokeWidth={1.4} />
+          <Line x1={8} y1={9} x2={8} y2={25} />
+          <Rect x={4} y={25} width={40} height={5} rx={2.5} fill={CREAM} />
+          <Path d="M7 30 H41 Q41 39 32 39 H16 Q7 39 7 30 Z" fill={GOLD} />
+          <Line x1={14} y1={39} x2={12} y2={44} />
+          <Line x1={34} y1={39} x2={36} y2={44} />
+        </G>
+      );
+    case "balcony": // railing with a plant
+      return (
+        <G {...common}>
+          <Line x1={4} y1={20} x2={44} y2={20} strokeWidth={3} />
+          <Line x1={4} y1={42} x2={44} y2={42} strokeWidth={3} />
+          {[8, 14, 20, 26].map((x) => <Line key={x} x1={x} y1={20} x2={x} y2={42} />)}
+          <Path d="M31 33 H43 L41 42 H33 Z" fill={GOLD} />
+          <Path d="M37 33 Q32 26 34 19 Q38 24 37 33 Q40 24 44 22 Q43 30 37 33" fill={CREAM} strokeWidth={1.6} />
+          <Circle cx={12} cy={9} r={5} fill={GOLD} />
+        </G>
+      );
+    case "wardrobe": // two-door wardrobe with a hanger
+      return (
+        <G {...common}>
+          <Rect x={8} y={5} width={32} height={36} rx={2} fill={CREAM} />
+          <Line x1={24} y1={5} x2={24} y2={41} />
+          <Rect x={8} y={5} width={16} height={36} rx={2} fill={GOLD} />
+          <Line x1={21} y1={21} x2={21} y2={26} strokeWidth={2.6} />
+          <Line x1={27} y1={21} x2={27} y2={26} strokeWidth={2.6} />
+          <Line x1={11} y1={41} x2={11} y2={44} />
+          <Line x1={37} y1={41} x2={37} y2={44} />
+          <Path d="M32 11 Q32 9 30 9 M30 9 L35 14 L25 14 L30 9" fill="none" strokeWidth={1.6} />
+        </G>
+      );
+    case "cupboard": // kitchen cupboards with shelf
+      return (
+        <G {...common}>
+          <Rect x={5} y={6} width={38} height={14} rx={2} fill={CREAM} />
+          <Line x1={24} y1={6} x2={24} y2={20} />
+          <Line x1={21} y1={14} x2={21} y2={17} strokeWidth={2.4} />
+          <Line x1={27} y1={14} x2={27} y2={17} strokeWidth={2.4} />
+          <Rect x={5} y={26} width={38} height={17} rx={2} fill={GOLD} />
+          <Line x1={18} y1={26} x2={18} y2={43} />
+          <Line x1={31} y1={26} x2={31} y2={43} />
+          <Line x1={9} y1={31} x2={14} y2={31} strokeWidth={2.4} />
+          <Line x1={22} y1={31} x2={27} y2={31} strokeWidth={2.4} />
+          <Line x1={35} y1={31} x2={40} y2={31} strokeWidth={2.4} />
+          <Path d={sparkle(40, 22, 3)} fill={GOLD} strokeWidth={1.2} />
         </G>
       );
     default:

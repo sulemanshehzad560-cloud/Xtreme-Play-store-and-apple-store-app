@@ -5,7 +5,7 @@ const TZ = "Asia/Dubai";
 export const when = (iso: string) =>
   new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: TZ }).format(new Date(iso));
 
-export const aed = (n: number | null) => (n == null ? "Price after survey" : `AED ${n.toLocaleString("en-US")}`);
+export const aed = (n: number | null) => (n == null ? "Price on quote" : `AED ${n.toLocaleString("en-US")}`);
 
 export const STATUS_LABEL: Record<BookingStatus, string> = {
   requested: "Requested",
