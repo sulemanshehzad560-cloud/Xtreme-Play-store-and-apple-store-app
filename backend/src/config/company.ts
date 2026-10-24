@@ -55,10 +55,7 @@ export const SERVICE_AREAS = [
   "Al Shamkha",
   "Shakhbout City",
   "Baniyas",
-  "Al Ghadeer",
   "Al Jubail Island",
   "Hudayriat Island",
-  "Al Ain",
-  "Dubai",
   "Other",
 ] as const;

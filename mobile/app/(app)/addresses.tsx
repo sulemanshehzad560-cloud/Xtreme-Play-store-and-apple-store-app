@@ -4,6 +4,7 @@ import { AddressPicker, completeAddress, type NewAddress } from "@/components/Ad
 import { FadeIn } from "@/components/art/Motion";
 import { Button, Card, Chip, ErrorText, Row, Screen, StickyFooter, Text } from "@/components/ui";
 import { api } from "@/lib/api";
+import { OUTSIDE_ZONE_MESSAGE, inServiceZone } from "@/lib/serviceZone";
 import { colors, fonts, space } from "@/lib/theme";
 import { useApi } from "@/lib/useApi";
 
@@ -23,7 +24,7 @@ export default function Addresses() {
 
   async function save() {
     const full = completeAddress(draft);
-    if (!full) return setError("Choose an area or use your location.");
+    if (!full) return setError(draft.lat != null && draft.lng != null && !inServiceZone(draft.lat, draft.lng) ? OUTSIDE_ZONE_MESSAGE : "Choose an area or use your location.");
     setBusy(true);
     setError(null);
     try {

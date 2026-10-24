@@ -1,6 +1,7 @@
 import { and, eq, isNull, ne } from "drizzle-orm";
 import type { Database } from "../../db/client.js";
 import { addresses, authIdentities, pushTokens, users } from "../../db/schema.js";
+import { assertInServiceZone } from "../../config/service-zone.js";
 import { conflict, notFound } from "../../lib/errors.js";
 import type { AddressInput, BookingService } from "../bookings/booking.service.js";
 import type { TokenService } from "../auth/tokens.js";
@@ -52,6 +53,7 @@ export class UserService {
   }
 
   async addAddress(userId: string, input: AddressInput & { isDefault?: boolean | undefined }) {
+    assertInServiceZone(input);
     return this.db.transaction(async (tx) => {
       const existing = await tx
         .select({ id: addresses.id })
@@ -81,6 +83,14 @@ export class UserService {
 
   async updateAddress(userId: string, id: string, patch: Partial<AddressInput> & { isDefault?: boolean | undefined }) {
     return this.db.transaction(async (tx) => {
+      if (patch.lat != null || patch.lng != null) {
+        const [current] = await tx
+          .select({ lat: addresses.lat, lng: addresses.lng })
+          .from(addresses)
+          .where(and(eq(addresses.id, id), eq(addresses.userId, userId), isNull(addresses.deletedAt)));
+        if (!current) throw notFound("Address");
+        assertInServiceZone({ lat: patch.lat ?? current.lat, lng: patch.lng ?? current.lng });
+      }
       if (patch.isDefault) {
         await tx.update(addresses).set({ isDefault: false }).where(and(eq(addresses.userId, userId), ne(addresses.id, id)));
       }

@@ -5,6 +5,7 @@ import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
 import { Platform } from "react-native";
 import { MAPS_AVAILABLE } from "./LiveMap";
 import { Button, Chip, Input, Row, Text } from "./ui";
+import { OUTSIDE_ZONE_MESSAGE, SERVICE_ZONE_NAME, inServiceZone } from "../lib/serviceZone";
 import { colors, radius, shadow, space } from "../lib/theme";
 
 // Approximate area centres, used when a customer picks an area instead of a map pin.
@@ -20,7 +21,8 @@ export const AREAS: [string, number, number][] = [
   ["Corniche", 24.4672, 54.3328],
   ["Al Khalidiyah", 24.471, 54.348],
   ["Mussafah", 24.354, 54.495],
-  ["Al Ain", 24.2075, 55.7447],
+  ["Al Shamkha", 24.386, 54.712],
+  ["Al Maryah Island", 24.5005, 54.3895],
 ];
 
 export interface NewAddress {
@@ -39,6 +41,7 @@ export interface NewAddress {
 export function AddressPicker({ value, onChange }: { value: Partial<NewAddress>; onChange: (v: Partial<NewAddress>) => void }) {
   const [error, setError] = useState<string | null>(null);
   const set = (patch: Partial<NewAddress>) => onChange({ ...value, ...patch });
+  const outside = value.lat != null && value.lng != null && !inServiceZone(value.lat, value.lng);
 
   async function locate() {
     setError(null);
@@ -68,6 +71,13 @@ export function AddressPicker({ value, onChange }: { value: Partial<NewAddress>;
           </View>
         </View>
       ) : null}
+      {outside ? (
+        <View style={{ backgroundColor: colors.dangerSoft, borderColor: colors.danger, borderWidth: 1, borderRadius: radius.md, padding: space(3) }}>
+          <Text variant="small" style={{ color: colors.danger }}>{OUTSIDE_ZONE_MESSAGE}</Text>
+        </View>
+      ) : (
+        <Text variant="small">We serve {SERVICE_ZONE_NAME}.</Text>
+      )}
       <Button title="📍  Use my current location" variant="secondary" onPress={locate} />
       {error ? <Text variant="small" style={{ color: colors.danger }}>{error}</Text> : null}
       <Text variant="label">Area</Text>
@@ -83,12 +93,13 @@ export function AddressPicker({ value, onChange }: { value: Partial<NewAddress>;
   );
 }
 
-/** Fills in coordinates from the chosen area when no pin/GPS position was set. */
+/** Fills in coordinates from the chosen area when no pin/GPS position was set. Null when incomplete or outside the service zone. */
 export function completeAddress(v: Partial<NewAddress>): NewAddress | null {
   if (!v.area || v.area.trim().length < 2) return null;
   const preset = AREAS.find(([a]) => a === v.area);
   const lat = v.lat ?? preset?.[1];
   const lng = v.lng ?? preset?.[2];
   if (lat == null || lng == null) return null;
+  if (!inServiceZone(lat, lng)) return null;
   return { label: v.label || "Home", area: v.area.trim(), building: v.building?.trim() || null, unit: v.unit?.trim() || null, lat, lng };
 }

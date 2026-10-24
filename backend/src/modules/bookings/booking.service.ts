@@ -14,6 +14,7 @@ import {
   type UserRole,
 } from "../../db/schema.js";
 import { COMPANY } from "../../config/company.js";
+import { assertInServiceZone } from "../../config/service-zone.js";
 import { badRequest, conflict, forbidden, notFound } from "../../lib/errors.js";
 import { estimateEtaMinutes } from "../../lib/geo.js";
 import { findService, quote, serviceName, type PropertyType } from "../catalog/catalog.js";
@@ -536,6 +537,8 @@ export class BookingService {
         .where(and(eq(addresses.id, input.addressId), eq(addresses.userId, customerId), isNull(addresses.deletedAt)))
         .limit(1);
       if (!saved) throw notFound("Address");
+      // Addresses saved before the service zone existed may be outside it.
+      assertInServiceZone(saved);
       return {
         addressId: saved.id,
         lat: saved.lat,
@@ -544,6 +547,7 @@ export class BookingService {
       };
     }
     if (!input.address) throw badRequest("address_required", "Choose where the service should take place");
+    assertInServiceZone(input.address);
     return { addressId: null, lat: input.address.lat, lng: input.address.lng, snapshot: snapshotOf(input.address) };
   }
 

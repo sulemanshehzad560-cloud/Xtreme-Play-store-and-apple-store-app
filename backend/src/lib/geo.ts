@@ -26,3 +26,14 @@ export function etaMinutesForDistance(straightLineMeters: number, averageSpeedKm
   const roadKm = (straightLineMeters * 1.35) / 1000;
   return Math.max(1, Math.round((roadKm / averageSpeedKmh) * 60));
 }
+
+/** Ray-casting point-in-polygon test. Fine for city-sized areas, where the earth is flat enough. */
+export function insidePolygon(p: LatLng, polygon: readonly LatLng[]): boolean {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const a = polygon[i]!;
+    const b = polygon[j]!;
+    if (a.lat > p.lat !== b.lat > p.lat && p.lng < ((b.lng - a.lng) * (p.lat - a.lat)) / (b.lat - a.lat) + a.lng) inside = !inside;
+  }
+  return inside;
+}

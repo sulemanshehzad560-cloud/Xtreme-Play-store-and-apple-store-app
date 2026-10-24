@@ -2,6 +2,7 @@
 // clicked through end to end without a server. Bookings move through their statuses on a
 // timer and the assigned team "drives" to the customer, to show live tracking.
 
+import { OUTSIDE_ZONE_MESSAGE, inServiceZone } from "./serviceZone";
 import type { Booking, BookingStatus, Session, StaffStatus, TeamMember, User } from "./types";
 
 export const DEMO = process.env.EXPO_PUBLIC_DEMO === "1";
@@ -54,7 +55,7 @@ const COMPANY = {
   email: "sales@xtreme-fmgroup.com",
   website: "https://www.xtreme-fmgroup.com",
   address: { line1: "Mazyad Offices T-1, Office 1102-4", city: "Abu Dhabi" },
-  serviceAreas: ["Al Reem Island", "Al Raha Beach", "Yas Island", "Saadiyat Island", "Khalifa City", "Mohammed Bin Zayed City", "Al Reef", "Masdar City", "Corniche", "Al Khalidiyah", "Mussafah", "Al Ain"],
+  serviceAreas: ["Al Reem Island", "Al Raha Beach", "Yas Island", "Saadiyat Island", "Khalifa City", "Mohammed Bin Zayed City", "Al Reef", "Masdar City", "Corniche", "Al Khalidiyah", "Mussafah", "Al Shamkha", "Al Maryah Island"],
 };
 
 // ------------------------------------------------------------------ state
@@ -276,6 +277,7 @@ export async function demoApi(path: string, method: string, body: Json | undefin
   }
   if (route === "/me/addresses" && method === "GET") return addresses;
   if (route === "/me/addresses" && method === "POST") {
+    if (!inServiceZone(body!.lat, body!.lng)) throw new DemoError(400, "outside_service_area", OUTSIDE_ZONE_MESSAGE);
     const a = { id: uid(), ...body, isDefault: addresses.length === 0 };
     addresses.push(a);
     return a;
@@ -300,6 +302,7 @@ export async function demoApi(path: string, method: string, body: Json | undefin
     const svc = SERVICES.find((s) => s.key === body!.serviceKey)!;
     const quote = (await demoApi(`/catalog/quote?serviceKey=${svc.key}&propertyType=${body!.propertyType}&propertySize=${body!.propertySize}&plan=${body!.plan ?? "one_off"}`, "GET", undefined)) as Json;
     const addr = body!.addressId ? addresses.find((a) => a.id === body!.addressId) : body!.address;
+    if (addr && !inServiceZone(addr.lat, addr.lng)) throw new DemoError(400, "outside_service_area", OUTSIDE_ZONE_MESSAGE);
     const b: DemoBooking = {
       id: uid(),
       reference: `XT-${seq++}`,

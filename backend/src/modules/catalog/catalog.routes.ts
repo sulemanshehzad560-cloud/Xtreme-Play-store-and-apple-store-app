@@ -4,6 +4,7 @@ import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { bookings, reviews } from "../../db/schema.js";
 import { COMPANY, SERVICE_AREAS } from "../../config/company.js";
+import { SERVICE_ZONE } from "../../config/service-zone.js";
 import type { Container } from "../../container.js";
 import { badRequest } from "../../lib/errors.js";
 import { lat, lng } from "../../lib/schemas.js";
@@ -31,6 +32,7 @@ export async function catalogRoutes(app: FastifyInstance, c: Container) {
       address: { ...COMPANY.address, line1: c2.addressLine1 },
       social: { facebook: c2.facebook, instagram: c2.instagram },
       serviceAreas: SERVICE_AREAS,
+      serviceZone: SERVICE_ZONE,
     };
   });
 

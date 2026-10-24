@@ -65,3 +65,9 @@ When a paid job is marked **Completed**, the server emails the customer a brande
 ## Staff sign-in
 
 Staff sign in under **Staff sign in** on the app's welcome screen with their **Staff ID** (the employee code) and a password set by an admin: dashboard → *Staff* → *Edit* → **Create password** (shown once, to hand over privately). Five wrong passwords lock the account for 15 minutes; **Reset password** unlocks it and signs the person out everywhere. *New order alerts* on the same form decides who gets a push for every new customer order.
+
+## Service area (geofence)
+
+Bookings and saved addresses are accepted only inside Abu Dhabi city: the island, Al Reem, Al Maryah, Saadiyat, Yas, Al Raha, Khalifa City, Masdar, MBZ, Mussafah, Shakhbout, Al Shamkha, Al Reef and Baniyas. Al Ain, Al Dhafra and the Dubai side are refused with "Sorry, we only serve Abu Dhabi city and Al Reem Island at the moment". The app warns on the map before the customer saves.
+
+To change the area, edit the boundary points in `backend/src/config/service-zone.ts` and the copy in `mobile/src/lib/serviceZone.ts`. The server check applies on the next deploy; the app warning needs a new app build.
