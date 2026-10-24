@@ -13,6 +13,7 @@ import * as Notifications from "expo-notifications";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StripeProvider } from "@stripe/stripe-react-native";
+import { BrandIntro } from "@/components/BrandIntro";
 import { Loading } from "@/components/ui";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { DEMO } from "@/lib/demo";
@@ -21,19 +22,24 @@ import { closeSocket } from "@/lib/realtime";
 import { colors } from "@/lib/theme";
 import "@/lib/staff-location"; // registers the background task at startup
 
-// Hand over from the static native splash to the animated loader as soon as JS is up.
+// Hand over from the static native splash to the animated brand intro as soon as JS is up.
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
-const MIN_LOADER_MS = 1600;
+/** After the brand intro, the mop scene shows for at least one full glide. */
+const MIN_LOADER_MS = 2800;
 
 function Gate() {
   const { ready, user } = useAuth();
-  const [shown, setShown] = useState(false);
+  const [phase, setPhase] = useState<"intro" | "loader" | "app">("intro");
 
   useEffect(() => {
     SplashScreen.hideAsync().catch(() => undefined);
-    const t = setTimeout(() => setShown(true), MIN_LOADER_MS);
-    return () => clearTimeout(t);
   }, []);
+
+  useEffect(() => {
+    if (phase !== "loader") return;
+    const t = setTimeout(() => setPhase("app"), MIN_LOADER_MS);
+    return () => clearTimeout(t);
+  }, [phase]);
 
   useEffect(() => {
     if (user) registerPush().catch(() => undefined);
@@ -52,7 +58,8 @@ function Gate() {
     return () => sub.remove();
   }, [user?.id]);
 
-  if (!ready || !shown) return <Loading />;
+  if (phase === "intro") return <BrandIntro onDone={() => setPhase("loader")} />;
+  if (!ready || phase !== "app") return <Loading />;
   const isStaff = user?.role === "staff";
   return (
     <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>

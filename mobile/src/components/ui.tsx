@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
+import { FadeIn } from "./art/Motion";
 import { MopLoader } from "./MopLoader";
 import { colors, fonts, radius, shadow, space } from "../lib/theme";
 import { STATUS_LABEL } from "../lib/format";
@@ -320,17 +321,13 @@ export function Notice({ children, tone = "gold" }: { children: ReactNode; tone?
 
 // ------------------------------------------------------------------ loading
 
-/** Brand intro shown while the app starts. */
+/** Full-screen loader after the brand intro: the mop scene on the splash black. */
 export function Loading() {
   return (
-    <View style={{ flex: 1, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center", gap: space(8) }}>
-      <View style={{ alignItems: "center", gap: space(2) }}>
-        <RNText style={{ color: colors.goldBright, fontFamily: fonts.extrabold, fontSize: 26, letterSpacing: 0.5 }}>
-          Xtreme<RNText style={{ color: colors.onInk }}>-Home Partner</RNText>
-        </RNText>
-        <RNText style={{ color: "#BDB4A3", fontFamily: fonts.medium, fontSize: 13 }}>Cleaning & facilities services · Abu Dhabi</RNText>
-      </View>
-      <MopLoader size={1.1} tone="dark" />
+    <View style={{ flex: 1, backgroundColor: "#030405", alignItems: "center", justifyContent: "center" }}>
+      <FadeIn>
+        <MopLoader size={1.05} tone="dark" cycleMessages />
+      </FadeIn>
     </View>
   );
 }
