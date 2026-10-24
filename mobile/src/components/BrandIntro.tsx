@@ -7,7 +7,7 @@ const BG = "#030405";
 const GOLD = "#E2C170";
 const MUTED = "#8E8676";
 
-export const BRAND_INTRO_MS = 5000;
+export const BRAND_INTRO_MS = 3000;
 
 /**
  * Opening brand screen: the gold X settles in, the name and a hairline appear, then
@@ -32,12 +32,12 @@ export function BrandIntro({ onDone }: { onDone: () => void }) {
         return;
       }
       anim = Animated.sequence([
-        t(mark, 1, 900),
-        Animated.parallel([t(line, 1, 700), Animated.sequence([Animated.delay(200), t(name, 1, 700)])]),
-        Animated.delay(150),
-        t(footer, 1, 700),
-        Animated.delay(BRAND_INTRO_MS - 900 - 900 - 150 - 700 - 500),
-        Animated.timing(out, { toValue: 0, duration: 450, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+        t(mark, 1, 600),
+        Animated.parallel([t(line, 1, 500), Animated.sequence([Animated.delay(150), t(name, 1, 500)])]),
+        t(footer, 1, 450),
+        // Hold, then fade out just before onDone.
+        Animated.delay(BRAND_INTRO_MS - 600 - 650 - 450 - 300 - 50),
+        Animated.timing(out, { toValue: 0, duration: 300, easing: Easing.in(Easing.quad), useNativeDriver: true }),
       ]);
       anim.start();
     });

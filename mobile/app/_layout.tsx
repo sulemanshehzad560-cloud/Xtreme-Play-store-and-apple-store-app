@@ -24,22 +24,13 @@ import "@/lib/staff-location"; // registers the background task at startup
 
 // Hand over from the static native splash to the animated brand intro as soon as JS is up.
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
-/** After the brand intro, the mop scene shows for at least one full glide. */
-const MIN_LOADER_MS = 2800;
-
 function Gate() {
   const { ready, user } = useAuth();
-  const [phase, setPhase] = useState<"intro" | "loader" | "app">("intro");
+  const [introDone, setIntroDone] = useState(false);
 
   useEffect(() => {
     SplashScreen.hideAsync().catch(() => undefined);
   }, []);
-
-  useEffect(() => {
-    if (phase !== "loader") return;
-    const t = setTimeout(() => setPhase("app"), MIN_LOADER_MS);
-    return () => clearTimeout(t);
-  }, [phase]);
 
   useEffect(() => {
     if (user) registerPush().catch(() => undefined);
@@ -58,8 +49,9 @@ function Gate() {
     return () => sub.remove();
   }, [user?.id]);
 
-  if (phase === "intro") return <BrandIntro onDone={() => setPhase("loader")} />;
-  if (!ready || phase !== "app") return <Loading />;
+  // 3-second brand intro; the mop loader only appears if start-up is still loading after it.
+  if (!introDone) return <BrandIntro onDone={() => setIntroDone(true)} />;
+  if (!ready) return <Loading />;
   const isStaff = user?.role === "staff";
   return (
     <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
