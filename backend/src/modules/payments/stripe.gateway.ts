@@ -54,7 +54,9 @@ export class StripeGateway implements CardGateway {
         customer: input.customerId,
         description: input.description,
         metadata: { ...input.metadata, paymentId: input.paymentId },
-        automatic_payment_methods: { enabled: true },
+        // Cards only, which also covers Apple Pay and Google Pay in the payment sheet. Automatic
+        // methods fail with "no valid payment method types" until each one is switched on in Stripe.
+        allowed_payment_method_types: ["card"],
         setup_future_usage: "off_session",
       },
       { idempotencyKey: `payment:${input.paymentId}` },
