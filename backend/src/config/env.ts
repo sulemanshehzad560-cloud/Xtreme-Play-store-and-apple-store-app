@@ -106,7 +106,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     if (env.SMS_PROVIDER === "console") console.warn("Warning: test server. Sign-in codes are written to the log, not sent by SMS.");
     // Payments and personal data: the public address must be encrypted (HTTPS).
     if (!env.PUBLIC_URL.startsWith("https://")) throw new Error("PUBLIC_URL must start with https:// in production");
-    if (env.STRIPE_SECRET_KEY?.startsWith("sk_test") && env.PUBLIC_URL.includes("xtreme-fmgroup.com")) {
+    if (/^(sk|rk)_test_/.test(env.STRIPE_SECRET_KEY ?? "") && env.PUBLIC_URL.includes("xtreme-fmgroup.com")) {
       console.warn("Warning: Stripe TEST key in use on the production domain. Switch to the live key before taking real payments.");
     }
     if (env.STRIPE_SECRET_KEY && !env.STRIPE_WEBHOOK_SECRET) throw new Error("STRIPE_WEBHOOK_SECRET is required with STRIPE_SECRET_KEY");
