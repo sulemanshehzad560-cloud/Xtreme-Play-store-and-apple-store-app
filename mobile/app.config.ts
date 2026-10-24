@@ -1,3 +1,4 @@
+import { writeFileSync } from "node:fs";
 import type { ExpoConfig } from "expo/config";
 
 // Values that differ per environment come from EAS environment variables (eas.json / expo.dev).
@@ -7,6 +8,16 @@ const env = process.env;
 // These are identifiers, not secrets. Fill them in once the Expo project exists.
 const EXPO_OWNER: string | undefined = "suleman560s-team";
 const EXPO_PROJECT_ID: string | undefined = "08853eae-507e-439b-a003-f9e133053b99";
+
+/**
+ * GOOGLE_SERVICES_JSON (Firebase, for Android push) can be an EAS "file" variable (a path)
+ * or a plain variable holding the file's text, which is easier to set from a phone.
+ */
+function googleServicesFile(value: string | undefined): string | undefined {
+  if (!value?.trim().startsWith("{")) return value;
+  writeFileSync("./google-services.json", value.trim());
+  return "./google-services.json";
+}
 
 const config: ExpoConfig = {
   name: "Xtreme-Home Partner",
@@ -44,7 +55,7 @@ const config: ExpoConfig = {
       "FOREGROUND_SERVICE_LOCATION",
       "POST_NOTIFICATIONS",
     ],
-    googleServicesFile: env.GOOGLE_SERVICES_JSON,
+    googleServicesFile: googleServicesFile(env.GOOGLE_SERVICES_JSON),
   },
   plugins: [
     "expo-router",
