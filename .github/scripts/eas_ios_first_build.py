@@ -35,7 +35,9 @@ ANSWERS = [
 
 cmd = os.environ.get("EAS_CMD") or "npx eas-cli@latest build --platform ios --profile {} --auto-submit".format(sys.argv[1] if len(sys.argv) > 1 else "playtest")
 print("$", cmd, flush=True)
-child = pexpect.spawn(cmd, encoding="utf-8", timeout=3600, dimensions=(50, 200))
+# EAS switches to non-interactive mode whenever CI is set, as it is on GitHub Actions.
+env = {k: v for k, v in os.environ.items() if k not in ("CI", "GITHUB_ACTIONS")}
+child = pexpect.spawn(cmd, encoding="utf-8", timeout=3600, dimensions=(50, 200), env=env)
 child.logfile_read = sys.stdout
 patterns = [p for p, _ in ANSWERS] + [pexpect.EOF]
 while True:
