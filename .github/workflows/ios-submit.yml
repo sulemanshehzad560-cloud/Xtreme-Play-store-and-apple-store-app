@@ -1,0 +1,55 @@
+name: ios-submit
+# Uploads a finished iOS build from EAS to App Store Connect (TestFlight) using the
+# App Store Connect API key in the repository secrets. No Apple ID login needed.
+on:
+  workflow_dispatch:
+    inputs:
+      build_id:
+        description: "EAS build ID to upload (leave empty for the latest iOS build)"
+        default: ""
+      profile:
+        description: "Submit profile in eas.json"
+        default: playtest
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults: { run: { working-directory: mobile } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Check the App Store Connect API key with Apple
+        env:
+          ASC_API_KEY_P8: "${{ secrets.ASC_API_KEY_P8 }}"
+          ASC_KEY_ID: "${{ secrets.ASC_KEY_ID }}"
+          ASC_ISSUER_ID: "${{ secrets.ASC_ISSUER_ID }}"
+          KEY_OUT: "${{ runner.temp }}/AuthKey.p8"
+        run: node ../.github/scripts/check_asc_key.mjs
+      - name: Point the submit profile at the key
+        env:
+          ASC_KEY_ID: "${{ secrets.ASC_KEY_ID }}"
+          ASC_ISSUER_ID: "${{ secrets.ASC_ISSUER_ID }}"
+          PROFILE: "${{ github.event.inputs.profile || 'playtest' }}"
+        run: |
+          node -e '
+            const fs = require("fs");
+            const eas = JSON.parse(fs.readFileSync("eas.json", "utf8"));
+            const p = (eas.submit[process.env.PROFILE] ??= {});
+            p.ios = { ...(eas.submit.production?.ios ?? {}), ...(p.ios ?? {}),
+              ascApiKeyPath: process.env.RUNNER_TEMP + "/AuthKey.p8",
+              ascApiKeyId: process.env.ASC_KEY_ID.trim(),
+              ascApiKeyIssuerId: process.env.ASC_ISSUER_ID.trim() };
+            fs.writeFileSync("eas.json", JSON.stringify(eas, null, 2));
+          '
+      - uses: expo/expo-github-action@v8
+        with: { eas-version: latest, token: "${{ secrets.EXPO_TOKEN }}" }
+      - run: npm ci --legacy-peer-deps
+      - name: Upload to TestFlight
+        run: |
+          if [ -n "${{ github.event.inputs.build_id }}" ]; then which="--id ${{ github.event.inputs.build_id }}"; else which="--latest"; fi
+          eas submit --platform ios --profile "${{ github.event.inputs.profile || 'playtest' }}" $which --non-interactive --wait
+      - name: Remove key file
+        if: always()
+        run: rm -f "$RUNNER_TEMP/AuthKey.p8"
