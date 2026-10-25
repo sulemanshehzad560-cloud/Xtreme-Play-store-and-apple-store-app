@@ -1,0 +1,27 @@
+name: ios-add-tester
+# Invites someone as an internal iOS tester (App Store Connect invite, then TestFlight).
+# Run once to send the invite; after they accept it, run again to add them to TestFlight.
+on:
+  workflow_dispatch:
+    inputs:
+      email: { description: "Tester's Apple ID email", required: true }
+      first_name: { description: "First name", default: "" }
+      last_name: { description: "Last name", default: "" }
+
+jobs:
+  add:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Invite / add tester
+        env:
+          ASC_API_KEY_P8: "${{ secrets.ASC_API_KEY_P8 }}"
+          ASC_KEY_ID: "${{ secrets.ASC_KEY_ID }}"
+          ASC_ISSUER_ID: "${{ secrets.ASC_ISSUER_ID }}"
+          TESTER_EMAIL: "${{ github.event.inputs.email }}"
+          FIRST_NAME: "${{ github.event.inputs.first_name }}"
+          LAST_NAME: "${{ github.event.inputs.last_name }}"
+        run: node .github/scripts/asc_add_tester.mjs
