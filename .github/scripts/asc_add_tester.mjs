@@ -95,10 +95,13 @@ if (!latest) {
   console.log("::warning::No processed build yet; the tester will see the app once Apple finishes processing.");
   process.exit(0);
 }
-await asc("POST", `/v1/betaGroups/${group.id}/relationships/builds`, { data: [{ type: "builds", id: latest.id }] }).catch((e) => {
-  if (e.status !== 409) throw e;
-});
-console.log(`Build ${latest.attributes.version} is available to "${group.attributes.name}".`);
+// Internal groups cannot be given single builds; they see every build when this is on.
+if (!group.attributes.hasAccessToAllBuilds) {
+  await asc("PATCH", `/v1/betaGroups/${group.id}`, { data: { type: "betaGroups", id: group.id, attributes: { hasAccessToAllBuilds: true } } });
+  console.log(`"${group.attributes.name}" now gets every build automatically.`);
+} else {
+  console.log(`"${group.attributes.name}" already gets every build automatically.`);
+}
 const detail = await asc("GET", `/v1/builds/${latest.id}/buildBetaDetail`).catch(() => null);
 if (detail) console.log(`Internal testing state: ${detail.data.attributes.internalBuildState}`);
 
