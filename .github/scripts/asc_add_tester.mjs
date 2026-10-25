@@ -73,16 +73,39 @@ if (!isUser) {
   process.exit(0);
 }
 const existing = await asc("GET", `/v1/betaTesters?filter[email]=${q(email)}&filter[apps]=${APP_ID}&limit=1`);
+let testerId;
 if (existing.data.length) {
-  await asc("POST", `/v1/betaGroups/${group.id}/relationships/betaTesters`, { data: [{ type: "betaTesters", id: existing.data[0].id }] }).catch((e) => {
+  testerId = existing.data[0].id;
+  await asc("POST", `/v1/betaGroups/${group.id}/relationships/betaTesters`, { data: [{ type: "betaTesters", id: testerId }] }).catch((e) => {
     if (e.status !== 409) throw e;
   });
   console.log(`${email} is a tester in "${group.attributes.name}".`);
 } else {
-  await asc("POST", "/v1/betaTesters", {
+  testerId = (await asc("POST", "/v1/betaTesters", {
     data: { type: "betaTesters", attributes: { email, firstName, lastName }, relationships: { betaGroups: { data: [{ type: "betaGroups", id: group.id }] } } },
-  });
-  console.log(`Added ${email} to "${group.attributes.name}". Apple emails the TestFlight invitation.`);
+  })).data.id;
+  console.log(`Added ${email} to "${group.attributes.name}".`);
 }
-const builds = await asc("GET", `/v1/builds?filter[app]=${APP_ID}&sort=-uploadedDate&limit=3`);
+
+// 4. Make sure the newest usable build is in the group, so it shows in the TestFlight app.
+const builds = await asc("GET", `/v1/builds?filter[app]=${APP_ID}&sort=-uploadedDate&limit=5`);
 for (const b of builds.data) console.log(`Build ${b.attributes.version}: ${b.attributes.processingState}${b.attributes.expired ? " (expired)" : ""}`);
+const latest = builds.data.find((b) => b.attributes.processingState === "VALID" && !b.attributes.expired);
+if (!latest) {
+  console.log("::warning::No processed build yet; the tester will see the app once Apple finishes processing.");
+  process.exit(0);
+}
+await asc("POST", `/v1/betaGroups/${group.id}/relationships/builds`, { data: [{ type: "builds", id: latest.id }] }).catch((e) => {
+  if (e.status !== 409) throw e;
+});
+console.log(`Build ${latest.attributes.version} is available to "${group.attributes.name}".`);
+const detail = await asc("GET", `/v1/builds/${latest.id}/buildBetaDetail`).catch(() => null);
+if (detail) console.log(`Internal testing state: ${detail.data.attributes.internalBuildState}`);
+
+// 5. (Re)send the TestFlight email.
+await asc("POST", "/v1/betaTesterInvitations", {
+  data: { type: "betaTesterInvitations", relationships: { betaTester: { data: { type: "betaTesters", id: testerId } }, app: { data: { type: "apps", id: APP_ID } } } },
+}).then(
+  () => console.log(`Apple has emailed the TestFlight invitation to ${email}.`),
+  (e) => console.log(`::warning::Could not send the TestFlight email: ${e.message}`),
+);
