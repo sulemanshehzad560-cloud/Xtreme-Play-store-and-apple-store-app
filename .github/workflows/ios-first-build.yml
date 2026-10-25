@@ -30,19 +30,25 @@ jobs:
         run: |
           for v in EXPO_TOKEN P8 KEY ISSUER TEAM; do test -n "${!v}" || { echo "::error::Missing secret for $v"; exit 1; }; done
           grep -q "BEGIN PRIVATE KEY" <<< "$P8" || { echo "::error::ASC_API_KEY_P8 must be the whole .p8 text, including the BEGIN/END lines"; exit 1; }
+      - name: Check the App Store Connect API key with Apple
+        env:
+          ASC_API_KEY_P8: "${{ secrets.ASC_API_KEY_P8 }}"
+          ASC_KEY_ID: "${{ secrets.ASC_KEY_ID }}"
+          ASC_ISSUER_ID: "${{ secrets.ASC_ISSUER_ID }}"
+          KEY_OUT: "${{ runner.temp }}/AuthKey.p8"
+        run: node ../.github/scripts/check_asc_key.mjs
       - run: npm ci --legacy-peer-deps
       - run: pip install pexpect==4.9.0
       - name: Build and upload to TestFlight
         env:
           EXPO_TOKEN: "${{ secrets.EXPO_TOKEN }}"
-          ASC_API_KEY_P8: "${{ secrets.ASC_API_KEY_P8 }}"
           EXPO_ASC_KEY_ID: "${{ secrets.ASC_KEY_ID }}"
           EXPO_ASC_ISSUER_ID: "${{ secrets.ASC_ISSUER_ID }}"
           EXPO_APPLE_TEAM_ID: "${{ secrets.APPLE_TEAM_ID }}"
           EXPO_APPLE_TEAM_TYPE: COMPANY_OR_ORGANIZATION
         run: |
+          # Written by the key check above, with clean line breaks.
           export EXPO_ASC_API_KEY_PATH="$RUNNER_TEMP/AuthKey.p8"
-          printf '%s\n' "$ASC_API_KEY_P8" > "$EXPO_ASC_API_KEY_PATH"
           python3 ../.github/scripts/eas_ios_first_build.py "${{ github.event.inputs.profile || 'playtest' }}"
       - name: Remove key file
         if: always()
