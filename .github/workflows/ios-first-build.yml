@@ -1,0 +1,49 @@
+name: ios-first-build
+# One-time iOS set-up without a computer: creates the Apple distribution certificate and
+# provisioning profile on EAS using an App Store Connect API key, builds the app and
+# uploads it to TestFlight. After this, iOS builds work from store-builds.yml.
+# Repository secrets: EXPO_TOKEN, ASC_API_KEY_P8 (the .p8 file's text), ASC_KEY_ID,
+# ASC_ISSUER_ID, APPLE_TEAM_ID.
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: "playtest (test server) or production"
+        default: playtest
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    defaults: { run: { working-directory: mobile } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: mobile/package-lock.json }
+      - name: Check secrets
+        env:
+          EXPO_TOKEN: "${{ secrets.EXPO_TOKEN }}"
+          P8: "${{ secrets.ASC_API_KEY_P8 }}"
+          KEY: "${{ secrets.ASC_KEY_ID }}"
+          ISSUER: "${{ secrets.ASC_ISSUER_ID }}"
+          TEAM: "${{ secrets.APPLE_TEAM_ID }}"
+        run: |
+          for v in EXPO_TOKEN P8 KEY ISSUER TEAM; do test -n "${!v}" || { echo "::error::Missing secret for $v"; exit 1; }; done
+          grep -q "BEGIN PRIVATE KEY" <<< "$P8" || { echo "::error::ASC_API_KEY_P8 must be the whole .p8 text, including the BEGIN/END lines"; exit 1; }
+      - run: npm ci --legacy-peer-deps
+      - run: pip install pexpect==4.9.0
+      - name: Build and upload to TestFlight
+        env:
+          EXPO_TOKEN: "${{ secrets.EXPO_TOKEN }}"
+          ASC_API_KEY_P8: "${{ secrets.ASC_API_KEY_P8 }}"
+          EXPO_ASC_KEY_ID: "${{ secrets.ASC_KEY_ID }}"
+          EXPO_ASC_ISSUER_ID: "${{ secrets.ASC_ISSUER_ID }}"
+          EXPO_APPLE_TEAM_ID: "${{ secrets.APPLE_TEAM_ID }}"
+          EXPO_APPLE_TEAM_TYPE: COMPANY_OR_ORGANIZATION
+        run: |
+          export EXPO_ASC_API_KEY_PATH="$RUNNER_TEMP/AuthKey.p8"
+          printf '%s\n' "$ASC_API_KEY_P8" > "$EXPO_ASC_API_KEY_PATH"
+          python3 ../.github/scripts/eas_ios_first_build.py "${{ github.event.inputs.profile || 'playtest' }}"
+      - name: Remove key file
+        if: always()
+        run: rm -f "$RUNNER_TEMP/AuthKey.p8"
