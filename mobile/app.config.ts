@@ -43,6 +43,8 @@ const config: ExpoConfig = {
       NSLocationWhenInUseUsageDescription: "Xtreme-Home Partner uses your location to set the service address and to show your team arriving.",
       NSLocationAlwaysAndWhenInUseUsageDescription:
         "Staff only: Xtreme-Home Partner shares your location with the customer while you are on duty and travelling to a job.",
+      // Stripe's payment form can scan a card with the camera; Apple requires a reason for it.
+      NSCameraUsageDescription: "Xtreme-Home Partner uses the camera only if you choose to scan your payment card.",
       UIBackgroundModes: ["location", "remote-notification"],
       ITSAppUsesNonExemptEncryption: false,
     },
