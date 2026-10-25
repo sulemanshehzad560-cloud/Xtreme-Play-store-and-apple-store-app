@@ -105,6 +105,20 @@ if (!group.attributes.hasAccessToAllBuilds) {
 const detail = await asc("GET", `/v1/builds/${latest.id}/buildBetaDetail`).catch(() => null);
 if (detail) console.log(`Internal testing state: ${detail.data.attributes.internalBuildState}`);
 
+// Diagnostics: what Apple thinks this tester can see.
+const tester = (await asc("GET", `/v1/betaTesters/${testerId}`)).data.attributes;
+console.log(`Tester state: ${tester.state ?? "?"}, invite type: ${tester.inviteType ?? "?"}`);
+console.log(`Build ${latest.attributes.version} minimum iOS: ${latest.attributes.minOsVersion}`);
+const groupBuilds = await asc("GET", `/v1/betaGroups/${group.id}/builds?limit=10`).catch((e) => ({ data: [], error: e.message }));
+console.log(`Builds in "${group.attributes.name}": ${groupBuilds.data.map((b) => b.attributes.version).join(", ") || "none"}${groupBuilds.error ? " (" + groupBuilds.error + ")" : ""}`);
+const allGroups = await asc("GET", `/v1/betaTesters/${testerId}/betaGroups`).catch(() => ({ data: [] }));
+console.log(`Tester's groups: ${allGroups.data.map((g) => `${g.attributes.name}${g.attributes.isInternalGroup ? " (internal)" : ""}`).join(", ") || "none"}`);
+// Fallback: give this tester the build directly as well.
+await asc("POST", `/v1/builds/${latest.id}/relationships/individualTesters`, { data: [{ type: "betaTesters", id: testerId }] }).then(
+  () => console.log(`Build ${latest.attributes.version} assigned to ${email} directly.`),
+  (e) => console.log(`(Direct build assignment not possible: ${e.message})`),
+);
+
 // 5. (Re)send the TestFlight email.
 await asc("POST", "/v1/betaTesterInvitations", {
   data: { type: "betaTesterInvitations", relationships: { betaTester: { data: { type: "betaTesters", id: testerId } }, app: { data: { type: "apps", id: APP_ID } } } },
