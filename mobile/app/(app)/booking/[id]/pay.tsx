@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Text as RNText, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
+import Constants from "expo-constants";
 import * as WebBrowser from "expo-web-browser";
 import { initStripe, useStripe } from "@stripe/stripe-react-native";
 import { TamaraBadge } from "@/components/BrandIcons";
@@ -64,7 +65,7 @@ export default function Pay() {
       paymentIntentClientSecret: s.paymentIntentClientSecret,
       customerId: s.customerId,
       customerEphemeralKeySecret: s.customerEphemeralKeySecret,
-      applePay: { merchantCountryCode: s.merchantCountryCode },
+      ...(Constants.expoConfig?.extra?.applePay ? { applePay: { merchantCountryCode: s.merchantCountryCode } } : {}),
       googlePay: { merchantCountryCode: s.merchantCountryCode, currencyCode: s.currency, testEnv: s.publishableKey.startsWith("pk_test") },
       returnURL: "xtreme://stripe-redirect",
       appearance: { colors: { primary: colors.ink, background: colors.surface, componentBackground: colors.bg, primaryText: colors.text } },

@@ -19,6 +19,10 @@ function googleServicesFile(value: string | undefined): string | undefined {
   return "./google-services.json";
 }
 
+// Apple Pay needs the merchant ID linked to the App ID in Apple Developer and Stripe's
+// Apple Pay certificate. Until both are done, iPhone builds offer card payments only.
+const APPLE_PAY = env.APPLE_PAY_ENABLED === "true";
+
 const config: ExpoConfig = {
   name: "Xtreme-Home Partner",
   slug: "xtreme-home-partner",
@@ -85,7 +89,7 @@ const config: ExpoConfig = {
         autoLogAppEventsEnabled: false,
       },
     ],
-    ["@stripe/stripe-react-native", { merchantIdentifier: "merchant.ae.xtremefm.app", enableGooglePay: true }],
+    ["@stripe/stripe-react-native", { merchantIdentifier: APPLE_PAY ? "merchant.ae.xtremefm.app" : undefined, enableGooglePay: true }],
     ["expo-build-properties", { android: { minSdkVersion: 26 } }],
   ],
   experiments: { typedRoutes: true },
@@ -95,6 +99,7 @@ const config: ExpoConfig = {
     googleIosClientId: env.GOOGLE_IOS_CLIENT_ID,
     // Android needs a Google Maps key to draw maps; without one the app shows a drawn map instead.
     androidMapsEnabled: Boolean(env.GOOGLE_MAPS_ANDROID_KEY),
+    applePay: APPLE_PAY,
     eas: { projectId: env.EAS_PROJECT_ID ?? EXPO_PROJECT_ID },
   },
 };
