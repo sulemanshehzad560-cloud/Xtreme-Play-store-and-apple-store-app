@@ -33,7 +33,11 @@ export const pricingKind = pgEnum("pricing_kind", ["fixed", "inspection"]);
 /** How the customer intends to pay. "card" and "tamara" are paid in the app. */
 export const paymentMethod = pgEnum("payment_method", ["card", "tamara", "cash", "card_on_site", "bank_transfer"]);
 /** Roll-up on the booking, derived from its payments. */
-export const bookingPaymentStatus = pgEnum("booking_payment_status", ["unpaid", "pending", "paid", "partially_refunded", "refunded"]);
+// "included": a visit covered by a paid subscription, so nothing to pay.
+export const bookingPaymentStatus = pgEnum("booking_payment_status", ["unpaid", "pending", "paid", "partially_refunded", "refunded", "included"]);
+export const subscriptionInterval = pgEnum("subscription_interval", ["monthly", "yearly"]);
+/** pending_payment → active (paid period) → expired (period over, not renewed) / cancelled. */
+export const subscriptionStatus = pgEnum("subscription_status", ["pending_payment", "active", "expired", "cancelled"]);
 export const paymentProvider = pgEnum("payment_provider", ["stripe", "tamara"]);
 export const paymentStatus = pgEnum("payment_status", [
   "pending", // created, customer has not finished paying
@@ -268,6 +272,8 @@ export const bookings = pgTable(
     lng: doublePrecision("lng").notNull(),
     notes: text("notes"),
     idempotencyKey: text("idempotency_key"),
+    // Set for visits that belong to a subscription (the paid first visit of a period, or included visits).
+    subscriptionId: uuid("subscription_id").references(() => subscriptions.id),
     cancelReason: text("cancel_reason"),
     completedAt: ts("completed_at"),
     // Tax invoice emailed to the customer (once, after the job is completed and paid).
@@ -285,6 +291,56 @@ export const bookings = pgTable(
       .on(t.customerId, t.idempotencyKey)
       .where(sql`${t.idempotencyKey} is not null`),
   ],
+);
+
+/** Contract plans the office sells (e.g. "Home care: 4 regular cleans a month"). Prices are set by admins. */
+export const subscriptionPlans = pgTable("subscription_plans", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  description: text("description"),
+  serviceKey: text("service_key").notNull(),
+  visitsPerMonth: smallint("visits_per_month").notNull(),
+  /** Null when the plan is not sold monthly / yearly. */
+  priceMonthlyAed: integer("price_monthly_aed"),
+  priceYearlyAed: integer("price_yearly_aed"),
+  active: boolean("active").notNull().default(true),
+  sortOrder: smallint("sort_order").notNull().default(0),
+  createdAt: createdAt(),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+});
+
+export const subscriptions = pgTable(
+  "subscriptions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    reference: text("reference").notNull(),
+    customerId: uuid("customer_id")
+      .notNull()
+      .references(() => users.id),
+    planId: uuid("plan_id")
+      .notNull()
+      .references(() => subscriptionPlans.id),
+    // Snapshot of the plan when bought, so later price edits do not change a running contract.
+    planName: text("plan_name").notNull(),
+    serviceKey: text("service_key").notNull(),
+    interval: subscriptionInterval("interval").notNull(),
+    priceAed: integer("price_aed").notNull(),
+    visitsPerMonth: smallint("visits_per_month").notNull(),
+    propertyType: propertyType("property_type").notNull(),
+    propertySize: text("property_size").notNull(),
+    status: subscriptionStatus("status").notNull().default("pending_payment"),
+    currentPeriodStart: ts("current_period_start"),
+    currentPeriodEnd: ts("current_period_end"),
+    addressId: uuid("address_id").references(() => addresses.id, { onDelete: "set null" }),
+    address: jsonb("address").$type<AddressSnapshot>().notNull(),
+    lat: doublePrecision("lat").notNull(),
+    lng: doublePrecision("lng").notNull(),
+    notes: text("notes"),
+    cancelledAt: ts("cancelled_at"),
+    createdAt: createdAt(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("subscriptions_reference_unique").on(t.reference), index("subscriptions_customer_idx").on(t.customerId, t.createdAt)],
 );
 
 export const bookingAssignments = pgTable(
@@ -443,6 +499,8 @@ export type User = typeof users.$inferSelect;
 export type Payment = typeof payments.$inferSelect;
 export type PaymentStatus = (typeof paymentStatus.enumValues)[number];
 export type Booking = typeof bookings.$inferSelect;
+export type Subscription = typeof subscriptions.$inferSelect;
+export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
 export type StaffProfile = typeof staffProfiles.$inferSelect;
 export type BookingStatus = (typeof bookingStatus.enumValues)[number];
 export type StaffStatus = (typeof staffStatus.enumValues)[number];

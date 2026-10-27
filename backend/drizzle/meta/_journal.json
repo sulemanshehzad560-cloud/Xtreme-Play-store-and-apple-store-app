@@ -22,6 +22,13 @@
       "when": 1792672050308,
       "tag": "0002_staff_login_invoice_email",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793117989609,
+      "tag": "0003_subscriptions",
+      "breakpoints": true
     }
   ]
 }

@@ -21,6 +21,7 @@ import { StripeGateway } from "./modules/payments/stripe.gateway.js";
 import { TamaraGateway } from "./modules/payments/tamara.gateway.js";
 import { AdminService } from "./modules/admin/admin.service.js";
 import { StaffService } from "./modules/staff/staff.service.js";
+import { SubscriptionService } from "./modules/subscriptions/subscription.service.js";
 import { RealtimeHub } from "./modules/tracking/realtime.js";
 import { UserService } from "./modules/users/user.service.js";
 
@@ -46,6 +47,7 @@ export interface Container {
   admin: AdminService;
   mailer: Mailer;
   invoices: InvoiceMailer;
+  subscriptions: SubscriptionService;
 }
 
 export interface ContainerOverrides {
@@ -116,6 +118,8 @@ export function createContainer(env: Env, log: FastifyBaseLogger, overrides: Con
   bookings.onStatusChange(async (booking) => {
     if (booking.status === "completed") void invoices.sendIfDue(booking.id);
   });
+  const subscriptions = new SubscriptionService(db, bookings, notifications);
+  payments.onPaid((bookingId) => subscriptions.onBookingPaid(bookingId));
   payments.onPaid((bookingId) => invoices.sendIfDue(bookingId));
-  return { env, db, pool, hub, sms, push, verifiers, tokens, otp, auth, notifications, bookings, staff, users, card, bnpl, payments, admin, mailer, invoices };
+  return { env, db, pool, hub, sms, push, verifiers, tokens, otp, auth, notifications, bookings, staff, users, card, bnpl, payments, admin, mailer, invoices, subscriptions };
 }

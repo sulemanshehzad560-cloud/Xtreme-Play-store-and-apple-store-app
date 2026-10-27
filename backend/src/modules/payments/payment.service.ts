@@ -491,6 +491,7 @@ export class PaymentService {
     // Completed jobs stay payable: a price quoted on site is often paid once the work is done.
     if (booking.status === "cancelled") throw conflict("not_payable", "This booking is closed");
     if (booking.priceAed == null) throw conflict("awaiting_quote", "We'll send your price after the survey. You can pay then.");
+    if (booking.paymentStatus === "included" || booking.priceAed <= 0) throw conflict("nothing_to_pay", "This visit is included in your subscription");
     if (booking.paymentStatus === "paid" || booking.paymentStatus === "partially_refunded") {
       throw conflict("already_paid", "This booking is already paid");
     }

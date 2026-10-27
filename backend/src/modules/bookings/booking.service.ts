@@ -49,6 +49,11 @@ export interface CreateBookingInput {
   notes?: string | undefined;
   paymentMethod: "card" | "tamara" | "cash" | "card_on_site" | "bank_transfer";
   idempotencyKey?: string | undefined;
+  /**
+   * Set only by the subscriptions module (never from the request body): a visit that belongs
+   * to a subscription. priceAed > 0 is the period charge the customer pays; 0 is an included visit.
+   */
+  subscription?: { id: string; priceAed: number } | undefined;
 }
 
 export interface BookingRules {
@@ -104,8 +109,10 @@ export class BookingService {
     }
 
     const service = findService(input.serviceKey)!;
-    const priced = quote(input);
-    if ("error" in priced) throw badRequest("invalid_booking", priced.error);
+    const quoted = quote(input);
+    if ("error" in quoted) throw badRequest("invalid_booking", quoted.error);
+    const sub = input.subscription;
+    const priced = sub ? { priceAed: sub.priceAed, pricing: "fixed" as const } : quoted;
     this.assertSchedulable(input.scheduledAt);
 
     const place = await this.resolveAddress(customer.id, input);
@@ -132,6 +139,8 @@ export class BookingService {
             lng: place.lng,
             notes: input.notes ?? null,
             idempotencyKey: input.idempotencyKey ?? null,
+            subscriptionId: sub?.id ?? null,
+            ...(sub && sub.priceAed === 0 ? { paymentStatus: "included" as const } : {}),
           })
           .returning();
         await this.event(tx, created!.id, customer, "created", null, "requested", { priceAed: priced.priceAed });
@@ -541,7 +550,8 @@ export class BookingService {
     return map;
   }
 
-  private async resolveAddress(customerId: string, input: CreateBookingInput) {
+  /** Saved or new address for a customer, checked against the service area. */
+  async resolveAddress(customerId: string, input: Pick<CreateBookingInput, "addressId" | "address">) {
     if (input.addressId) {
       const [saved] = await this.db
         .select()
@@ -672,6 +682,7 @@ export class BookingService {
         paymentMethod: b.paymentMethod,
         paymentStatus: b.paymentStatus,
         invoiceSentAt: b.invoiceSentAt?.toISOString() ?? null,
+        subscriptionId: b.subscriptionId,
         canPay: b.priceAed != null && (b.paymentStatus === "unpaid" || b.paymentStatus === "pending") && b.status !== "cancelled",
         scheduledAt: b.scheduledAt.toISOString(),
         durationMinutes: b.durationMinutes,
