@@ -1,16 +1,19 @@
 import { useState } from "react";
-import { Alert, Linking, Platform, View } from "react-native";
+import { Alert, Linking, Platform, Text as RNText, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { Button, Card, Divider, ErrorText, InlineLoader, Input, Row, Screen, StatusPill, StickyFooter, Text } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { aed, SIZE_LABEL, when } from "@/lib/format";
-import { fonts } from "@/lib/theme";
+import { LineIcon } from "@/components/LineIcon";
+import { colors, fonts, space } from "@/lib/theme";
 import type { Booking, BookingStatus } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 
 /** The lead can quote on site once the team is on the way. */
 const CAN_QUOTE: BookingStatus[] = ["en_route", "arrived", "in_progress"];
+
+const FLOW: BookingStatus[] = ["assigned", "en_route", "arrived", "in_progress", "completed"];
 
 const NEXT: Partial<Record<BookingStatus, { to: BookingStatus; label: string }>> = {
   assigned: { to: "en_route", label: "Start driving" },
@@ -88,30 +91,43 @@ export default function Job() {
         ) : undefined
       }
     >
-      <Card>
-        <Row style={{ justifyContent: "space-between" }}>
-          <Text variant="heading" style={{ flex: 1 }}>
-            {job.service.name}
-          </Text>
+      <Card tone="ink">
+        <Row style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
+          <View style={{ flex: 1, gap: 2 }}>
+            <RNText style={{ color: colors.goldBright, fontFamily: fonts.bold, fontSize: 12, letterSpacing: 1 }}>{job.reference}</RNText>
+            <RNText style={{ color: "#fff", fontFamily: fonts.extrabold, fontSize: 22 }}>{job.service.name}</RNText>
+            <RNText style={{ color: "#CFC8BA", fontFamily: fonts.medium, fontSize: 13 }}>{when(job.scheduledAt)}</RNText>
+          </View>
           <StatusPill status={job.status} />
         </Row>
-        <Text variant="small">
-          {job.reference} · {when(job.scheduledAt)}
-        </Text>
+        <Row style={{ gap: 4 }}>
+          {FLOW.map((st, i) => (
+            <View key={st} style={{ flex: 1, height: 5, borderRadius: 3, backgroundColor: i <= FLOW.indexOf(job.status) ? colors.goldBright : "#3A3326" }} />
+          ))}
+        </Row>
+        <RNText style={{ color: "#A79E8D", fontFamily: fonts.medium, fontSize: 12 }}>
+          {job.property.type} · {SIZE_LABEL[job.property.size] ?? job.property.size}
+          {job.team.length > 1 ? ` · team of ${job.team.length}` : ""}
+        </RNText>
       </Card>
       <Card>
         <Text variant="label">CUSTOMER</Text>
-        <Text style={{ fontFamily: fonts.bold }}>{job.customer?.fullName ?? "Customer"}</Text>
-        {job.customer?.phone ? <Button title={`📞  Call ${job.customer.phone}`} variant="secondary" size="sm" onPress={() => Linking.openURL(`tel:${job.customer!.phone}`)} /> : null}
+        <Text style={{ fontFamily: fonts.bold, fontSize: 17 }}>{job.customer?.fullName ?? "Customer"}</Text>
+        {job.customer?.phone ? (
+          <Row style={{ gap: space(2) }}>
+            <Button title="Call" icon={<LineIcon name="call" size={18} />} variant="secondary" size="sm" style={{ flex: 1 }} onPress={() => Linking.openURL(`tel:${job.customer!.phone}`)} />
+            <Button title="WhatsApp" icon={<LineIcon name="chat" size={18} />} variant="secondary" size="sm" style={{ flex: 1 }} onPress={() => Linking.openURL(`https://wa.me/${job.customer!.phone!.replace(/[^0-9]/g, "")}`)} />
+          </Row>
+        ) : null}
       </Card>
       <Card>
         <Text variant="label">ADDRESS</Text>
-        <Text style={{ fontFamily: fonts.semibold }}>{[job.address.unit, job.address.building, job.address.area].filter(Boolean).join(", ")}</Text>
-        <Text variant="small">
-          {job.property.type} · {SIZE_LABEL[job.property.size] ?? job.property.size}
-        </Text>
+        <Row style={{ alignItems: "flex-start", gap: space(2) }}>
+          <LineIcon name="pin" size={20} color={colors.gold} />
+          <Text style={{ fontFamily: fonts.semibold, flex: 1 }}>{[job.address.unit, job.address.building, job.address.area].filter(Boolean).join(", ")}</Text>
+        </Row>
         {job.notes ? <Text variant="small">Notes: {job.notes}</Text> : null}
-        <Button title="🧭  Navigate" variant="secondary" size="sm" onPress={navigate} />
+        <Button title="Navigate" icon={<LineIcon name="globe" size={18} />} variant="secondary" size="sm" onPress={navigate} />
       </Card>
       {showQuote ? (
         <Card tone="gold">
@@ -131,7 +147,9 @@ export default function Job() {
         <Text variant="label">PAYMENT</Text>
         <Divider />
         <Text style={{ fontFamily: fonts.semibold }}>
-          {job.paymentStatus === "paid"
+          {job.paymentStatus === "included"
+            ? "Included in the customer's subscription"
+            : job.paymentStatus === "paid"
             ? `✅ Paid in the app · ${aed(job.priceAed)}`
             : job.priceAed == null
               ? "Price to be quoted on site"
