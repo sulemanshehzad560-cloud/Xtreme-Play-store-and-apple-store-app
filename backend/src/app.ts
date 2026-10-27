@@ -33,7 +33,26 @@ export async function buildApp(env: Env, overrides: ContainerOverrides = {}): Pr
   const app = Fastify({
     logger: {
       level: env.LOG_LEVEL,
-      redact: ["req.headers.authorization", "req.body.code", "req.body.refreshToken", "req.body.idToken", "req.body.accessToken"],
+      // Secrets and personal data never reach the logs.
+      redact: {
+        paths: [
+          "req.headers.authorization",
+          "req.headers.cookie",
+          'req.headers["stripe-signature"]',
+          "req.body.code",
+          "req.body.password",
+          "req.body.refreshToken",
+          "req.body.idToken",
+          "req.body.accessToken",
+          "req.body.phone",
+          "req.body.email",
+        ],
+        censor: "[redacted]",
+      },
+      serializers: {
+        // Keep query strings out of logs (Tamara sends its signed token in one).
+        req: (req: { method: string; url: string; id: string }) => ({ id: req.id, method: req.method, url: req.url.split("?")[0] }),
+      },
       ...(env.NODE_ENV === "development" ? { transport: { target: "pino-pretty" } } : {}),
     },
     trustProxy: true,
@@ -51,7 +70,27 @@ export async function buildApp(env: Env, overrides: ContainerOverrides = {}): Pr
   app.setSerializerCompiler(serializerCompiler);
   registerErrorHandler(app);
 
-  await app.register(helmet, { contentSecurityPolicy: false });
+  await app.register(helmet, {
+    // Strict policy for the dashboard and legal pages: only our own scripts, the map library
+    // and Google Fonts; no framing (clickjacking) and no plugins.
+    contentSecurityPolicy: {
+      useDefaults: false,
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "https://unpkg.com"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://unpkg.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        imgSrc: ["'self'", "data:", "https://*.tile.openstreetmap.org", "https://unpkg.com"],
+        connectSrc: ["'self'", "wss:", "ws:"],
+        frameAncestors: ["'none'"],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+      },
+    },
+    strictTransportSecurity: { maxAge: 31_536_000, includeSubDomains: true },
+    referrerPolicy: { policy: "no-referrer" },
+  });
   await app.register(cors, { origin: env.CORS_ORIGINS.length ? env.CORS_ORIGINS : env.NODE_ENV !== "production" });
   await app.register(rateLimit, { global: true, max: 300, timeWindow: "1 minute", allowList: () => env.NODE_ENV === "test" });
 
@@ -68,7 +107,8 @@ export async function buildApp(env: Env, overrides: ContainerOverrides = {}): Pr
     },
     transform: jsonSchemaTransform,
   });
-  await app.register(swaggerUi, { routePrefix: "/docs" });
+  // Interactive API docs only outside production: the live server does not advertise its API.
+  if (env.NODE_ENV !== "production") await app.register(swaggerUi, { routePrefix: "/docs" });
 
   // Office dispatch dashboard (static web app; every action goes through the admin API).
   await app.register(fastifyStatic, {
