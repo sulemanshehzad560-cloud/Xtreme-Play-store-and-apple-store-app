@@ -28,6 +28,7 @@ const PAYMENT_LABEL: Record<Booking["paymentStatus"], string> = {
   paid: "Paid",
   partially_refunded: "Partly refunded",
   refunded: "Refunded",
+  included: "Included in your subscription",
 };
 
 export default function BookingDetail() {
@@ -163,9 +164,9 @@ export default function BookingDetail() {
         <Row style={{ justifyContent: "space-between" }}>
           <View>
             <Text variant="small">Payment</Text>
-            <Text style={{ fontFamily: fonts.semibold, color: b.paymentStatus === "paid" ? colors.success : colors.text }}>{PAYMENT_LABEL[b.paymentStatus]}</Text>
+            <Text style={{ fontFamily: fonts.semibold, color: b.paymentStatus === "paid" || b.paymentStatus === "included" ? colors.success : colors.text }}>{PAYMENT_LABEL[b.paymentStatus]}</Text>
           </View>
-          <Text variant="price">{aed(b.priceAed)}</Text>
+          <Text variant="price">{b.paymentStatus === "included" ? "Included" : aed(b.priceAed)}</Text>
         </Row>
         {b.priceAed == null && b.status !== "cancelled" ? (
           <Text variant="small">Our team inspects on arrival and sends your quote here. You'll get a notification and can pay securely in the app.</Text>

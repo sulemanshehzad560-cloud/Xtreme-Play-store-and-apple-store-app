@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ScrollView, Text as RNText, View } from "react-native";
+import { Text as RNText, View } from "react-native";
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import * as Crypto from "expo-crypto";
 import { Button, Card, Chip, Divider, ErrorText, InlineLoader, Input, OptionCard, Row, Screen, StepBar, StickyFooter, Text } from "@/components/ui";
@@ -12,6 +12,7 @@ import { colors, fonts, radius, space } from "@/lib/theme";
 import type { Booking, Service } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { TamaraBadge } from "@/components/BrandIcons";
+import { SlotPicker, abuDhabiTime, hourLabel, nextDays } from "@/components/SlotPicker";
 
 type PropertyType = "apartment" | "villa" | "office";
 type Pay = "card" | "tamara";
@@ -31,28 +32,11 @@ interface Address {
 }
 
 const STEPS = ["Service details", "Date & time", "Address", "Review & pay"];
-const SLOTS: [string, number[]][] = [
-  ["Morning", [8, 9, 10, 11]],
-  ["Afternoon", [12, 13, 14, 15]],
-  ["Evening", [16, 17, 18]],
-];
 const PROPERTY: [PropertyType, string, string][] = [
   ["apartment", "Apartment", "🏢"],
   ["villa", "Villa", "🏡"],
   ["office", "Office", "🏬"],
 ];
-
-function nextDays(n: number) {
-  return Array.from({ length: n }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() + i + 1);
-    return d;
-  });
-}
-
-/** ISO time for `hour`:00 Abu Dhabi (UTC+4, no daylight saving). */
-const abuDhabiTime = (day: Date, hour: number) => new Date(Date.UTC(day.getFullYear(), day.getMonth(), day.getDate(), hour - 4)).toISOString();
-const hourLabel = (h: number) => `${h % 12 || 12}:00 ${h < 12 ? "AM" : "PM"}`;
 
 export default function BookService() {
   const { key } = useLocalSearchParams<{ key: string }>();
@@ -233,39 +217,13 @@ export default function BookService() {
           {!fixed ? (
             <Card>
               <Text style={{ fontFamily: fonts.bold }}>How pricing works</Text>
-              <Text variant="small">Our team confirms the price with you before the visit. You get it in the app and pay by card or Tamara. No gateway fees or hidden charges.</Text>
+              <Text variant="small">Our team inspects on arrival and sends your quote to the app. You pay securely by card or Tamara, right there. No gateway fees or hidden charges.</Text>
             </Card>
           ) : null}
         </>
       ) : null}
 
-      {step === 1 ? (
-        <>
-          <Text variant="heading">Pick a day</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -space(4) }} contentContainerStyle={{ gap: space(2), paddingHorizontal: space(4) }}>
-            {days.map((d) => (
-              <View key={d.toDateString()} style={{ width: 62 }}>
-                <Chip label={String(d.getDate())} sub={d.toLocaleDateString("en-GB", { weekday: "short" })} selected={d.toDateString() === day.toDateString()} onPress={() => setDay(d)} />
-              </View>
-            ))}
-          </ScrollView>
-          <Text variant="small">{day.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</Text>
-
-          {SLOTS.map(([label, hours]) => (
-            <View key={label} style={{ gap: space(2) }}>
-              <Text variant="label">{label}</Text>
-              <Row style={{ flexWrap: "wrap", gap: space(2) }}>
-                {hours.map((h) => (
-                  <View key={h} style={{ width: "31%" }}>
-                    <Chip label={hourLabel(h)} selected={hour === h} onPress={() => setHour(h)} />
-                  </View>
-                ))}
-              </Row>
-            </View>
-          ))}
-          <Text variant="small">Your team arrives within 30 minutes of the start time.</Text>
-        </>
-      ) : null}
+      {step === 1 ? <SlotPicker days={days} day={day} onDay={setDay} hour={hour} onHour={setHour} /> : null}
 
       {step === 2 ? (
         <>

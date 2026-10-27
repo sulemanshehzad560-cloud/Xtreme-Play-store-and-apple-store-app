@@ -33,6 +33,7 @@ const W = Dimensions.get("window").width;
 const SLIDE = W - space(8);
 
 const PROMOS = [
+  { title: "Monthly & yearly plans", body: "Regular visits by the same team. Pay once, book visits any time.", cta: "See plans", service: "plans", bg: colors.ink, fg: "#fff", ctaBg: colors.goldBright, ctaFg: colors.ink, Art: LivingRoomScene },
   { title: "Deep clean from AED 300", body: "Kitchen, bathrooms, inside cupboards. Every corner.", cta: "Book deep clean", service: "deep", bg: colors.ink, fg: "#fff", ctaBg: colors.goldBright, ctaFg: colors.ink, Art: LivingRoomScene },
   { title: "Pay in 4 with Tamara", body: "Split any booking into 4 interest-free payments.", cta: "Book now", service: "regular", bg: "#F3E3BC", fg: colors.ink, ctaBg: colors.ink, ctaFg: "#fff", Art: PayInFourScene },
   { title: "Fresh sofas & carpets", body: "Deep extraction lifts dust, stains and odours.", cta: "Book sofa cleaning", service: "sofa", bg: "#EFE6D6", fg: colors.ink, ctaBg: colors.ink, ctaFg: "#fff", Art: LivingRoomScene },
@@ -96,7 +97,7 @@ export default function Home() {
   const area = addresses.data?.find((a) => a.isDefault)?.area ?? addresses.data?.[0]?.area;
   const unread = inbox.data?.filter((n) => !n.read).length ?? 0;
   const first = user?.fullName?.split(" ")[0];
-  const open = (key: string) => router.push(`/service/${key}`);
+  const open = (key: string) => router.push(key === "plans" ? "/plans" : `/service/${key}`);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>

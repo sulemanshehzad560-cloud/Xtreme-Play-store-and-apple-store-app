@@ -79,6 +79,25 @@ const bookings: DemoBooking[] = [];
 const notifications: Json[] = [];
 let seq = 100230;
 
+// Subscriptions (demo): prices as the office would set them in the dashboard.
+const PLANS = [
+  { id: "plan-home", name: "Home care weekly", description: "A regular clean every week by the same team", service: { key: "regular", name: "Regular cleaning" }, visitsPerMonth: 4, priceMonthlyAed: 650, priceYearlyAed: 7000 },
+  { id: "plan-deep", name: "Deep clean monthly", description: "A full deep clean every month, priority time slots", service: { key: "deep", name: "Deep cleaning" }, visitsPerMonth: 1, priceMonthlyAed: 420, priceYearlyAed: 4600 },
+  { id: "plan-fabric", name: "Fresh fabrics", description: "Sofa and mattress care twice a month", service: { key: "sofa", name: "Sofa cleaning" }, visitsPerMonth: 2, priceMonthlyAed: null, priceYearlyAed: 3900 },
+];
+interface DemoSub {
+  id: string;
+  reference: string;
+  plan: (typeof PLANS)[number];
+  interval: "monthly" | "yearly";
+  priceAed: number;
+  address: Json;
+  bookingIds: string[];
+  chargeId: string;
+  cancelled: boolean;
+}
+const subs: DemoSub[] = [];
+
 const uid = () => Math.random().toString(36).slice(2, 10);
 const now = () => Date.now();
 
@@ -205,6 +224,38 @@ class DemoError extends Error {
   }
 }
 
+function subView(sub: DemoSub) {
+  const charge = bookings.find((b) => b.id === sub.chargeId);
+  const paid = charge?.paymentStatus === "paid";
+  const months = sub.interval === "monthly" ? 1 : 12;
+  const start = charge ? new Date(charge.createdMs) : new Date();
+  const end = new Date(start);
+  end.setMonth(end.getMonth() + months);
+  const visits = sub.bookingIds.map((id) => bookings.find((b) => b.id === id)).filter(Boolean).map((b) => view(b!));
+  const allowance = sub.plan.visitsPerMonth * months;
+  const used = visits.filter((v) => v.status !== "cancelled").length;
+  return {
+    id: sub.id,
+    reference: sub.reference,
+    planName: sub.plan.name,
+    service: sub.plan.service,
+    interval: sub.interval,
+    priceAed: sub.priceAed,
+    visitsPerPeriod: allowance,
+    visitsUsed: paid ? used : 0,
+    visitsLeft: paid ? Math.max(0, allowance - used) : 0,
+    status: sub.cancelled ? "cancelled" : paid ? "active" : "pending_payment",
+    currentPeriodStart: paid ? start.toISOString() : null,
+    currentPeriodEnd: paid ? end.toISOString() : null,
+    address: sub.address,
+    paymentBookingId: paid || sub.cancelled ? null : sub.chargeId,
+    canBookVisit: paid && used < allowance,
+    canRenew: paid,
+    canCancel: !paid && !sub.cancelled,
+    visits: visits.map((v) => ({ id: v.id, reference: v.reference, status: v.status, scheduledAt: v.scheduledAt, included: v.priceAed === 0 })),
+  };
+}
+
 // ------------------------------------------------------------------ router
 
 export async function demoApi(path: string, method: string, body: Json | undefined): Promise<unknown> {
@@ -238,6 +289,7 @@ export async function demoApi(path: string, method: string, body: Json | undefin
 
   // public
   if (route === "/company") return COMPANY;
+  if (route === "/subscription-plans") return PLANS;
   if (route === "/catalog/services") {
     return {
       currency: "AED",
@@ -296,6 +348,39 @@ export async function demoApi(path: string, method: string, body: Json | undefin
   }
   if (route === "/me/push-tokens") return undefined;
   if (route === "/me/notifications") return notifications;
+
+  // subscriptions
+  if (route === "/me/subscriptions") return subs.filter((x) => !x.cancelled).map(subView);
+  if (route === "/subscriptions" && method === "POST") {
+    const plan = PLANS.find((p) => p.id === body!.planId)!;
+    const priceAed = (body!.interval === "monthly" ? plan.priceMonthlyAed : plan.priceYearlyAed)!;
+    const charge = (await demoApi("/bookings", "POST", { ...body!, serviceKey: plan.service.key, scheduledAt: body!.firstVisitAt })) as Json;
+    const b = bookings.find((x) => x.id === charge.id)!;
+    b.priceAed = priceAed;
+    b.pricing = "fixed";
+    const sub: DemoSub = { id: uid(), reference: `SUB-${seq++}`, plan, interval: body!.interval, priceAed, address: b.address, bookingIds: [b.id], chargeId: b.id, cancelled: false };
+    b.subscriptionId = sub.id;
+    subs.unshift(sub);
+    return { subscription: subView(sub), paymentBookingId: b.id };
+  }
+  if (seg[0] === "subscriptions" && seg[1]) {
+    const sub = subs.find((x) => x.id === seg[1]);
+    if (!sub) throw new DemoError(404, "not_found", "Subscription not found");
+    if (seg[2] === "cancel") {
+      sub.cancelled = true;
+      return subView(sub);
+    }
+    if (seg[2] === "visits") {
+      const v = (await demoApi("/bookings", "POST", { serviceKey: sub.plan.service.key, propertyType: "apartment", propertySize: "2bhk", scheduledAt: body!.scheduledAt, address: sub.address })) as Json;
+      const b = bookings.find((x) => x.id === v.id)!;
+      b.priceAed = 0;
+      b.paymentStatus = "included";
+      b.subscriptionId = sub.id;
+      sub.bookingIds.push(b.id);
+      return view(b);
+    }
+    return subView(sub);
+  }
 
   // bookings
   if (route === "/bookings" && method === "POST") {

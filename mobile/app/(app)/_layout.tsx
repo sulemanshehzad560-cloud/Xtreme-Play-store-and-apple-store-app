@@ -22,6 +22,9 @@ export default function AppLayout() {
       <Stack.Screen name="phone" options={{ title: "Mobile number", presentation: "modal" }} />
       <Stack.Screen name="notifications" options={{ title: "Notifications" }} />
       <Stack.Screen name="addresses" options={{ title: "Saved addresses" }} />
+      <Stack.Screen name="plans" options={{ title: "Cleaning plans" }} />
+      <Stack.Screen name="subscribe/[planId]" options={{ title: "Subscribe" }} />
+      <Stack.Screen name="subscriptions" options={{ title: "My subscriptions" }} />
     </Stack>
   );
 }

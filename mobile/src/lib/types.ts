@@ -53,7 +53,8 @@ export interface Booking {
   priceAed: number | null;
   pricing: "fixed" | "inspection";
   paymentMethod: string;
-  paymentStatus: "unpaid" | "pending" | "paid" | "partially_refunded" | "refunded";
+  paymentStatus: "unpaid" | "pending" | "paid" | "partially_refunded" | "refunded" | "included";
+  subscriptionId?: string | null;
   canPay: boolean;
   canCancel: boolean;
   canReschedule: boolean;
@@ -85,4 +86,37 @@ export interface Company {
   website: string;
   address: { line1: string; city: string };
   serviceAreas: string[];
+}
+
+export type Interval = "monthly" | "yearly";
+
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  description: string | null;
+  service: { key: string; name: string };
+  visitsPerMonth: number;
+  priceMonthlyAed: number | null;
+  priceYearlyAed: number | null;
+}
+
+export interface Subscription {
+  id: string;
+  reference: string;
+  planName: string;
+  service: { key: string; name: string };
+  interval: Interval;
+  priceAed: number;
+  visitsPerPeriod: number;
+  visitsUsed: number;
+  visitsLeft: number;
+  status: "pending_payment" | "active" | "expired" | "cancelled";
+  currentPeriodStart: string | null;
+  currentPeriodEnd: string | null;
+  address: { label: string; area: string; building: string | null; unit: string | null };
+  paymentBookingId: string | null;
+  canBookVisit: boolean;
+  canRenew: boolean;
+  canCancel: boolean;
+  visits: { id: string; reference: string; status: BookingStatus; scheduledAt: string; included: boolean }[];
 }
