@@ -80,6 +80,15 @@ export const SERVICES: CatalogService[] = [
     highlights: ["Deep extraction lifts dust and allergens", "Stain and odour treatment", "Fabric-safe products for every material", "Fast drying"],
   },
   {
+    key: "mattress",
+    name: "Mattress cleaning",
+    nameAr: "تنظيف المراتب",
+    category: "cleaning",
+    pricing: { kind: "inspection" },
+    durationMinutes: 90,
+    highlights: ["Deep vacuum and steam sanitising", "Removes dust mites and allergens", "Stain and odour treatment", "Both sides, any size"],
+  },
+  {
     key: "carpet",
     name: "Carpet cleaning",
     nameAr: "تنظيف السجاد",
@@ -196,7 +205,7 @@ export function quote(input: {
   if (!sizes[input.propertySize]) return { error: `Size "${input.propertySize}" is not valid for ${input.propertyType}` };
 
   if (service.pricing.kind === "inspection") {
-    return { priceAed: null, pricing: "inspection", tier: null, label: "Our team confirms the price before your visit" };
+    return { priceAed: null, pricing: "inspection", tier: null, label: "Quoted by our team on site; pay securely in the app" };
   }
   const row = sizes[input.propertySize]!;
   let tier: PricingTier = service.pricing.tier;

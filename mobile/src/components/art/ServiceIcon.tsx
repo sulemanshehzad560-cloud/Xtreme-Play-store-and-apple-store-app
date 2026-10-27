@@ -82,6 +82,19 @@ function Glyph({ name }: { name: string }) {
           <Line x1={38} y1={37} x2={38} y2={42} />
         </G>
       );
+    case "mattress": // mattress with quilting and a sparkle
+      return (
+        <G {...common}>
+          <Rect x={5} y={18} width={38} height={14} rx={5} fill={CREAM} />
+          <Rect x={5} y={14} width={38} height={8} rx={4} fill={GOLD} />
+          <Line x1={14} y1={24} x2={14} y2={30} />
+          <Line x1={24} y1={24} x2={24} y2={30} />
+          <Line x1={34} y1={24} x2={34} y2={30} />
+          <Line x1={9} y1={32} x2={9} y2={37} />
+          <Line x1={39} y1={32} x2={39} y2={37} />
+          <Path d={sparkle(38, 7, 4)} fill={GOLD} strokeWidth={1.4} />
+        </G>
+      );
     case "ac": // AC unit with cool air
       return (
         <G {...common}>

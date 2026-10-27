@@ -29,6 +29,9 @@ export const ACTIVE: readonly BookingStatus[] = ["requested", "confirmed", "assi
 
 export const TERMINAL: readonly BookingStatus[] = ["completed", "cancelled"];
 
+/** When the lead can quote an inspection-priced job on site. */
+export const ON_SITE_QUOTE: readonly BookingStatus[] = ["en_route", "arrived", "in_progress"];
+
 /** What the assigned team's status becomes when their job changes status. */
 export function staffStatusFor(status: BookingStatus): StaffStatus | null {
   switch (status) {

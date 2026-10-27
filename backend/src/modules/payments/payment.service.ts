@@ -488,7 +488,8 @@ export class PaymentService {
   private async payable(bookingId: string, customer: Actor): Promise<Booking> {
     const booking = await this.bookingsSvc.loadFor(bookingId, customer);
     if (booking.customerId !== customer.id) throw notFound("Booking");
-    if (booking.status === "cancelled" || booking.status === "completed") throw conflict("not_payable", "This booking is closed");
+    // Completed jobs stay payable: a price quoted on site is often paid once the work is done.
+    if (booking.status === "cancelled") throw conflict("not_payable", "This booking is closed");
     if (booking.priceAed == null) throw conflict("awaiting_quote", "We'll send your price after the survey. You can pay then.");
     if (booking.paymentStatus === "paid" || booking.paymentStatus === "partially_refunded") {
       throw conflict("already_paid", "This booking is already paid");

@@ -3,6 +3,7 @@ export const SERVICE_SHORT: Record<string, string> = {
   regular: "Cleaning",
   deep: "Deep clean",
   sofa: "Sofa",
+  mattress: "Mattress",
   carpet: "Carpet",
   glass: "Glass & windows",
   kitchen: "Kitchen",

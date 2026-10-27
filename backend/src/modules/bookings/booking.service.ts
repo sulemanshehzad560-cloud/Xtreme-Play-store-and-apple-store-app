@@ -20,7 +20,7 @@ import { estimateEtaMinutes } from "../../lib/geo.js";
 import { findService, quote, serviceName, type PropertyType } from "../catalog/catalog.js";
 import type { NotificationService } from "../notifications/notification.service.js";
 import { rooms, type RealtimeHub } from "../tracking/realtime.js";
-import { ACTIVE, TERMINAL, TRACKABLE, canTransition, staffStatusFor } from "./state.js";
+import { ACTIVE, ON_SITE_QUOTE, TERMINAL, TRACKABLE, canTransition, staffStatusFor } from "./state.js";
 
 export interface Actor {
   id: string;
@@ -270,6 +270,9 @@ export class BookingService {
     if (actor.role === "staff" && !(await this.isLead(bookingId, actor.id))) {
       throw forbidden("Only the team lead can update this job");
     }
+    if (to === "completed" && booking.priceAed == null) {
+      throw conflict("quote_needed", "Enter the price for this job before marking it completed");
+    }
 
     const team = await this.teamIds(bookingId);
     const updated = await this.db.transaction(async (tx) => {
@@ -355,21 +358,30 @@ export class BookingService {
   }
 
   /** Office sets the price after a survey (for "price on inspection" services). */
-  async setPrice(bookingId: string, admin: Actor, priceAed: number) {
-    const booking = await this.loadFor(bookingId, admin);
+  /**
+   * Sets the price of a job, usually one quoted on inspection. Admins can price any open
+   * booking; staff only jobs they are assigned to, from the moment they are on the way
+   * (so the lead can quote on site). The customer is told straight away and can pay in the app.
+   */
+  async setPrice(bookingId: string, actor: Actor, priceAed: number, note?: string | undefined) {
+    const booking = await this.loadFor(bookingId, actor);
     if (TERMINAL.includes(booking.status)) throw conflict("not_editable", "Closed bookings cannot be repriced");
     if (booking.paymentStatus !== "unpaid") throw conflict("already_paid", "This booking has a payment. Refund it before changing the price.");
+    if (actor.role === "staff") {
+      if (!(await this.isLead(bookingId, actor.id))) throw forbidden("Only the team lead can quote this job", "not_lead");
+      if (!ON_SITE_QUOTE.includes(booking.status)) throw conflict("not_on_site", "You can quote once you are on the way or at the customer's home");
+    }
     const [updated] = await this.db.transaction(async (tx) => {
       const rows = await tx.update(bookings).set({ priceAed, updatedAt: new Date() }).where(eq(bookings.id, bookingId)).returning();
-      await this.event(tx, bookingId, admin, "priced", null, null, { priceAed, previous: booking.priceAed });
+      await this.event(tx, bookingId, actor, "priced", null, null, { priceAed, previous: booking.priceAed, by: actor.role, ...(note ? { note } : {}) });
       return rows;
     });
     void this.notifications.notify([booking.customerId], {
-      title: `Price for ${booking.reference}`,
-      body: `Your ${serviceName(booking.serviceKey).toLowerCase()} is quoted at ${COMPANY.currency} ${priceAed}.`,
-      data: { type: "booking", bookingId },
+      title: `Your quote for ${booking.reference}`,
+      body: `${serviceName(booking.serviceKey)}: ${COMPANY.currency} ${priceAed}${note ? ` (${note})` : ""}. Tap to review and pay securely in the app.`,
+      data: { type: "quote", bookingId },
     });
-    return this.view(updated!, admin);
+    return this.view(updated!, actor);
   }
 
   // ------------------------------------------------------------ tracking view
@@ -660,7 +672,7 @@ export class BookingService {
         paymentMethod: b.paymentMethod,
         paymentStatus: b.paymentStatus,
         invoiceSentAt: b.invoiceSentAt?.toISOString() ?? null,
-        canPay: b.priceAed != null && b.paymentStatus === "unpaid" && !TERMINAL.includes(b.status),
+        canPay: b.priceAed != null && (b.paymentStatus === "unpaid" || b.paymentStatus === "pending") && b.status !== "cancelled",
         scheduledAt: b.scheduledAt.toISOString(),
         durationMinutes: b.durationMinutes,
         address: { ...b.address, lat: b.lat, lng: b.lng },

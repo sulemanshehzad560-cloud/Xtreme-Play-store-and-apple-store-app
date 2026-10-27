@@ -62,4 +62,17 @@ export async function staffRoutes(app: FastifyInstance, c: Container) {
     },
     async (req) => c.bookings.transition(req.params.id, req.user, req.body.status, { reason: req.body.note }),
   );
+
+  r.post(
+    "/staff/jobs/:id/quote",
+    {
+      schema: {
+        tags,
+        summary: "Quote the price on site (team lead); the customer can pay at once",
+        params: uuidParam,
+        body: z.object({ priceAed: z.number().int().min(1).max(1_000_000), note: z.string().trim().max(200).optional() }),
+      },
+    },
+    async (req) => c.bookings.setPrice(req.params.id, req.user, req.body.priceAed, req.body.note),
+  );
 }

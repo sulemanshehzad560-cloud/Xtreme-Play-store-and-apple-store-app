@@ -167,6 +167,9 @@ export default function BookingDetail() {
           </View>
           <Text variant="price">{aed(b.priceAed)}</Text>
         </Row>
+        {b.priceAed == null && b.status !== "cancelled" ? (
+          <Text variant="small">Our team inspects on arrival and sends your quote here. You'll get a notification and can pay securely in the app.</Text>
+        ) : null}
         {b.canPay ? <Button title={`Pay ${b.priceAed != null ? aed(b.priceAed) : ""} now`} variant="gold" onPress={() => router.push(`/booking/${b.id}/pay`)} /> : null}
         {["paid", "partially_refunded", "refunded"].includes(b.paymentStatus) ? (
           <Button title="View tax invoice" variant="secondary" onPress={() => router.push(`/booking/${b.id}/invoice`)} />

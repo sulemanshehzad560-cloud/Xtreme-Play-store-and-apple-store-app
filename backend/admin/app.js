@@ -177,7 +177,9 @@ function card(b) {
   const actions = [];
   if (b.status === "requested") actions.push(`<button class="btn primary small" data-act="confirm" data-id="${b.id}">Confirm</button>`);
   if (["requested", "confirmed", "assigned"].includes(b.status)) actions.push(`<button class="btn gold small" data-act="assign" data-id="${b.id}">${b.team.length ? "Reassign" : "Assign team"}</button>`);
-  if (b.pricing === "inspection" && b.paymentStatus === "unpaid" && b.status !== "completed") actions.push(`<button class="btn outline small" data-act="price" data-id="${b.id}">Set price</button>`);
+  if (b.paymentStatus === "unpaid" && b.status !== "cancelled" && (b.pricing === "inspection" || b.priceAed == null)) {
+    actions.push(`<button class="btn ${b.priceAed == null ? "primary" : "outline"} small" data-act="price" data-id="${b.id}">${b.priceAed == null ? "Send quote" : "Change quote"}</button>`);
+  }
   if (b.status !== "completed") actions.push(`<button class="btn danger small" data-act="cancel" data-id="${b.id}">Cancel</button>`);
   if (b.paymentStatus === "paid" || b.paymentStatus === "partially_refunded") actions.push(`<button class="btn outline small" data-act="refund" data-id="${b.id}">Refund</button>`);
   if (b.status === "completed" && (b.paymentStatus === "paid" || b.paymentStatus === "partially_refunded"))
@@ -256,13 +258,15 @@ function assignTeam(b) {
 
 function setPrice(b) {
   modal(
-    `<h2>Set price · ${esc(b.reference)}</h2>
-     <p class="muted">${esc(b.service.name)} after survey. The customer is notified and can pay in the app.</p>
-     <label>Price (AED, VAT included)<input name="price" type="number" min="1" required /></label>
+    `<h2>${b.priceAed == null ? "Send quote" : "Change quote"} · ${esc(b.reference)}</h2>
+     <p class="muted">${esc(b.service.name)}. The customer is notified at once and can pay securely in the app. The team lead can also quote on site from the staff app.</p>
+     <label>Price (AED, VAT included)<input name="price" type="number" min="1" max="1000000" required value="${b.priceAed ?? ""}" /></label>
+     <label>What it covers (optional)<input name="note" maxlength="200" placeholder="e.g. king-size mattress, both sides" /></label>
      <div class="modal-actions"><button class="btn outline" value="cancel" formnovalidate>Close</button><button class="btn primary">Save price</button></div>`,
     async (form) => {
-      await api(`/admin/bookings/${b.id}/price`, { body: { priceAed: Number(form.get("price")) } });
-      toast("Price sent to customer");
+      const note = String(form.get("note") || "").trim();
+      await api(`/admin/bookings/${b.id}/price`, { body: { priceAed: Number(form.get("price")), ...(note ? { note } : {}) } });
+      toast("Quote sent to the customer");
     },
   );
 }

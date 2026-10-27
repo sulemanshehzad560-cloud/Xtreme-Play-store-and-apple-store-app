@@ -38,6 +38,7 @@ const SERVICES = [
   S("regular", "Regular cleaning", "regular", 180, ["Trained, vetted cleaners", "All materials and equipment included", "Weekly, bi-weekly or one-off visits", "Same trusted team every visit"]),
   S("deep", "Deep cleaning", "deep", 360, ["Kitchen degreasing and appliance exteriors", "Bathrooms descaled and disinfected", "Inside wardrobes, cabinets and windows", "Floors, skirting and upholstery vacuumed"]),
   S("sofa", "Sofa cleaning", null, 120, ["Deep extraction lifts dust and allergens", "Stain and odour treatment", "Fabric-safe products for every material", "Fast drying"]),
+  S("mattress", "Mattress cleaning", null, 90, ["Deep vacuum and steam sanitising", "Removes dust mites and allergens", "Stain and odour treatment", "Both sides, any size"]),
   S("carpet", "Carpet cleaning", null, 120, ["Hot-water extraction for carpets and rugs", "Spot and stain treatment", "Refreshes colour and pile", "Fast drying"]),
   S("glass", "Glass & window cleaning", null, 150, ["Windows, glass doors and mirrors", "Frames, tracks and sills wiped", "Streak-free finish", "Inside and reachable outside panes"]),
   S("kitchen", "Kitchen cleaning", null, 180, ["Grease removed from hob, hood and tiles", "Appliance exteriors and sink polished", "Counters and cabinet fronts wiped", "Floor scrubbed and disinfected"]),
@@ -125,7 +126,7 @@ function view(b: DemoBooking): Booking {
     trackable: ["en_route", "arrived", "in_progress"].includes(status),
     canCancel: ["requested", "confirmed", "assigned"].includes(status),
     canReschedule: ["requested", "confirmed"].includes(status),
-    canPay: b.priceAed != null && b.paymentStatus === "unpaid" && !terminal,
+    canPay: b.priceAed != null && b.paymentStatus === "unpaid" && status !== "cancelled",
     timeline,
     customer: { fullName: user?.fullName ?? "Customer", phone: user?.phone ?? null },
   };
@@ -249,7 +250,7 @@ export async function demoApi(path: string, method: string, body: Json | undefin
     const svc = SERVICES.find((s) => s.key === q.serviceKey);
     const row = PRICES[q.propertyType!]?.[q.propertySize!];
     if (!svc || !row) throw new DemoError(400, "invalid_quote", "Choose a property size");
-    if (svc.pricing.kind === "inspection") return { priceAed: null, pricing: "inspection", label: "Our team confirms the price before your visit" };
+    if (svc.pricing.kind === "inspection") return { priceAed: null, pricing: "inspection", label: "Quoted by our team on site; pay securely in the app" };
     const price = (svc.pricing as { tier: string }).tier === "regular" ? row[0] : q.plan === "amc" ? row[2] : row[1];
     return { priceAed: price, pricing: "fixed", label: `AED ${price} per visit` };
   }

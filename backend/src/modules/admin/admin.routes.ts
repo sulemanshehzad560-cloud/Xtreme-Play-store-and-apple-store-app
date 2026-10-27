@@ -91,8 +91,15 @@ export async function adminRoutes(app: FastifyInstance, c: Container) {
   );
   r.post(
     "/admin/bookings/:id/price",
-    { schema: { tags, summary: "Set the price after a survey", params: uuidParam, body: z.object({ priceAed: z.number().int().min(1).max(1_000_000) }) } },
-    async (req) => c.bookings.setPrice(req.params.id, req.user, req.body.priceAed),
+    {
+      schema: {
+        tags,
+        summary: "Set or change the price (e.g. a quote after inspection); the customer is notified and can pay",
+        params: uuidParam,
+        body: z.object({ priceAed: z.number().int().min(1).max(1_000_000), note: z.string().trim().max(200).optional() }),
+      },
+    },
+    async (req) => c.bookings.setPrice(req.params.id, req.user, req.body.priceAed, req.body.note),
   );
 
   r.post(
