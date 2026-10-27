@@ -11,7 +11,7 @@ interface Invoice {
   bookingReference: string;
   seller: { name: string; trn: string | null; address: string; phone: string; email: string };
   customer: { name: string | null; phone: string | null; email: string | null; address: string };
-  lines: { description: string; serviceDate: string; amountAed: number }[];
+  lines: { description: string; serviceDate: string | null; amountAed: number }[];
   vatRate: number;
   subtotalAed: number;
   vatAed: number;
@@ -90,7 +90,7 @@ export default function InvoiceScreen() {
                 <Row key={l.description} style={{ paddingHorizontal: space(3), paddingVertical: space(3), justifyContent: "space-between", alignItems: "flex-start" }}>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontFamily: fonts.semibold }}>{l.description}</Text>
-                    <Text variant="small">Service date {date(l.serviceDate)}</Text>
+                    {l.serviceDate ? <Text variant="small">Service date {date(l.serviceDate)}</Text> : null}
                   </View>
                   <Text style={{ fontFamily: fonts.semibold }}>{money(l.amountAed)}</Text>
                 </Row>

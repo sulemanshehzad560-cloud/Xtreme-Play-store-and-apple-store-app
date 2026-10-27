@@ -71,11 +71,11 @@ export default function Bookings() {
               <Text variant="small">{when(b.scheduledAt)}</Text>
               <Text variant="small">{b.reference}</Text>
             </View>
-            <StatusPill status={b.status} />
+            <StatusPill status={b.status} awaitingPayment={b.awaitingPayment} />
           </Row>
           <Row style={{ justifyContent: "space-between", borderTopWidth: 1, borderTopColor: colors.divider, paddingTop: space(3), marginTop: space(1) }}>
             <Text style={{ fontFamily: fonts.bold }}>
-              {aed(b.priceAed)}
+              {aed(b.amountDueAed ?? b.priceAed)}
               <Text variant="small"> · {b.paymentStatus === "paid" ? "Paid" : b.paymentStatus === "refunded" ? "Refunded" : b.priceAed == null ? "Survey" : "Unpaid"}</Text>
             </Text>
             {b.trackable ? (

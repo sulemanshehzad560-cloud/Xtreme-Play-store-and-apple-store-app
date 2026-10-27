@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { io as connect, type Socket } from "socket.io-client";
 import type { AddressInfo } from "node:net";
-import { ADDRESS, book, createTestApp, resetDb, signInAs, signInPhone, slot, type TestContext } from "./helpers.js";
+import { ADDRESS, book, bookPaid, createTestApp, resetDb, signInAs, signInPhone, slot, type TestContext } from "./helpers.js";
 
 let t: TestContext;
 let baseUrl: string;
@@ -97,9 +97,14 @@ describe("dispatch, job updates and live tracking", () => {
     const admin = await signInAs(t, "admin");
     const lead = await signInAs(t, "staff", "Ahmed");
     const helper = await signInAs(t, "staff", "Bilal");
-    const booking = await book(t, customer.auth);
+    const unpaid = await book(t, customer.auth);
+    expect(unpaid).toMatchObject({ status: "requested", awaitingPayment: true });
+    expect((await post(`/v1/admin/bookings/${unpaid.id}/confirm`, admin.auth)).json().error.code).toBe("payment_required");
+    expect((await post(`/v1/admin/bookings/${unpaid.id}/assign`, admin.auth, { staffIds: [lead.user.id] })).json().error.code).toBe("payment_required");
 
-    expect((await post(`/v1/admin/bookings/${booking.id}/confirm`, admin.auth)).json().status).toBe("confirmed");
+    // Paying confirms the booking by itself.
+    const booking = await bookPaid(t, customer.auth, { scheduledAt: slot(3) });
+    expect((await get(`/v1/bookings/${booking.id}`, customer.auth)).json()).toMatchObject({ status: "confirmed", paymentStatus: "paid", awaitingPayment: false });
     const assigned = await post(`/v1/admin/bookings/${booking.id}/assign`, admin.auth, { staffIds: [helper.user.id, lead.user.id], leadId: lead.user.id });
     expect(assigned.json().team.map((m: { displayName: string; isLead: boolean }) => [m.displayName, m.isLead])).toEqual([["Ahmed", true], ["Bilal", false]]);
 
@@ -144,7 +149,7 @@ describe("dispatch, job updates and live tracking", () => {
     // After completion: location hidden again, timeline recorded, review once.
     expect((await get(`/v1/bookings/${booking.id}/tracking`, customer.auth)).json().location).toBeNull();
     const detail = (await get(`/v1/bookings/${booking.id}`, customer.auth)).json();
-    expect(detail.timeline.map((e: { to: string | null }) => e.to)).toEqual(["requested", "confirmed", "assigned", "en_route", "arrived", "in_progress", "completed"]);
+    expect(detail.timeline.map((e: { to: string | null }) => e.to).filter(Boolean)).toEqual(["requested", "confirmed", "assigned", "en_route", "arrived", "in_progress", "completed"]);
     expect((await post(`/v1/bookings/${booking.id}/review`, customer.auth, { rating: 5, comment: "Great" })).statusCode).toBe(200);
     expect((await post(`/v1/bookings/${booking.id}/review`, customer.auth, { rating: 4 })).json().error.code).toBe("already_reviewed");
 
@@ -187,7 +192,7 @@ describe("dispatch, job updates and live tracking", () => {
   it("enforces who can do what", async () => {
     const customer = await signInPhone(t);
     const staff = await signInAs(t, "staff");
-    const booking = await book(t, customer.auth);
+    const booking = await bookPaid(t, customer.auth);
     expect((await post(`/v1/admin/bookings/${booking.id}/confirm`, customer.auth)).statusCode).toBe(403);
     expect((await post(`/v1/staff/jobs/${booking.id}/status`, staff.auth, { status: "en_route" })).statusCode).toBe(404);
     const admin = await signInAs(t, "admin");
@@ -207,7 +212,7 @@ describe("catalog ratings", () => {
     const customer = await signInPhone(t);
     const admin = await signInAs(t, "admin");
     const staff = await signInAs(t, "staff");
-    const booking = await book(t, customer.auth);
+    const booking = await bookPaid(t, customer.auth);
     await post(`/v1/admin/bookings/${booking.id}/assign`, admin.auth, { staffIds: [staff.user.id] });
     for (const status of ["en_route", "arrived", "in_progress", "completed"]) await post(`/v1/staff/jobs/${booking.id}/status`, staff.auth, { status });
     await post(`/v1/bookings/${booking.id}/review`, customer.auth, { rating: 4 });

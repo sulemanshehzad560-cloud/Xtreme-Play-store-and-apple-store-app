@@ -38,6 +38,7 @@ export const bookingPaymentStatus = pgEnum("booking_payment_status", ["unpaid", 
 export const subscriptionInterval = pgEnum("subscription_interval", ["monthly", "yearly"]);
 /** pending_payment → active (paid period) → expired (period over, not renewed) / cancelled. */
 export const subscriptionStatus = pgEnum("subscription_status", ["pending_payment", "active", "expired", "cancelled"]);
+export const promotionKind = pgEnum("promotion_kind", ["percent", "fixed"]);
 export const paymentProvider = pgEnum("payment_provider", ["stripe", "tamara"]);
 export const paymentStatus = pgEnum("payment_status", [
   "pending", // created, customer has not finished paying
@@ -274,6 +275,11 @@ export const bookings = pgTable(
     idempotencyKey: text("idempotency_key"),
     // Set for visits that belong to a subscription (the paid first visit of a period, or included visits).
     subscriptionId: uuid("subscription_id").references(() => subscriptions.id),
+    // Promotion applied to the price (the customer pays priceAed - discountAed). Recomputed until paid.
+    discountAed: integer("discount_aed").notNull().default(0),
+    promotionId: uuid("promotion_id").references(() => promotions.id, { onDelete: "set null" }),
+    /** Promo code the customer entered for this booking, if any. */
+    promoCode: text("promo_code"),
     cancelReason: text("cancel_reason"),
     completedAt: ts("completed_at"),
     // Tax invoice emailed to the customer (once, after the job is completed and paid).
@@ -291,6 +297,38 @@ export const bookings = pgTable(
       .on(t.customerId, t.idempotencyKey)
       .where(sql`${t.idempotencyKey} is not null`),
   ],
+);
+
+/**
+ * Discounts the office runs from the dashboard. Automatic ones (e.g. "15% off your first
+ * booking") apply by themselves; the rest need the customer to enter the code. A booking
+ * gets the single best discount it qualifies for.
+ */
+export const promotions = pgTable(
+  "promotions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    /** Upper-case code customers type. Null for automatic-only promotions. */
+    code: text("code"),
+    kind: promotionKind("kind").notNull(),
+    /** Percent (1–100) or AED off. */
+    value: integer("value").notNull(),
+    autoApply: boolean("auto_apply").notNull().default(false),
+    firstBookingOnly: boolean("first_booking_only").notNull().default(false),
+    minOrderAed: integer("min_order_aed"),
+    maxDiscountAed: integer("max_discount_aed"),
+    /** Limits the promotion to these services. Null = every service. */
+    serviceKeys: text("service_keys").array(),
+    startsAt: ts("starts_at"),
+    endsAt: ts("ends_at"),
+    usageLimit: integer("usage_limit"),
+    usedCount: integer("used_count").notNull().default(0),
+    active: boolean("active").notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("promotions_code_unique").on(t.code).where(sql`${t.code} is not null`)],
 );
 
 /** Contract plans the office sells (e.g. "Home care: 4 regular cleans a month"). Prices are set by admins. */
@@ -500,6 +538,7 @@ export type Payment = typeof payments.$inferSelect;
 export type PaymentStatus = (typeof paymentStatus.enumValues)[number];
 export type Booking = typeof bookings.$inferSelect;
 export type Subscription = typeof subscriptions.$inferSelect;
+export type Promotion = typeof promotions.$inferSelect;
 export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
 export type StaffProfile = typeof staffProfiles.$inferSelect;
 export type BookingStatus = (typeof bookingStatus.enumValues)[number];

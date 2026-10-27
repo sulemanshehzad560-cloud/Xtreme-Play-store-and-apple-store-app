@@ -55,6 +55,11 @@ export interface Booking {
   paymentMethod: string;
   paymentStatus: "unpaid" | "pending" | "paid" | "partially_refunded" | "refunded" | "included";
   subscriptionId?: string | null;
+  discountAed?: number;
+  amountDueAed?: number | null;
+  promoCode?: string | null;
+  /** Prepaid booking still waiting for payment (it is confirmed once paid). */
+  awaitingPayment?: boolean;
   canPay: boolean;
   canCancel: boolean;
   canReschedule: boolean;

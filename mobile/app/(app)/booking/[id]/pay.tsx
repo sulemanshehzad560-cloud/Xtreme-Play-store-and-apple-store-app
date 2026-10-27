@@ -5,14 +5,16 @@ import Constants from "expo-constants";
 import * as WebBrowser from "expo-web-browser";
 import { initStripe, useStripe } from "@stripe/stripe-react-native";
 import { TamaraBadge } from "@/components/BrandIcons";
-import { Button, Card, Divider, ErrorText, InlineLoader, Notice, OptionCard, Row, Screen, StickyFooter, Text } from "@/components/ui";
+import { Button, Card, ErrorText, InlineLoader, Input, Notice, OptionCard, Row, Screen, StickyFooter, Text } from "@/components/ui";
 import { api } from "@/lib/api";
 import { DEMO } from "@/lib/demo";
-import { aed } from "@/lib/format";
+import { aed, when } from "@/lib/format";
+import type { Booking } from "@/lib/types";
 import { colors, fonts, space } from "@/lib/theme";
 
 interface Options {
-  amount: { totalAed: number; vatAed: number };
+  amount: { priceAed: number; discountAed: number; totalAed: number; vatAed: number };
+  promoCode: string | null;
   methods: { method: "card" | "tamara"; available: boolean; label: string }[];
 }
 interface CardStart {
@@ -36,15 +38,54 @@ export default function Pay() {
   const { id, method: preselected } = useLocalSearchParams<{ id: string; method?: "card" | "tamara" }>();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [options, setOptions] = useState<Options | null>(null);
+  const [booking, setBooking] = useState<Booking | null>(null);
+  const [code, setCode] = useState("");
+  const [promoBusy, setPromoBusy] = useState(false);
+  const [promoNote, setPromoNote] = useState<{ text: string; ok: boolean } | null>(null);
   const [method, setMethod] = useState<"card" | "tamara">(preselected ?? "card");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    api<Options>(`/bookings/${id}/payment-options`)
-      .then(setOptions)
+  const load = () =>
+    Promise.all([api<Options>(`/bookings/${id}/payment-options`), api<Booking>(`/bookings/${id}`)])
+      .then(([o, b]) => {
+        setOptions(o);
+        setBooking(b);
+      })
       .catch((e) => setError(e.message));
+
+  useEffect(() => {
+    void load();
   }, [id]);
+
+  async function applyCode() {
+    if (!code.trim()) return;
+    setPromoBusy(true);
+    setPromoNote(null);
+    try {
+      const r = await api<Booking & { promoMessage?: string }>(`/bookings/${id}/promo`, { body: { code: code.trim() } });
+      setPromoNote({ text: r.promoMessage ?? "Code applied", ok: true });
+      setCode("");
+      await load();
+    } catch (e) {
+      setPromoNote({ text: e instanceof Error ? e.message : "This code could not be applied", ok: false });
+    } finally {
+      setPromoBusy(false);
+    }
+  }
+
+  async function removeCode() {
+    setPromoBusy(true);
+    setPromoNote(null);
+    try {
+      await api(`/bookings/${id}/promo`, { method: "DELETE" });
+      await load();
+    } catch (e) {
+      setPromoNote({ text: e instanceof Error ? e.message : "Could not remove the code", ok: false });
+    } finally {
+      setPromoBusy(false);
+    }
+  }
 
   async function finish(paymentId: string) {
     // The webhook usually lands first; syncing makes the result instant either way.
@@ -113,13 +154,67 @@ export default function Pay() {
       {!options && !error ? <InlineLoader label="Getting your payment options…" /> : null}
       {options ? (
         <>
-          <Card>
-            <Row style={{ justifyContent: "space-between" }}>
-              <Text variant="muted">Amount due</Text>
-              <Text variant="price">{aed(options.amount.totalAed)}</Text>
+          <Card tone="ink" style={{ gap: space(2.5) }}>
+            <View>
+              <Text style={{ color: colors.goldBright, fontFamily: fonts.bold, fontSize: 12, letterSpacing: 1.2 }}>ORDER SUMMARY</Text>
+              {booking ? (
+                <>
+                  <Text style={{ color: colors.onInk, fontFamily: fonts.extrabold, fontSize: 19, marginTop: space(1) }}>{booking.service.name}</Text>
+                  <Text style={{ color: "#BDB4A3", fontSize: 13.5, marginTop: 2 }}>
+                    {booking.reference} · {when(booking.scheduledAt)}
+                  </Text>
+                </>
+              ) : null}
+            </View>
+            <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.12)" }} />
+            <SummaryLine label="Service price" value={aed(options.amount.priceAed)} />
+            {options.amount.discountAed > 0 ? (
+              <SummaryLine label={options.promoCode ? `Discount (${options.promoCode})` : "Discount"} value={`– ${aed(options.amount.discountAed)}`} accent />
+            ) : null}
+            <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.12)" }} />
+            <Row style={{ justifyContent: "space-between", alignItems: "flex-end" }}>
+              <Text style={{ color: "#BDB4A3", fontFamily: fonts.semibold }}>Total to pay</Text>
+              <Text style={{ color: colors.onInk, fontFamily: fonts.extrabold, fontSize: 28 }}>{aed(options.amount.totalAed)}</Text>
             </Row>
-            <Divider />
-            <Text variant="small">No gateway fees or hidden charges</Text>
+            <Text style={{ color: "#BDB4A3", fontSize: 12.5 }}>VAT included · no gateway fees or hidden charges</Text>
+          </Card>
+
+          {options.amount.discountAed > 0 ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: space(2), backgroundColor: colors.successSoft, borderRadius: 14, padding: space(3) }}>
+              <RNText style={{ fontSize: 18 }}>🎉</RNText>
+              <Text style={{ flex: 1, color: colors.success, fontFamily: fonts.bold }}>You save {aed(options.amount.discountAed)} on this booking</Text>
+            </View>
+          ) : null}
+
+          <Card style={{ gap: space(2) }}>
+            <Text variant="subheading">Promo code</Text>
+            {options.promoCode ? (
+              <Row style={{ justifyContent: "space-between" }}>
+                <View style={{ backgroundColor: colors.goldSoft, borderRadius: 8, paddingHorizontal: space(2.5), paddingVertical: space(1) }}>
+                  <Text style={{ color: colors.gold, fontFamily: fonts.extrabold, letterSpacing: 1 }}>{options.promoCode}</Text>
+                </View>
+                <Text onPress={promoBusy ? undefined : removeCode} style={{ color: colors.danger, fontFamily: fonts.bold }}>
+                  Remove
+                </Text>
+              </Row>
+            ) : (
+              <Row style={{ gap: space(2), alignItems: "flex-end" }}>
+                <View style={{ flex: 1 }}>
+                  <Input
+                    value={code}
+                    onChangeText={(t) => setCode(t.toUpperCase())}
+                    placeholder="Enter code"
+                    autoCapitalize="characters"
+                    autoCorrect={false}
+                    maxLength={24}
+                    returnKeyType="done"
+                    onSubmitEditing={applyCode}
+                  />
+                </View>
+                <Button title="Apply" variant="secondary" size="sm" onPress={applyCode} loading={promoBusy} disabled={!code.trim()} style={{ minHeight: 50 }} />
+              </Row>
+            )}
+            {promoNote ? <Text style={{ color: promoNote.ok ? colors.success : colors.danger, fontFamily: fonts.semibold, fontSize: 13.5 }}>{promoNote.text}</Text> : null}
           </Card>
 
           <Text variant="heading">Choose how to pay</Text>
@@ -146,10 +241,20 @@ export default function Pay() {
               Payments are encrypted and processed securely.
             </Text>
           </View>
+          <Notice tone="info">Your booking is confirmed as soon as the payment goes through. Unpaid bookings are released after 1 hour.</Notice>
           {DEMO ? <Notice>Demo build: no real payment is taken. Tapping Pay marks the booking as paid.</Notice> : null}
         </>
       ) : null}
       <ErrorText error={error} />
     </Screen>
+  );
+}
+
+function SummaryLine({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+  return (
+    <Row style={{ justifyContent: "space-between" }}>
+      <Text style={{ color: accent ? colors.goldBright : "#D9D2C4", fontFamily: fonts.semibold }}>{label}</Text>
+      <Text style={{ color: accent ? colors.goldBright : colors.onInk, fontFamily: fonts.bold }}>{value}</Text>
+    </Row>
   );
 }

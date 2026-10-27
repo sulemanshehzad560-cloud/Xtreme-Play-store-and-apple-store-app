@@ -103,3 +103,24 @@ export async function book(t: TestContext, auth: Record<string, string>, body: R
   if (res.statusCode !== 201) throw new Error(`booking failed: ${res.body}`);
   return res.json() as { id: string; reference: string; priceAed: number | null; status: string };
 }
+
+/** Pays a booking by card through the fake gateway and the Stripe webhook. */
+export async function pay(t: TestContext, auth: Record<string, string>, bookingId: string) {
+  const res = await t.app.inject({ method: "POST", url: `/v1/bookings/${bookingId}/payments`, headers: auth, payload: { method: "card" } });
+  if (res.statusCode >= 300) throw new Error(`payment start failed: ${res.body}`);
+  const intentId = [...t.card.intents.keys()].at(-1)!;
+  t.card.succeed(intentId);
+  await t.app.inject({
+    method: "POST",
+    url: "/v1/webhooks/stripe",
+    headers: { "stripe-signature": "good", "content-type": "application/json" },
+    payload: JSON.stringify({ id: `evt_${intentId}`, type: "payment_intent.succeeded", intentId }),
+  });
+}
+
+/** A fixed-price booking, paid (and so confirmed automatically). */
+export async function bookPaid(t: TestContext, auth: Record<string, string>, body: Record<string, unknown> = {}) {
+  const booking = await book(t, auth, body);
+  await pay(t, auth, booking.id);
+  return booking;
+}

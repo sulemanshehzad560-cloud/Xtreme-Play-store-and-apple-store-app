@@ -29,6 +29,13 @@
       "when": 1793117989609,
       "tag": "0003_subscriptions",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793119280851,
+      "tag": "0004_promotions",
+      "breakpoints": true
     }
   ]
 }

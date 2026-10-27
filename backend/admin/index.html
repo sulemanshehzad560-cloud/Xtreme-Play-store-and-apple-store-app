@@ -37,6 +37,7 @@
         <button class="tab active" data-tab="board"><span>▦</span>Dispatch board</button>
         <button class="tab" data-tab="map"><span>◎</span>Live map</button>
         <button class="tab" data-tab="subscriptions"><span>↻</span>Subscriptions</button>
+        <button class="tab" data-tab="promotions"><span>%</span>Promotions</button>
         <button class="tab" data-tab="staff"><span>☺</span>Staff</button>
         <button class="tab" data-tab="customers"><span>◉</span>Customers</button>
         <button class="tab" data-tab="payments"><span>◈</span>Payments</button>
@@ -98,6 +99,13 @@
         </div>
       </div>
       <div id="tab-payments" class="tab-panel hidden"><table class="table" id="payments-table"></table></div>
+      <div id="tab-promotions" class="tab-panel hidden">
+        <section class="panel">
+          <div class="panel-head"><div><h2>Promotions</h2><p class="muted">Automatic offers apply by themselves (like a first-booking discount); code offers apply when the customer enters the code at checkout. Bookings are confirmed only after payment.</p></div>
+            <div class="actions-cell"><button class="btn gold" id="add-first-promo">+ First-booking offer</button><button class="btn primary" id="add-promo">+ New promotion</button></div></div>
+          <table class="table" id="promos-table"></table>
+        </section>
+      </div>
       <div id="tab-subscriptions" class="tab-panel hidden">
         <section class="panel">
           <div class="panel-head"><div><h2>Plans on sale</h2><p class="muted">Monthly and yearly cleaning contracts. Prices you set here are what customers pay in the app; running subscriptions keep the price they bought.</p></div><button class="btn primary" id="add-plan">+ New plan</button></div>

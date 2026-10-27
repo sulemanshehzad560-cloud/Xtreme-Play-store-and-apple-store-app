@@ -32,10 +32,13 @@ export async function adminRoutes(app: FastifyInstance, c: Container) {
       .select({ minor: sql<number>`coalesce(sum(${payments.amountMinor} - ${payments.refundedMinor}), 0)::int` })
       .from(payments)
       .where(and(gte(payments.capturedAt, start), lt(payments.capturedAt, end)));
-    const [awaiting] = await c.db.select({ n: count() }).from(bookings).where(eq(bookings.status, "requested"));
+    const unpaid = sql`${bookings.pricing} = 'fixed' and coalesce(${bookings.priceAed}, 0) > 0 and ${bookings.paymentStatus} in ('unpaid', 'pending')`;
+    const [awaiting] = await c.db.select({ n: count() }).from(bookings).where(and(eq(bookings.status, "requested"), sql`not (${unpaid})`));
+    const [awaitingPay] = await c.db.select({ n: count() }).from(bookings).where(and(eq(bookings.status, "requested"), unpaid));
     return {
       today: Object.fromEntries(byStatus.map((s) => [s.status, s.n])),
       awaitingConfirmation: awaiting?.n ?? 0,
+      awaitingPayment: awaitingPay?.n ?? 0,
       collectedTodayAed: (revenue?.minor ?? 0) / 100,
       staff: await c.staff.availability(),
     };

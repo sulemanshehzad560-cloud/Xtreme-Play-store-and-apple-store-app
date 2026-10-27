@@ -13,6 +13,7 @@ import { sql } from "drizzle-orm";
 import type { Env } from "./config/env.js";
 import { createContainer, type Container, type ContainerOverrides } from "./container.js";
 import { adminRoutes } from "./modules/admin/admin.routes.js";
+import { promotionRoutes } from "./modules/promotions/promotion.routes.js";
 import { subscriptionRoutes } from "./modules/subscriptions/subscription.routes.js";
 import { authRoutes } from "./modules/auth/auth.routes.js";
 import { bookingRoutes } from "./modules/bookings/booking.routes.js";
@@ -150,6 +151,7 @@ export async function buildApp(env: Env, overrides: ContainerOverrides = {}): Pr
       await v1.register(async (scoped) => staffRoutes(scoped, c));
       await v1.register(async (scoped) => adminRoutes(scoped, c));
       await v1.register(async (scoped) => subscriptionRoutes(scoped, c));
+      await v1.register(async (scoped) => promotionRoutes(scoped, c));
     },
     { prefix: "/v1" },
   );

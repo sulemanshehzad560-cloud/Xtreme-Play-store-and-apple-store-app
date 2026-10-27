@@ -76,8 +76,26 @@ type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0];
 
 export type StatusListener = (booking: Booking, from: BookingStatus, actor: Actor) => Promise<void>;
 
+/** Unpaid fixed-price bookings are cancelled after this long, freeing the slot. */
+export const UNPAID_HOLD_MINUTES = 60;
+
+/**
+ * Fixed-price bookings are paid in advance: they stay "requested" (out of dispatch and the
+ * staff app) until the payment is captured, which confirms them automatically. Survey-priced
+ * jobs are quoted on site and included subscription visits are prepaid, so neither waits.
+ */
+export function awaitingPayment(b: Pick<Booking, "pricing" | "priceAed" | "paymentStatus">) {
+  return b.pricing === "fixed" && (b.priceAed ?? 0) > 0 && (b.paymentStatus === "unpaid" || b.paymentStatus === "pending");
+}
+
 export class BookingService {
   private readonly listeners: StatusListener[] = [];
+  private readonly pricedListeners: ((bookingId: string) => Promise<unknown>)[] = [];
+
+  /** Runs when a booking gets (or changes) its price, e.g. to apply promotions. */
+  onPriced(listener: (bookingId: string) => Promise<unknown>) {
+    this.pricedListeners.push(listener);
+  }
 
   /** Lets other modules (payments) react to status changes without a circular import. */
   onStatusChange(listener: StatusListener) {
@@ -158,14 +176,56 @@ export class BookingService {
       throw err;
     }
 
+    if (booking.priceAed != null) booking = await this.reprice(booking);
+    const unpaid = awaitingPayment(booking);
     void this.notifications.notifyAdmins({
-      title: `New booking ${booking.reference}`,
+      title: unpaid ? `New booking ${booking.reference} (awaiting payment)` : `New booking ${booking.reference}`,
       body: `${service.name} · ${place.snapshot.area} · ${formatWhen(booking.scheduledAt)}`,
       data: { type: "booking", bookingId: booking.id },
     });
-    void this.alertStaffOfNewOrder(booking, service.name, place.snapshot.area);
+    // Staff hear about prepaid jobs only once the payment has confirmed them.
+    if (!unpaid) void this.alertStaffOfNewOrder(booking, service.name, place.snapshot.area);
     this.hub.emit(rooms.admins, "booking:created", { bookingId: booking.id });
     return this.view(booking, customer);
+  }
+
+  /** Re-applies pricing rules (promotions) and returns the fresh booking. */
+  async reprice(booking: Booking): Promise<Booking> {
+    for (const listener of this.pricedListeners) await listener(booking.id);
+    const [fresh] = await this.db.select().from(bookings).where(eq(bookings.id, booking.id)).limit(1);
+    return fresh ?? booking;
+  }
+
+  /** Called once a booking is paid: a prepaid booking waiting for payment is confirmed. */
+  async confirmPaid(bookingId: string) {
+    const [booking] = await this.db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
+    if (!booking || booking.status !== "requested") return;
+    await this.transition(bookingId, SYSTEM_ACTOR, "confirmed", { reason: "Paid in advance" }).catch((err: unknown) => {
+      if ((err as { code?: string }).code !== "booking_changed") throw err;
+    });
+    void this.alertStaffOfNewOrder(booking, serviceName(booking.serviceKey), booking.address.area);
+  }
+
+  /** Cancels prepaid bookings left unpaid past the hold, so the slot is released. */
+  async expireUnpaid(now = new Date()) {
+    const cutoff = new Date(now.getTime() - UNPAID_HOLD_MINUTES * 60_000);
+    const stale = await this.db
+      .select({ id: bookings.id })
+      .from(bookings)
+      .where(
+        and(
+          eq(bookings.status, "requested"),
+          eq(bookings.pricing, "fixed"),
+          eq(bookings.paymentStatus, "unpaid"),
+          sql`${bookings.priceAed} > 0`,
+          sql`(${bookings.createdAt} < ${cutoff} or ${bookings.scheduledAt} < ${now})`,
+        ),
+      )
+      .limit(200);
+    for (const b of stale) {
+      await this.transition(b.id, SYSTEM_ACTOR, "cancelled", { reason: "Not paid in time" }).catch(() => undefined);
+    }
+    return stale.length;
   }
 
   /** Push "new order" to every active staff member who has new-order alerts switched on. */
@@ -279,6 +339,9 @@ export class BookingService {
     if (actor.role === "staff" && !(await this.isLead(bookingId, actor.id))) {
       throw forbidden("Only the team lead can update this job");
     }
+    if (to === "confirmed" && actor.id !== SYSTEM_ACTOR.id && awaitingPayment(booking)) {
+      throw conflict("payment_required", "This booking is confirmed automatically once the customer pays");
+    }
     if (to === "completed" && booking.priceAed == null) {
       throw conflict("quote_needed", "Enter the price for this job before marking it completed");
     }
@@ -326,6 +389,7 @@ export class BookingService {
     if (!canTransition(booking.status, "assigned", admin.role)) {
       throw conflict("invalid_transition", `A booking that is ${label(booking.status)} cannot be assigned`);
     }
+    if (awaitingPayment(booking)) throw conflict("payment_required", "Assign a team once the customer has paid");
     const unique = [...new Set(staffIds)];
     const lead = leadId ?? unique[0]!;
     if (!unique.includes(lead)) throw badRequest("invalid_lead", "The team lead must be one of the assigned staff");
@@ -380,17 +444,19 @@ export class BookingService {
       if (!(await this.isLead(bookingId, actor.id))) throw forbidden("Only the team lead can quote this job", "not_lead");
       if (!ON_SITE_QUOTE.includes(booking.status)) throw conflict("not_on_site", "You can quote once you are on the way or at the customer's home");
     }
-    const [updated] = await this.db.transaction(async (tx) => {
+    const [first] = await this.db.transaction(async (tx) => {
       const rows = await tx.update(bookings).set({ priceAed, updatedAt: new Date() }).where(eq(bookings.id, bookingId)).returning();
       await this.event(tx, bookingId, actor, "priced", null, null, { priceAed, previous: booking.priceAed, by: actor.role, ...(note ? { note } : {}) });
       return rows;
     });
+    const updated = await this.reprice(first!);
+    const due = priceAed - updated.discountAed;
     void this.notifications.notify([booking.customerId], {
       title: `Your quote for ${booking.reference}`,
-      body: `${serviceName(booking.serviceKey)}: ${COMPANY.currency} ${priceAed}${note ? ` (${note})` : ""}. Tap to review and pay securely in the app.`,
+      body: `${serviceName(booking.serviceKey)}: ${COMPANY.currency} ${due}${updated.discountAed ? ` after your ${COMPANY.currency} ${updated.discountAed} discount` : ""}${note ? ` (${note})` : ""}. Tap to review and pay securely in the app.`,
       data: { type: "quote", bookingId },
     });
-    return this.view(updated!, actor);
+    return this.view(updated, actor);
   }
 
   // ------------------------------------------------------------ tracking view
@@ -683,7 +749,11 @@ export class BookingService {
         paymentStatus: b.paymentStatus,
         invoiceSentAt: b.invoiceSentAt?.toISOString() ?? null,
         subscriptionId: b.subscriptionId,
-        canPay: b.priceAed != null && (b.paymentStatus === "unpaid" || b.paymentStatus === "pending") && b.status !== "cancelled",
+        discountAed: b.discountAed,
+        amountDueAed: b.priceAed == null ? null : b.priceAed - b.discountAed,
+        promoCode: b.promoCode,
+        awaitingPayment: b.status === "requested" && awaitingPayment(b),
+        canPay: b.priceAed != null && b.priceAed > 0 && (b.paymentStatus === "unpaid" || b.paymentStatus === "pending") && b.status !== "cancelled",
         scheduledAt: b.scheduledAt.toISOString(),
         durationMinutes: b.durationMinutes,
         address: { ...b.address, lat: b.lat, lng: b.lng },

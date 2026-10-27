@@ -144,7 +144,8 @@ function renderKpis() {
   if (!d) return;
   const today = Object.values(d.today).reduce((a, b) => a + b, 0);
   $("#kpis").innerHTML = [
-    [`${d.awaitingConfirmation}`, "Waiting for confirmation", d.awaitingConfirmation > 0],
+    [`${d.awaitingConfirmation}`, "Survey jobs to confirm", d.awaitingConfirmation > 0],
+    [`${d.awaitingPayment ?? 0}`, "Awaiting customer payment"],
     [`${today}`, "Jobs scheduled today"],
     [`${(d.today.en_route ?? 0) + (d.today.arrived ?? 0) + (d.today.in_progress ?? 0)}`, "Jobs live now"],
     [`${d.staff.available} / ${d.staff.onDuty}`, "Teams available / on duty"],
@@ -154,20 +155,23 @@ function renderKpis() {
     .join("");
 }
 
+// Prepaid bookings sit in "Awaiting payment" (no dispatch) until the customer pays, which
+// confirms them automatically. Survey-priced jobs are confirmed by the office.
 const COLUMNS = [
-  ["New requests", ["requested"]],
-  ["Confirmed · needs team", ["confirmed"]],
-  ["Team assigned", ["assigned"]],
-  ["Live now", ["en_route", "arrived", "in_progress"]],
-  ["Completed", ["completed"]],
+  ["Awaiting payment", (b) => b.status === "requested" && b.awaitingPayment],
+  ["Survey requests", (b) => b.status === "requested" && !b.awaitingPayment],
+  ["Paid · needs team", (b) => b.status === "confirmed"],
+  ["Team assigned", (b) => b.status === "assigned"],
+  ["Live now", (b) => ["en_route", "arrived", "in_progress"].includes(b.status)],
+  ["Completed", (b) => b.status === "completed"],
 ];
 
 function renderBoard() {
   const term = $("#search").value.trim().toLowerCase();
   const match = (b) =>
     !term || [b.reference, b.customer?.fullName, b.customer?.phone, b.address.area, b.service.name].join(" ").toLowerCase().includes(term);
-  $("#board").innerHTML = COLUMNS.map(([title, statuses]) => {
-    const items = state.bookings.filter((b) => statuses.includes(b.status) && match(b));
+  $("#board").innerHTML = COLUMNS.map(([title, inColumn]) => {
+    const items = state.bookings.filter((b) => inColumn(b) && match(b));
     return `<div class="col"><h3>${esc(title)} <em>${items.length}</em></h3>${items.map(card).join("") || '<p class="muted" style="margin:6px">Nothing here</p>'}</div>`;
   }).join("");
 }
@@ -175,8 +179,8 @@ function renderBoard() {
 function card(b) {
   const team = b.team.map((m) => esc(m.displayName) + (m.isLead ? " ★" : "")).join(", ");
   const actions = [];
-  if (b.status === "requested") actions.push(`<button class="btn primary small" data-act="confirm" data-id="${b.id}">Confirm</button>`);
-  if (["requested", "confirmed", "assigned"].includes(b.status)) actions.push(`<button class="btn gold small" data-act="assign" data-id="${b.id}">${b.team.length ? "Reassign" : "Assign team"}</button>`);
+  if (b.status === "requested" && !b.awaitingPayment) actions.push(`<button class="btn primary small" data-act="confirm" data-id="${b.id}">Confirm</button>`);
+  if (["requested", "confirmed", "assigned"].includes(b.status) && !b.awaitingPayment) actions.push(`<button class="btn gold small" data-act="assign" data-id="${b.id}">${b.team.length ? "Reassign" : "Assign team"}</button>`);
   if (b.paymentStatus === "unpaid" && b.status !== "cancelled" && (b.pricing === "inspection" || b.priceAed == null)) {
     actions.push(`<button class="btn ${b.priceAed == null ? "primary" : "outline"} small" data-act="price" data-id="${b.id}">${b.priceAed == null ? "Send quote" : "Change quote"}</button>`);
   }
@@ -185,11 +189,13 @@ function card(b) {
   if (b.status === "completed" && (b.paymentStatus === "paid" || b.paymentStatus === "partially_refunded"))
     actions.push(`<button class="btn outline small" data-act="invoice" data-id="${b.id}">${b.invoiceSentAt ? "Resend invoice" : "Email invoice"}</button>`);
   return `<div class="card">
-    <div class="row"><span class="title">${esc(b.service.name)}</span><span class="pill ${b.status}">${LABEL[b.status]}</span></div>
+    <div class="row"><span class="title">${esc(b.service.name)}</span><span class="pill ${b.awaitingPayment ? "awaiting" : b.status}">${b.awaitingPayment ? "Awaiting payment" : LABEL[b.status]}</span></div>
     <div class="meta">${esc(b.reference)} · ${when(b.scheduledAt)}</div>
     <div class="meta">👤 ${esc(b.customer?.fullName ?? "Customer")} · <a href="tel:${esc(b.customer?.phone)}">${esc(b.customer?.phone ?? "")}</a></div>
     <div class="meta">📍 ${esc([b.address.unit, b.address.building, b.address.area].filter(Boolean).join(", "))}</div>
-    <div class="row"><span class="meta">${esc(b.property.type)} · ${esc(b.property.size)}</span><b>${aed(b.priceAed)}</b></div>
+    <div class="row"><span class="meta">${esc(b.property.type)} · ${esc(b.property.size)}</span><b>${b.discountAed ? `<s class="muted">${aed(b.priceAed)}</s> ${aed(b.amountDueAed)}` : aed(b.priceAed)}</b></div>
+    ${b.discountAed ? `<div class="meta">🏷️ Discount ${aed(b.discountAed)}${b.promoCode ? ` · code ${esc(b.promoCode)}` : ""}</div>` : ""}
+    ${b.awaitingPayment ? `<div class="meta warn">⏳ Waiting for the customer to pay. Unpaid bookings are released after 1 hour.</div>` : ""}
     <div class="row"><span class="pill ${b.paymentStatus}">${esc(b.paymentStatus.replace("_", " "))} · ${esc(b.paymentMethod.replace("_", " "))}</span></div>
     ${team ? `<div class="meta">🧑‍🔧 ${team}</div>` : ""}
     ${b.notes ? `<div class="meta">📝 ${esc(b.notes)}</div>` : ""}
@@ -680,6 +686,120 @@ $("#tab-subscriptions").addEventListener("click", (e) => {
   if (t.dataset.subCancel) cancelSub(subState.subs.find((s) => s.id === t.dataset.subCancel));
 });
 
+// ------------------------------------------------------------------ promotions
+
+const promoState = { list: [] };
+
+async function loadPromotions() {
+  const [list, services] = await Promise.all([
+    api("/admin/promotions"),
+    subState.services.length ? subState.services : api("/catalog/services").then((r) => r.services),
+  ]);
+  promoState.list = list;
+  subState.services = services;
+  renderPromotions();
+}
+
+function promoValue(p) {
+  return p.kind === "percent" ? `${p.value}% off${p.maxDiscountAed ? ` (up to ${aed(p.maxDiscountAed)})` : ""}` : `${aed(p.value)} off`;
+}
+
+function promoStatus(p) {
+  const now = Date.now();
+  if (!p.active) return ["Paused", "cancelled"];
+  if (p.endsAt && new Date(p.endsAt).getTime() <= now) return ["Ended", "cancelled"];
+  if (p.startsAt && new Date(p.startsAt).getTime() > now) return ["Scheduled", "assigned"];
+  if (p.usageLimit != null && p.usedCount >= p.usageLimit) return ["Used up", "cancelled"];
+  return ["Live", "completed"];
+}
+
+function renderPromotions() {
+  const name = (k) => subState.services.find((s) => s.key === k)?.name ?? k;
+  $("#promos-table").innerHTML = promoState.list.length
+    ? `<tr><th>Promotion</th><th>How it applies</th><th>Discount</th><th>Rules</th><th>Dates</th><th>Used</th><th>Status</th><th></th></tr>${promoState.list
+        .map((p) => {
+          const [label, cls] = promoStatus(p);
+          const rules = [p.firstBookingOnly ? "First booking only" : null, p.minOrderAed ? `Min ${aed(p.minOrderAed)}` : null, p.serviceKeys?.length ? p.serviceKeys.map(name).join(", ") : "All services"].filter(Boolean);
+          return `<tr><td><b>${esc(p.name)}</b></td>
+            <td>${p.autoApply ? '<span class="pill confirmed">Automatic</span>' : ""}${p.code ? ` <code class="code">${esc(p.code)}</code>` : ""}</td>
+            <td>${esc(promoValue(p))}</td><td class="meta">${esc(rules.join(" · "))}</td>
+            <td class="meta">${p.startsAt || p.endsAt ? `${day(p.startsAt)} → ${p.endsAt ? day(p.endsAt) : "no end"}` : "Always"}</td>
+            <td>${p.usedCount}${p.usageLimit ? ` / ${p.usageLimit}` : ""}</td>
+            <td><span class="pill ${cls}">${label}</span></td>
+            <td class="actions-cell"><button class="btn outline small" data-promo="${p.id}">Edit</button><button class="btn ${p.active ? "danger" : "gold"} small" data-promo-toggle="${p.id}">${p.active ? "Pause" : "Resume"}</button></td></tr>`;
+        })
+        .join("")}`
+    : `<tr><td class="empty">No promotions yet. Start with <b>+ First-booking offer</b>: it applies automatically to every new customer's first payment.</td></tr>`;
+}
+
+const dateInput = (iso) => (iso ? new Date(new Date(iso).getTime() + 4 * 3_600_000).toISOString().slice(0, 16) : "");
+const fromDateInput = (v) => (v ? new Date(`${v}:00+04:00`).toISOString() : null);
+
+function promoForm(p, preset = {}) {
+  const v = { name: "", code: "", kind: "percent", value: 10, autoApply: false, firstBookingOnly: false, active: true, serviceKeys: [], ...preset, ...(p ?? {}) };
+  const services = subState.services
+    .map((s) => `<label class="check"><input type="checkbox" name="svc" value="${esc(s.key)}" ${v.serviceKeys?.includes(s.key) ? "checked" : ""}/> ${esc(s.name)}</label>`)
+    .join("");
+  modal(
+    `<h2>${p ? "Edit promotion" : "New promotion"}</h2>
+     <p class="muted">Each booking gets the single best discount it qualifies for. Discounts come off the online payment and show on the tax invoice.</p>
+     <div class="form-grid">
+       <label class="full">Name (shown to customers)<input name="name" required minlength="2" maxlength="80" value="${esc(v.name)}" placeholder="e.g. 20% off your first booking" /></label>
+       <label>Type<select name="kind"><option value="percent" ${v.kind === "percent" ? "selected" : ""}>Percentage off</option><option value="fixed" ${v.kind === "fixed" ? "selected" : ""}>Fixed AED off</option></select></label>
+       <label>Value (% or AED)<input name="value" type="number" min="1" max="100000" required value="${v.value}" /></label>
+       <label>Applies<select name="autoApply"><option value="true" ${v.autoApply ? "selected" : ""}>Automatically</option><option value="false" ${!v.autoApply ? "selected" : ""}>Only with the code</option></select></label>
+       <label>Promo code (optional for automatic)<input name="code" maxlength="24" pattern="[A-Za-z0-9_\-]{3,24}" value="${esc(v.code ?? "")}" placeholder="e.g. WELCOME20" /></label>
+       <label>Who<select name="firstBookingOnly"><option value="true" ${v.firstBookingOnly ? "selected" : ""}>First booking only</option><option value="false" ${!v.firstBookingOnly ? "selected" : ""}>Any booking</option></select></label>
+       <label>Max discount AED (optional)<input name="maxDiscountAed" type="number" min="1" value="${v.maxDiscountAed ?? ""}" /></label>
+       <label>Min order AED (optional)<input name="minOrderAed" type="number" min="1" value="${v.minOrderAed ?? ""}" /></label>
+       <label>Total uses (optional)<input name="usageLimit" type="number" min="1" value="${v.usageLimit ?? ""}" /></label>
+       <label>Starts (optional)<input name="startsAt" type="datetime-local" value="${dateInput(v.startsAt)}" /></label>
+       <label>Ends (optional)<input name="endsAt" type="datetime-local" value="${dateInput(v.endsAt)}" /></label>
+       <label>Status<select name="active"><option value="true" ${v.active ? "selected" : ""}>Live</option><option value="false" ${!v.active ? "selected" : ""}>Paused</option></select></label>
+       <fieldset class="full services"><legend>Services (none ticked = all services)</legend>${services}</fieldset>
+     </div>
+     <div class="modal-actions"><button class="btn outline" value="cancel" formnovalidate>Close</button><button class="btn primary">${p ? "Save" : "Create promotion"}</button></div>`,
+    async (form) => {
+      const num = (k) => (form.get(k) ? Number(form.get(k)) : null);
+      const body = {
+        name: String(form.get("name")).trim(),
+        code: String(form.get("code") || "").trim() || null,
+        kind: form.get("kind"),
+        value: Number(form.get("value")),
+        autoApply: form.get("autoApply") === "true",
+        firstBookingOnly: form.get("firstBookingOnly") === "true",
+        maxDiscountAed: num("maxDiscountAed"),
+        minOrderAed: num("minOrderAed"),
+        usageLimit: num("usageLimit"),
+        startsAt: fromDateInput(form.get("startsAt")),
+        endsAt: fromDateInput(form.get("endsAt")),
+        serviceKeys: form.getAll("svc"),
+        active: form.get("active") === "true",
+      };
+      await api(p ? `/admin/promotions/${p.id}` : "/admin/promotions", { method: p ? "PATCH" : "POST", body });
+      toast(p ? "Promotion saved" : "Promotion created. It applies in the app straight away.");
+      await loadPromotions();
+    },
+  );
+}
+
+$("#add-promo").addEventListener("click", () => promoForm(null));
+$("#add-first-promo").addEventListener("click", () =>
+  promoForm(null, { name: "Welcome: 15% off your first booking", kind: "percent", value: 15, autoApply: true, firstBookingOnly: true, maxDiscountAed: 150 }),
+);
+$("#tab-promotions").addEventListener("click", (e) => {
+  const t = e.target.closest("button");
+  if (!t) return;
+  if (t.dataset.promo) promoForm(promoState.list.find((p) => p.id === t.dataset.promo));
+  if (t.dataset.promoToggle) {
+    const p = promoState.list.find((x) => x.id === t.dataset.promoToggle);
+    act(async () => {
+      await api(`/admin/promotions/${p.id}`, { method: "PATCH", body: { active: !p.active } });
+      await loadPromotions();
+    }, p.active ? "Promotion paused" : "Promotion live again");
+  }
+});
+
 // ------------------------------------------------------------------ map
 
 let map = null;
@@ -717,6 +837,7 @@ const PAGE_SUB = {
   board: "Live jobs, teams and payments",
   map: "Where every team is right now",
   subscriptions: "Monthly and yearly cleaning contracts",
+  promotions: "First-booking offers and promo codes",
   staff: "Team members, sign-in and alerts",
   customers: "Customer accounts",
   payments: "Card and Tamara payments and refunds",
@@ -732,6 +853,7 @@ document.querySelectorAll(".tab").forEach((t) =>
     $("#kpis").classList.toggle("hidden", t.dataset.tab !== "board");
     if (t.dataset.tab === "customers") loadCustomers().catch((e) => toast(e.message));
     if (t.dataset.tab === "subscriptions") loadSubscriptions().catch((e) => toast(e.message));
+    if (t.dataset.tab === "promotions") loadPromotions().catch((e) => toast(e.message));
     if (t.dataset.tab === "admin") loadAdminTab().catch((e) => toast(e.message));
     if (t.dataset.tab === "map") {
       if (!map) {

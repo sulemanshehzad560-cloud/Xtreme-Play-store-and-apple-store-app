@@ -69,16 +69,33 @@ export default function BookingDetail() {
 
   return (
     <Screen edges={["left", "right"]}>
-      {isNew || paid ? (
+      {paid || (isNew && !b.awaitingPayment) ? (
         <Card tone="gold" style={{ alignItems: "center", paddingVertical: space(5) }}>
           <SuccessBurst size={120} />
           <Text variant="title" style={{ fontSize: 22, textAlign: "center" }}>
-            {paid ? "Payment successful!" : "Booking confirmed!"}
+            {paid ? "Payment successful!" : b.status === "confirmed" ? "Booking confirmed!" : "Booking received!"}
           </Text>
           <Text variant="muted" style={{ textAlign: "center" }}>
             {b.reference} · {when(b.scheduledAt)}
-            {"\n"}We'll notify you at every step.
+            {"\n"}
+            {paid ? "Your booking is confirmed. We'll notify you at every step." : "We'll notify you at every step."}
           </Text>
+        </Card>
+      ) : null}
+
+      {b.awaitingPayment && b.canPay && !paid ? (
+        <Card tone="ink" style={{ gap: space(2.5) }}>
+          <Row style={{ gap: space(2) }}>
+            <RNText style={{ fontSize: 20 }}>⏳</RNText>
+            <Text style={{ color: colors.goldBright, fontFamily: fonts.extrabold, fontSize: 17, flex: 1 }}>Complete payment to confirm</Text>
+          </Row>
+          <Text style={{ color: "#D9D2C4", lineHeight: 20 }}>
+            Your slot is held for 1 hour. Once you pay, the booking is confirmed and we assign your team.
+          </Text>
+          {b.discountAed ? (
+            <Text style={{ color: colors.goldBright, fontFamily: fonts.bold }}>🎉 {aed(b.discountAed)} discount applied</Text>
+          ) : null}
+          <Button title={`Pay ${aed(b.amountDueAed ?? b.priceAed)} securely`} variant="gold" onPress={() => router.push(`/booking/${b.id}/pay`)} />
         </Card>
       ) : null}
 
@@ -92,7 +109,7 @@ export default function BookingDetail() {
             <Text variant="small">
               {when(b.scheduledAt)} · {b.reference}
             </Text>
-            <StatusPill status={b.status} />
+            <StatusPill status={b.status} awaitingPayment={b.awaitingPayment} />
           </View>
         </Row>
         {b.trackable ? <Button title="📍  Track your team live" onPress={() => router.push(`/booking/${b.id}/track`)} /> : null}
@@ -166,12 +183,20 @@ export default function BookingDetail() {
             <Text variant="small">Payment</Text>
             <Text style={{ fontFamily: fonts.semibold, color: b.paymentStatus === "paid" || b.paymentStatus === "included" ? colors.success : colors.text }}>{PAYMENT_LABEL[b.paymentStatus]}</Text>
           </View>
-          <Text variant="price">{b.paymentStatus === "included" ? "Included" : aed(b.priceAed)}</Text>
+          <View style={{ alignItems: "flex-end" }}>
+            {b.discountAed ? <Text variant="small" style={{ textDecorationLine: "line-through" }}>{aed(b.priceAed)}</Text> : null}
+            <Text variant="price">{b.paymentStatus === "included" ? "Included" : aed(b.amountDueAed ?? b.priceAed)}</Text>
+          </View>
         </Row>
+        {b.discountAed ? (
+          <Text variant="small" style={{ color: colors.success, fontFamily: fonts.semibold }}>
+            Discount {aed(b.discountAed)}{b.promoCode ? ` · code ${b.promoCode}` : ""}
+          </Text>
+        ) : null}
         {b.priceAed == null && b.status !== "cancelled" ? (
           <Text variant="small">Our team inspects on arrival and sends your quote here. You'll get a notification and can pay securely in the app.</Text>
         ) : null}
-        {b.canPay ? <Button title={`Pay ${b.priceAed != null ? aed(b.priceAed) : ""} now`} variant="gold" onPress={() => router.push(`/booking/${b.id}/pay`)} /> : null}
+        {b.canPay && !b.awaitingPayment ? <Button title={`Pay ${aed(b.amountDueAed ?? b.priceAed)} now`} variant="gold" onPress={() => router.push(`/booking/${b.id}/pay`)} /> : null}
         {["paid", "partially_refunded", "refunded"].includes(b.paymentStatus) ? (
           <Button title="View tax invoice" variant="secondary" onPress={() => router.push(`/booking/${b.id}/invoice`)} />
         ) : null}

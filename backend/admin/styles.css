@@ -75,7 +75,7 @@ main { padding: 18px 28px 48px; }
 .pill.sub-expired { background: #f1ece2; color: var(--muted); }
 .pill.sub-cancelled { background: #fce9e9; color: var(--danger); }
 
-.board { display: grid; grid-template-columns: repeat(5, minmax(240px, 1fr)); gap: 14px; overflow-x: auto; align-items: start; }
+.board { display: grid; grid-template-columns: repeat(6, minmax(240px, 1fr)); gap: 14px; overflow-x: auto; align-items: start; }
 .col { background: #efebe2; border-radius: 18px; padding: 12px; min-height: 200px; }
 .col h3 { margin: 4px 6px 12px; font-size: 14px; display: flex; justify-content: space-between; }
 .col h3 em { font-style: normal; background: var(--ink); color: var(--gold-bright); border-radius: 999px; padding: 1px 9px; font-size: 12px; }
@@ -118,7 +118,7 @@ dialog::backdrop { background: rgba(22,19,14,.45); }
   .sidebar nav { display: flex; overflow-x: auto; flex: 1 1 100%; order: 3; }
   .side-brand { border: 0; padding: 0; }
   .me { border: 0; padding: 0; margin-left: auto; }
-  .board { grid-template-columns: repeat(5, 260px); }
+  .board { grid-template-columns: repeat(6, 260px); }
   #tab-map { grid-template-columns: 1fr; }
   .pagebar, .kpis, main { padding-left: 16px; padding-right: 16px; }
 }
@@ -150,3 +150,12 @@ dialog.wide { width: min(720px, 96vw); }
 .signin-box { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 14px 16px; margin: 4px 0 14px; border-radius: 14px; background: #FBF1DA; border: 1px solid #E9D6A6; }
 .signin-box code { background: #16130E; color: #E2C170; padding: 2px 8px; border-radius: 6px; font-weight: 700; }
 .signin-box code.pw { font-size: 16px; letter-spacing: .5px; }
+
+/* Promotions */
+.meta.warn { color: var(--warn); font-weight: 600; }
+code.code { font-family: ui-monospace, Menlo, monospace; font-weight: 700; font-size: 12.5px; background: var(--gold-soft); color: var(--gold); padding: 3px 8px; border-radius: 7px; letter-spacing: .4px; }
+fieldset.services { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 6px 12px; }
+fieldset.services legend { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .3px; padding: 0 6px; }
+label.check { display: flex; align-items: center; gap: 8px; text-transform: none; letter-spacing: 0; font-size: 13.5px; font-weight: 600; color: var(--text); }
+label.check input { width: 16px; height: 16px; padding: 0; }
+.pill.awaiting { background: #fdf1dc; color: var(--warn); }

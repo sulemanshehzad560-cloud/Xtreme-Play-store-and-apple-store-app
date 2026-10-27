@@ -277,12 +277,13 @@ const STATUS_TONE: Record<BookingStatus, [string, string]> = {
   cancelled: [colors.danger, colors.dangerSoft],
 };
 
-export function StatusPill({ status }: { status: BookingStatus }) {
-  const [fg, bg] = STATUS_TONE[status];
+/** Booking status. A prepaid booking not yet paid reads "Awaiting payment" instead of "Requested". */
+export function StatusPill({ status, awaitingPayment }: { status: BookingStatus; awaitingPayment?: boolean }) {
+  const [fg, bg] = awaitingPayment ? [colors.warning, colors.warningSoft] : STATUS_TONE[status];
   return (
     <View style={[styles.pill, { backgroundColor: bg }]}>
       <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: fg }} />
-      <RNText style={{ color: fg, fontFamily: fonts.bold, fontSize: 12 }}>{STATUS_LABEL[status]}</RNText>
+      <RNText style={{ color: fg, fontFamily: fonts.bold, fontSize: 12 }}>{awaitingPayment ? "Awaiting payment" : STATUS_LABEL[status]}</RNText>
     </View>
   );
 }

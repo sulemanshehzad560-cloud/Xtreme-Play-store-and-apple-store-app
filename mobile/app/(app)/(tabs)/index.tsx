@@ -181,7 +181,7 @@ export default function Home() {
               <Card onPress={() => router.push(b.trackable ? `/booking/${b.id}/track` : `/booking/${b.id}`)} tone="gold">
                 <Row style={{ justifyContent: "space-between" }}>
                   <Text variant="label">YOUR UPCOMING BOOKING</Text>
-                  <StatusPill status={b.status} />
+                  <StatusPill status={b.status} awaitingPayment={b.awaitingPayment} />
                 </Row>
                 <Row>
                   <ServiceIcon name={b.service.key} size={48} />

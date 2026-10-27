@@ -6,7 +6,7 @@ export interface InvoiceData {
   bookingReference: string;
   seller: { name: string; trn: string | null; address: string; phone: string; email: string };
   customer: { name: string | null; phone: string | null; email: string | null; address: string };
-  lines: { description: string; serviceDate: string; amountAed: number }[];
+  lines: { description: string; serviceDate: string | null; amountAed: number }[];
   vatRate: number;
   subtotalAed: number;
   vatAed: number;
@@ -52,7 +52,7 @@ export function invoiceEmail(inv: InvoiceData, opts: { logoUrl: string }): Omit<
       ${inv.lines
         .map(
           (l) =>
-            `<tr><td style="padding:12px 14px;border-top:1px solid #F1ECE2"><div style="font-weight:700;font-size:14px">${esc(l.description)}</div><div style="color:#6F685C;font-size:12.5px">Service date ${day(l.serviceDate)}</div></td><td align="right" style="padding:12px 14px;border-top:1px solid #F1ECE2;font-weight:700;font-size:14px">${money(l.amountAed)}</td></tr>`,
+            `<tr><td style="padding:12px 14px;border-top:1px solid #F1ECE2"><div style="font-weight:700;font-size:14px">${esc(l.description)}</div>${l.serviceDate ? `<div style="color:#6F685C;font-size:12.5px">Service date ${day(l.serviceDate)}</div>` : ""}</td><td align="right" style="padding:12px 14px;border-top:1px solid #F1ECE2;font-weight:700;font-size:14px">${money(l.amountAed)}</td></tr>`,
         )
         .join("")}
     </table>

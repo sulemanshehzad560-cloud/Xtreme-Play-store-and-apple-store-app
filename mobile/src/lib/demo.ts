@@ -129,8 +129,18 @@ function teamFor(status: BookingStatus): TeamMember[] {
   return TEAM.map((m) => ({ ...m, status: st }));
 }
 
+/** Demo promotions: 15% off the first booking (up to AED 150), or code XTREME10 for 10%. */
+function demoDiscount(b: DemoBooking) {
+  if (b.priceAed == null || b.paymentStatus === "included") return 0;
+  if (b.paymentStatus !== "unpaid" && b.paymentStatus !== "pending") return (b as any).discountAed ?? 0;
+  const first = !bookings.some((x) => x.id !== b.id && x.paymentStatus === "paid") ? Math.min(150, Math.floor(b.priceAed * 0.15)) : 0;
+  const code = (b as any).promoCode === "XTREME10" ? Math.floor(b.priceAed * 0.1) : 0;
+  return Math.max(first, code);
+}
+
 function view(b: DemoBooking): Booking {
   const status = statusOf(b);
+  const discountAed = demoDiscount(b);
   const terminal = status === "completed" || status === "cancelled";
   const timeline = STEPS.filter(([at]) => (now() - b.createdMs) / 1000 >= at && !b.cancelled).map(([at, st]) => ({
     type: "status",
@@ -146,6 +156,10 @@ function view(b: DemoBooking): Booking {
     canCancel: ["requested", "confirmed", "assigned"].includes(status),
     canReschedule: ["requested", "confirmed"].includes(status),
     canPay: b.priceAed != null && b.paymentStatus === "unpaid" && status !== "cancelled",
+    discountAed,
+    amountDueAed: b.priceAed == null ? null : b.priceAed - discountAed,
+    promoCode: (b as any).promoCode ?? null,
+    awaitingPayment: status === "requested" && b.pricing === "fixed" && b.paymentStatus === "unpaid",
     timeline,
     customer: { fullName: user?.fullName ?? "Customer", phone: user?.phone ?? null },
   };
@@ -436,10 +450,22 @@ export async function demoApi(path: string, method: string, body: Json | undefin
       return view(b);
     }
     if (action === "tracking") return tracking(b);
+    if (action === "promo") {
+      if (method === "DELETE") (b as any).promoCode = null;
+      else {
+        const code = String(body!.code).trim().toUpperCase();
+        if (code !== "XTREME10") throw new DemoError(400, "invalid_code", "This code is not valid");
+        (b as any).promoCode = code;
+      }
+      return { ...view(b), promoMessage: "Code applied" };
+    }
     if (action === "payment-options") {
+      const discountAed = demoDiscount(b);
+      const total = b.priceAed! - discountAed;
       return {
         bookingId: b.id,
-        amount: { totalAed: b.priceAed, vatAed: Math.round((b.priceAed! - b.priceAed! / 1.05) * 100) / 100, vatIncluded: true, currency: "AED" },
+        promoCode: (b as any).promoCode ?? null,
+        amount: { priceAed: b.priceAed, discountAed, totalAed: total, vatAed: Math.round((total - total / 1.05) * 100) / 100, vatIncluded: true, currency: "AED" },
         methods: [
           { method: "card", available: true, label: "Credit / debit card, Apple Pay or Google Pay" },
           { method: "tamara", available: true, label: "Split into 4 interest-free payments" },
@@ -469,8 +495,10 @@ export async function demoApi(path: string, method: string, body: Json | undefin
   if (seg[0] === "payments" && seg[2] === "sync") {
     const b = bookings.find((x) => `pay_${x.id}` === seg[1]);
     if (b) {
+      const discount = demoDiscount(b);
+      (b as any).discountAed = discount;
       b.paymentStatus = "paid";
-      notify("Payment received", `Thank you! AED ${b.priceAed} received for ${b.reference}.`);
+      notify("Payment received", `Thank you! AED ${b.priceAed! - discount} received for ${b.reference}.`);
     }
     return { status: "captured" };
   }

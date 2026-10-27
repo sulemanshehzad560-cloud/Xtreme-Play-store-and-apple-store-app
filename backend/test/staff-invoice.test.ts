@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { book, createTestApp, nextPhone, resetDb, signInAs, signInPhone, type TestContext } from "./helpers.js";
+import { book, createTestApp, nextPhone, resetDb, signInAs, signInPhone, type TestContext, pay } from "./helpers.js";
 
 let t: TestContext;
 beforeAll(async () => {
@@ -81,6 +81,10 @@ describe("new order alerts", () => {
     await t.app.inject({ method: "PATCH", url: `/v1/admin/staff/${offStaff.user.id}`, headers: admin.auth, payload: { notifyNewOrders: false } });
     const customer = await signInPhone(t);
     const booking = await book(t, customer.auth);
+    // Nothing goes to staff until the booking is paid (and so confirmed).
+    await new Promise((r) => setTimeout(r, 150));
+    expect((await get("/v1/me/notifications", onStaff.auth)).json().some((n: { title: string }) => n.title.startsWith("New order"))).toBe(false);
+    await pay(t, customer.auth, booking.id);
     await waitFor(async () => (await get("/v1/me/notifications", onStaff.auth)).json().some((n: { title: string }) => n.title === `New order ${booking.reference}`));
     const offInbox = (await get("/v1/me/notifications", offStaff.auth)).json();
     expect(offInbox.some((n: { title: string }) => n.title.startsWith("New order"))).toBe(false);
