@@ -4,7 +4,7 @@
 
 const $ = (sel) => document.querySelector(sel);
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-const aed = (n) => (n == null ? "Survey" : `AED ${Number(n).toLocaleString("en-US")}`);
+const aed = (n) => (n == null ? "To quote" : `AED ${Number(n).toLocaleString("en-US")}`);
 const when = (iso) =>
   new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Dubai" }).format(new Date(iso));
 const LABEL = { requested: "Requested", confirmed: "Confirmed", assigned: "Assigned", en_route: "On the way", arrived: "Arrived", in_progress: "In progress", completed: "Completed", cancelled: "Cancelled" };
@@ -563,6 +563,123 @@ function renderPayments() {
     .join("")}`;
 }
 
+// ------------------------------------------------------------------ subscriptions
+
+const SUB_LABEL = { pending_payment: "Awaiting payment", active: "Active", expired: "Expired", cancelled: "Cancelled" };
+const subState = { plans: [], subs: [], services: [] };
+const day = (iso) => (iso ? new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Dubai" }).format(new Date(iso)) : "—");
+
+async function loadSubscriptions() {
+  const status = $("#sub-filter").value;
+  const [plans, subs, services] = await Promise.all([
+    api("/admin/subscription-plans"),
+    api(`/admin/subscriptions?limit=200${status ? `&status=${status}` : ""}`),
+    subState.services.length ? subState.services : api("/catalog/services").then((r) => r.services),
+  ]);
+  Object.assign(subState, { plans, subs, services });
+  renderSubscriptions();
+}
+
+function renderSubscriptions() {
+  $("#plans-table").innerHTML = subState.plans.length
+    ? `<tr><th>Plan</th><th>Service</th><th>Visits / month</th><th>Monthly</th><th>Yearly</th><th>Status</th><th></th></tr>${subState.plans
+        .map(
+          (p) => `<tr><td><b>${esc(p.name)}</b>${p.description ? `<div class="meta">${esc(p.description)}</div>` : ""}</td><td>${esc(p.service.name)}</td><td>${p.visitsPerMonth}</td>
+          <td>${p.priceMonthlyAed ? aed(p.priceMonthlyAed) : "—"}</td><td>${p.priceYearlyAed ? aed(p.priceYearlyAed) : "—"}</td>
+          <td><span class="pill ${p.active ? "completed" : "cancelled"}">${p.active ? "On sale" : "Hidden"}</span></td>
+          <td><button class="btn outline small" data-plan="${p.id}">Edit</button></td></tr>`,
+        )
+        .join("")}`
+    : `<tr><td class="empty">No plans yet. Create one with <b>+ New plan</b>; it appears in the app straight away.</td></tr>`;
+  $("#subs-table").innerHTML = subState.subs.length
+    ? `<tr><th>Reference</th><th>Customer</th><th>Plan</th><th>Price</th><th>Period</th><th>Visits</th><th>Status</th><th></th></tr>${subState.subs
+        .map(
+          (s) => `<tr><td><b>${esc(s.reference)}</b></td><td>${esc(s.customer?.fullName ?? "Customer")}<div class="meta"><a href="tel:${esc(s.customer?.phone)}">${esc(s.customer?.phone ?? "")}</a> · ${esc(s.address.area)}</div></td>
+          <td>${esc(s.planName)}<div class="meta">${esc(s.service.name)} · ${esc(s.interval)}</div></td><td>${aed(s.priceAed)}</td>
+          <td>${s.currentPeriodStart ? `${day(s.currentPeriodStart)} → ${day(s.currentPeriodEnd)}` : "—"}</td>
+          <td>${s.visitsUsed} / ${s.visitsPerPeriod}</td><td><span class="pill sub-${s.status}">${SUB_LABEL[s.status]}</span></td>
+          <td class="actions-cell">${s.canBookVisit ? `<button class="btn gold small" data-sub-visit="${s.id}">Book visit</button>` : ""}${s.canCancel ? `<button class="btn danger small" data-sub-cancel="${s.id}">Cancel</button>` : ""}</td></tr>`,
+        )
+        .join("")}`
+    : `<tr><td class="empty">No subscribers in this list yet.</td></tr>`;
+}
+
+function planForm(plan) {
+  const services = subState.services.map((s) => `<option value="${esc(s.key)}" ${plan?.service.key === s.key ? "selected" : ""}>${esc(s.name)}</option>`).join("");
+  modal(
+    `<h2>${plan ? "Edit plan" : "New subscription plan"}</h2>
+     <p class="muted">Leave a price empty if the plan is not sold that way. Prices include VAT.</p>
+     <div class="form-grid">
+       <label class="full">Plan name<input name="name" required minlength="2" maxlength="80" value="${esc(plan?.name ?? "")}" placeholder="e.g. Home care weekly" /></label>
+       <label class="full">Description (shown to customers)<input name="description" maxlength="500" value="${esc(plan?.description ?? "")}" placeholder="e.g. A regular clean every week by the same team" /></label>
+       <label>Service<select name="serviceKey">${services}</select></label>
+       <label>Visits per month<input name="visitsPerMonth" type="number" min="1" max="31" required value="${plan?.visitsPerMonth ?? 4}" /></label>
+       <label>Monthly price (AED)<input name="priceMonthlyAed" type="number" min="1" value="${plan?.priceMonthlyAed ?? ""}" /></label>
+       <label>Yearly price (AED)<input name="priceYearlyAed" type="number" min="1" value="${plan?.priceYearlyAed ?? ""}" /></label>
+       <label>Order in the app<input name="sortOrder" type="number" min="0" max="999" value="${plan?.sortOrder ?? 0}" /></label>
+       <label>Status<select name="active"><option value="true" ${plan?.active !== false ? "selected" : ""}>On sale</option><option value="false" ${plan?.active === false ? "selected" : ""}>Hidden</option></select></label>
+     </div>
+     <div class="modal-actions"><button class="btn outline" value="cancel" formnovalidate>Close</button><button class="btn primary">${plan ? "Save plan" : "Create plan"}</button></div>`,
+    async (form) => {
+      const num = (k) => (form.get(k) ? Number(form.get(k)) : null);
+      const body = {
+        name: String(form.get("name")).trim(),
+        description: String(form.get("description") || "").trim() || null,
+        serviceKey: form.get("serviceKey"),
+        visitsPerMonth: Number(form.get("visitsPerMonth")),
+        priceMonthlyAed: num("priceMonthlyAed"),
+        priceYearlyAed: num("priceYearlyAed"),
+        sortOrder: Number(form.get("sortOrder") || 0),
+        active: form.get("active") === "true",
+      };
+      await api(plan ? `/admin/subscription-plans/${plan.id}` : "/admin/subscription-plans", { method: plan ? "PATCH" : "POST", body });
+      toast(plan ? "Plan saved" : "Plan created and on sale in the app");
+      await loadSubscriptions();
+    },
+  );
+}
+
+function bookSubVisit(sub) {
+  modal(
+    `<h2>Book included visit · ${esc(sub.reference)}</h2>
+     <p class="muted">${esc(sub.customer?.fullName ?? "Customer")} · ${esc(sub.planName)} · ${sub.visitsLeft} visit(s) left until ${day(sub.currentPeriodEnd)}</p>
+     <label>Date and time<input name="at" type="datetime-local" required /></label>
+     <label>Notes for the team (optional)<input name="notes" maxlength="1000" /></label>
+     <div class="modal-actions"><button class="btn outline" value="cancel" formnovalidate>Close</button><button class="btn primary">Book visit</button></div>`,
+    async (form) => {
+      const notes = String(form.get("notes") || "").trim();
+      await api(`/admin/subscriptions/${sub.id}/visits`, { body: { scheduledAt: new Date(String(form.get("at"))).toISOString(), ...(notes ? { notes } : {}) } });
+      toast("Visit booked. It appears on the dispatch board.");
+      await loadSubscriptions();
+    },
+  );
+}
+
+function cancelSub(sub) {
+  modal(
+    `<h2>Cancel ${esc(sub.reference)}?</h2>
+     <p class="muted">The customer is notified. Paid periods are not refunded automatically: refund the period's payment from its booking if needed.</p>
+     <label>Reason<input name="reason" maxlength="300" placeholder="e.g. customer moved" /></label>
+     <div class="modal-actions"><button class="btn outline" value="cancel" formnovalidate>Keep</button><button class="btn danger">Cancel subscription</button></div>`,
+    async (form) => {
+      const reason = String(form.get("reason") || "").trim();
+      await api(`/admin/subscriptions/${sub.id}/cancel`, { body: reason ? { reason } : {} });
+      toast("Subscription cancelled");
+      await loadSubscriptions();
+    },
+  );
+}
+
+$("#add-plan").addEventListener("click", () => planForm(null));
+$("#sub-filter").addEventListener("change", () => loadSubscriptions().catch((e) => toast(e.message)));
+$("#tab-subscriptions").addEventListener("click", (e) => {
+  const t = e.target.closest("button");
+  if (!t) return;
+  if (t.dataset.plan) planForm(subState.plans.find((p) => p.id === t.dataset.plan));
+  if (t.dataset.subVisit) bookSubVisit(subState.subs.find((s) => s.id === t.dataset.subVisit));
+  if (t.dataset.subCancel) cancelSub(subState.subs.find((s) => s.id === t.dataset.subCancel));
+});
+
 // ------------------------------------------------------------------ map
 
 let map = null;
@@ -596,11 +713,25 @@ function placeStaff(id, name, status, lat, lng) {
 
 // ------------------------------------------------------------------ tabs, realtime, start
 
+const PAGE_SUB = {
+  board: "Live jobs, teams and payments",
+  map: "Where every team is right now",
+  subscriptions: "Monthly and yearly cleaning contracts",
+  staff: "Team members, sign-in and alerts",
+  customers: "Customer accounts",
+  payments: "Card and Tamara payments and refunds",
+  admin: "Access, company details and connected services",
+};
+
 document.querySelectorAll(".tab").forEach((t) =>
   t.addEventListener("click", () => {
     document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("active", x === t));
     document.querySelectorAll(".tab-panel").forEach((p) => p.classList.toggle("hidden", p.id !== `tab-${t.dataset.tab}`));
+    $("#page-title").textContent = t.lastChild.textContent.trim();
+    $("#page-sub").textContent = PAGE_SUB[t.dataset.tab] ?? "";
+    $("#kpis").classList.toggle("hidden", t.dataset.tab !== "board");
     if (t.dataset.tab === "customers") loadCustomers().catch((e) => toast(e.message));
+    if (t.dataset.tab === "subscriptions") loadSubscriptions().catch((e) => toast(e.message));
     if (t.dataset.tab === "admin") loadAdminTab().catch((e) => toast(e.message));
     if (t.dataset.tab === "map") {
       if (!map) {

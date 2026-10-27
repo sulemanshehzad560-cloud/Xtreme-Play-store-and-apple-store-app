@@ -13,35 +13,39 @@
   <!-- Sign in -->
   <section id="login" class="login hidden">
     <div class="login-card">
-      <div class="brand"><span class="gold">Xtreme</span> Dispatch</div>
+      <img src="/brand/logo.png" alt="Xtreme" class="login-logo" />
+      <div class="brand dark">Xtreme <span class="gold-text">Dispatch</span></div>
       <p class="muted">Office dashboard for Xtreme-Home Partner. Sign in with your admin mobile number.</p>
       <form id="phone-form">
-        <label>Mobile number<input id="phone" inputmode="tel" placeholder="050 123 4567" required /></label>
-        <button class="btn primary" type="submit">Send code</button>
+        <label>Mobile number<input id="phone" inputmode="tel" autocomplete="tel" placeholder="050 123 4567" required /></label>
+        <button class="btn primary block" type="submit">Send code</button>
       </form>
       <form id="code-form" class="hidden">
-        <label>6-digit code<input id="code" inputmode="numeric" maxlength="6" required /></label>
-        <button class="btn primary" type="submit">Sign in</button>
+        <label>6-digit code<input id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required /></label>
+        <button class="btn primary block" type="submit">Sign in</button>
       </form>
       <p id="login-error" class="error"></p>
+      <p class="fine">Secured connection · Xtreme Facilities Management</p>
     </div>
   </section>
 
   <!-- App -->
-  <section id="app" class="hidden">
-    <header class="topbar">
-      <div class="brand"><span class="gold">Xtreme</span> Dispatch</div>
+  <section id="app" class="shell hidden">
+    <aside class="sidebar">
+      <div class="side-brand"><img src="/brand/logo.png" alt="" /><div><b>Xtreme</b><small>Dispatch</small></div></div>
       <nav>
-        <button class="tab active" data-tab="board">Dispatch board</button>
-        <button class="tab" data-tab="map">Live map</button>
-        <button class="tab" data-tab="staff">Staff</button>
-        <button class="tab" data-tab="customers">Customers</button>
-        <button class="tab" data-tab="payments">Payments</button>
-        <button class="tab" data-tab="admin">Admin &amp; IT</button>
+        <button class="tab active" data-tab="board"><span>▦</span>Dispatch board</button>
+        <button class="tab" data-tab="map"><span>◎</span>Live map</button>
+        <button class="tab" data-tab="subscriptions"><span>↻</span>Subscriptions</button>
+        <button class="tab" data-tab="staff"><span>☺</span>Staff</button>
+        <button class="tab" data-tab="customers"><span>◉</span>Customers</button>
+        <button class="tab" data-tab="payments"><span>◈</span>Payments</button>
+        <button class="tab" data-tab="admin"><span>⚙</span>Admin &amp; IT</button>
       </nav>
-      <div class="me"><span id="live-dot" class="dot"></span><span id="me-name"></span><button id="logout" class="btn ghost small">Sign out</button></div>
-    </header>
-
+      <div class="me"><span id="live-dot" class="dot" title="Live updates"></span><span id="me-name"></span><button id="logout" class="btn ghost small">Sign out</button></div>
+    </aside>
+    <div class="content">
+    <header class="pagebar"><h1 id="page-title">Dispatch board</h1><span class="muted" id="page-sub">Live jobs, teams and payments</span></header>
     <div class="kpis" id="kpis"></div>
 
     <main>
@@ -94,7 +98,19 @@
         </div>
       </div>
       <div id="tab-payments" class="tab-panel hidden"><table class="table" id="payments-table"></table></div>
+      <div id="tab-subscriptions" class="tab-panel hidden">
+        <section class="panel">
+          <div class="panel-head"><div><h2>Plans on sale</h2><p class="muted">Monthly and yearly cleaning contracts. Prices you set here are what customers pay in the app; running subscriptions keep the price they bought.</p></div><button class="btn primary" id="add-plan">+ New plan</button></div>
+          <table class="table" id="plans-table"></table>
+        </section>
+        <section class="panel">
+          <div class="panel-head"><div><h2>Subscribers</h2><p class="muted">Each period is paid with its first visit; further visits in the period are included.</p></div>
+            <select id="sub-filter"><option value="active,pending_payment">Active &amp; awaiting payment</option><option value="active">Active</option><option value="pending_payment">Awaiting payment</option><option value="expired">Expired</option><option value="cancelled">Cancelled</option><option value="">All</option></select></div>
+          <table class="table" id="subs-table"></table>
+        </section>
+      </div>
     </main>
+    </div>
   </section>
 
   <dialog id="modal"><form method="dialog" id="modal-body"></form></dialog>
