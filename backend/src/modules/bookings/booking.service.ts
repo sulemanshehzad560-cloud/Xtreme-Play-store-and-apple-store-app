@@ -352,10 +352,12 @@ export class BookingService {
       // started must not mark staff available while they are busy elsewhere.
       const staffStatus = TRACKABLE.includes(to) || TRACKABLE.includes(from) ? staffStatusFor(to) : null;
       if (staffStatus && team.length) {
+        // Setting off for a job puts the team on duty (so their location is shared with the
+        // customer); other changes leave anyone who is off duty alone.
         await tx
           .update(staffProfiles)
           .set({ status: staffStatus, statusChangedAt: now })
-          .where(and(inArray(staffProfiles.userId, team), sql`${staffProfiles.status} <> 'off_duty'`));
+          .where(and(inArray(staffProfiles.userId, team), to === "en_route" ? undefined : sql`${staffProfiles.status} <> 'off_duty'`));
       }
       await this.event(tx, bookingId, actor, "status", from, to, opts.reason ? { reason: opts.reason } : undefined);
       return rows[0]!;
@@ -513,8 +515,9 @@ export class BookingService {
       destination: { lat: booking.lat, lng: booking.lng },
       team: team.map(publicStaff),
       location,
+      // No arrival time from an outdated position: it would be misleading.
       etaMinutes:
-        booking.status === "en_route" && location
+        booking.status === "en_route" && location && !location.stale
           ? estimateEtaMinutes(location, { lat: booking.lat, lng: booking.lng }, this.rules.etaSpeedKmh)
           : null,
     };

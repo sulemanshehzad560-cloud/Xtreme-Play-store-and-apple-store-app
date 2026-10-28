@@ -115,3 +115,22 @@ describe("chat with us", () => {
     expect((await get("/v1/admin/support/threads", customer.auth)).statusCode).toBe(403);
   });
 });
+
+describe("live tracking when staff forget to go on duty", () => {
+  it("setting off for a job puts the team on duty so the customer sees them move", async () => {
+    const customer = await signInPhone(t);
+    const admin = await signInAs(t, "admin");
+    const staff = await signInAs(t, "staff");
+    const booking = await bookPaid(t, customer.auth);
+    await post(`/v1/admin/bookings/${booking.id}/assign`, admin.auth, { staffIds: [staff.user.id] });
+    expect((await get("/v1/staff/me", staff.auth)).json().status).toBe("off_duty");
+
+    await post(`/v1/staff/jobs/${booking.id}/status`, staff.auth, { status: "en_route" });
+    expect((await get("/v1/staff/me", staff.auth)).json().status).toBe("en_route");
+    const ping = await post("/v1/staff/me/location", staff.auth, { pings: [{ lat: 24.49, lng: 54.39, accuracy: 10 }] });
+    expect(ping.json().accepted).toBe(1);
+    const track = (await get(`/v1/bookings/${booking.id}/tracking`, customer.auth)).json();
+    expect(track).toMatchObject({ live: true, location: { lat: 24.49, lng: 54.39, stale: false } });
+    expect(track.etaMinutes).toBeGreaterThanOrEqual(0);
+  });
+});

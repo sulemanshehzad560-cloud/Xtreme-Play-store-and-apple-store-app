@@ -4,6 +4,7 @@ import { useLocalSearchParams } from "expo-router";
 import { Button, Card, Divider, ErrorText, InlineLoader, Input, Row, Screen, StatusPill, StickyFooter, Text } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { startSharingLocation } from "@/lib/staff-location";
 import { aed, SIZE_LABEL, when } from "@/lib/format";
 import { LineIcon } from "@/components/LineIcon";
 import { colors, fonts, space } from "@/lib/theme";
@@ -72,6 +73,11 @@ export default function Job() {
     if (!next) return;
     setBusy(true);
     try {
+      // The customer follows the team on the map, so setting off starts location sharing (and puts you on duty).
+      if (next.to === "en_route" && !(await startSharingLocation())) {
+        Alert.alert("Location needed", "Allow location 'Always' so the customer can see you arriving. You can change this in Settings.");
+        return;
+      }
       setData(await api<Booking>(`/staff/jobs/${job!.id}/status`, { body: { status: next.to } }));
     } catch (e) {
       Alert.alert("Could not update", e instanceof Error ? e.message : "");
