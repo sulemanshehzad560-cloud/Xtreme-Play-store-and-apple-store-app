@@ -98,7 +98,7 @@ export async function book(t: TestContext, auth: Record<string, string>, body: R
     method: "POST",
     url: "/v1/bookings",
     headers: auth,
-    payload: { serviceKey: "deep", propertyType: "apartment", propertySize: "2bhk", scheduledAt: slot(), address: ADDRESS, ...body },
+    payload: { serviceKey: "regular", propertyType: "apartment", propertySize: "2bhk", scheduledAt: slot(), address: ADDRESS, ...body },
   });
   if (res.statusCode !== 201) throw new Error(`booking failed: ${res.body}`);
   return res.json() as { id: string; reference: string; priceAed: number | null; status: string };

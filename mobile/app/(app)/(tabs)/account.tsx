@@ -154,7 +154,8 @@ export default function Account() {
       </Section>
 
       <Section title="Help & support">
-        <Item icon="chat" title="Chat on WhatsApp" subtitle={company.data?.phoneDisplay} onPress={() => company.data && open(company.data.whatsapp)} />
+        <Item icon="chat" title="Chat with us" subtitle="Instant answers, or reply from our team" onPress={() => router.push("/chat")} />
+        <Item icon="chat" title="WhatsApp" subtitle={company.data?.phoneDisplay} onPress={() => company.data && open(company.data.whatsapp)} />
         <Item icon="call" title="Call us" subtitle="+971 2 675 6844" onPress={() => company.data && open(`tel:${company.data.phone}`)} />
         <Item icon="mail" title="Email" subtitle={company.data?.email} onPress={() => company.data && open(`mailto:${company.data.email}`)} last />
       </Section>

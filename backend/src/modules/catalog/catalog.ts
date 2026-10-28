@@ -1,30 +1,27 @@
 // Service catalog and price list (AED per visit, VAT included), matching the Xtreme price list.
 // Kept in code so prices are versioned and reviewed; the booking stores a price snapshot.
 
-export type PropertyType = "apartment" | "villa" | "office";
-export type PricingTier = "regular" | "deep" | "deep_amc";
+export type PropertyType = "apartment" | "villa" | "office" | "restaurant";
 
-/** [regular, deep, deep AMC] per visit. null = not offered for that size. */
-export const PRICE_TABLE: Record<PropertyType, Record<string, [number, number, number | null]>> = {
-  apartment: {
-    studio: [100, 300, 250],
-    "1bhk": [120, 350, 325],
-    "2bhk": [150, 450, 375],
-    "3bhk": [190, 600, 425],
-    "4bhk": [240, 850, 500],
-  },
-  villa: {
-    "2bhk": [300, 1100, 850],
-    "3bhk": [350, 1300, 1050],
-    "4bhk": [450, 1600, 1200],
-    "5bhk": [600, 1900, 1350],
-    "6bhk": [850, 2300, 1575],
-  },
-  office: {
-    small: [200, 600, null],
-    medium: [320, 900, null],
-    large: [500, 1400, null],
-  },
+/** Sizes customers can pick for each property type. */
+export const PROPERTY_SIZES: Record<PropertyType, string[]> = {
+  apartment: ["studio", "1bhk", "2bhk", "3bhk", "4bhk"],
+  villa: ["2bhk", "3bhk", "4bhk", "5bhk", "6bhk"],
+  office: ["small", "medium", "large"],
+  restaurant: ["small", "medium", "large"],
+};
+
+/**
+ * Regular cleaning of apartments: fixed price per visit (AED, VAT included), time on site and
+ * team size. Cleaning materials are always included free. Every other service, and regular
+ * cleaning of villas, offices and restaurants, is priced by our team on a site visit.
+ */
+export const REGULAR_RATES: Record<string, { priceAed: number; minutes: number; cleaners: number }> = {
+  studio: { priceAed: 90, minutes: 45, cleaners: 2 },
+  "1bhk": { priceAed: 120, minutes: 60, cleaners: 2 },
+  "2bhk": { priceAed: 150, minutes: 90, cleaners: 2 },
+  "3bhk": { priceAed: 190, minutes: 120, cleaners: 3 },
+  "4bhk": { priceAed: 240, minutes: 180, cleaners: 3 },
 };
 
 export const SIZE_LABELS: Record<string, string> = {
@@ -45,11 +42,15 @@ export interface CatalogService {
   name: string;
   nameAr: string;
   category: "cleaning" | "technical" | "staffing" | "facilities";
-  /** "tiered": fixed price from PRICE_TABLE; "inspection": the office confirms the price before the visit. */
-  pricing: { kind: "tiered"; tier: "regular" | "deep" } | { kind: "inspection" };
+  /** "tiered": fixed price for apartments from REGULAR_RATES; "inspection": quoted by our team on a site visit. */
+  pricing: { kind: "tiered" } | { kind: "inspection" };
   durationMinutes: number;
   highlights: string[];
+  /** Property types this service is offered for. Defaults to homes and offices. */
+  propertyTypes?: PropertyType[];
 }
+
+const MATERIALS = "All cleaning materials included free";
 
 export const SERVICES: CatalogService[] = [
   {
@@ -57,18 +58,18 @@ export const SERVICES: CatalogService[] = [
     name: "Regular cleaning",
     nameAr: "التنظيف الدوري",
     category: "cleaning",
-    pricing: { kind: "tiered", tier: "regular" },
-    durationMinutes: 180,
-    highlights: ["Trained, vetted cleaners", "All materials and equipment included", "Weekly, bi-weekly or one-off visits", "Same trusted team every visit"],
+    pricing: { kind: "tiered" },
+    durationMinutes: 90,
+    highlights: ["Trained, vetted cleaners", MATERIALS, "Weekly, bi-weekly or one-time visits", "Same trusted team every visit"],
   },
   {
     key: "deep",
     name: "Deep cleaning",
     nameAr: "التنظيف العميق",
     category: "cleaning",
-    pricing: { kind: "tiered", tier: "deep" },
+    pricing: { kind: "inspection" },
     durationMinutes: 360,
-    highlights: ["Kitchen degreasing and appliance exteriors", "Bathrooms descaled and disinfected", "Inside wardrobes, cabinets and windows", "Floors, skirting and upholstery vacuumed"],
+    highlights: ["Appliances cleaned inside and out", "Kitchen degreased; bathrooms descaled and disinfected", "Inside wardrobes, cabinets and windows", "Price depends on the home: empty or occupied", MATERIALS],
   },
   {
     key: "sofa",
@@ -113,7 +114,7 @@ export const SERVICES: CatalogService[] = [
     category: "cleaning",
     pricing: { kind: "inspection" },
     durationMinutes: 180,
-    highlights: ["Grease removed from hob, hood and tiles", "Appliance exteriors and sink polished", "Counters and cabinet fronts wiped", "Floor scrubbed and disinfected"],
+    highlights: ["Appliances cleaned inside and out", "Counters and cabinets wiped inside and out", "Grease removed from hob, hood and tiles", "Floor scrubbed and disinfected", MATERIALS],
   },
   {
     key: "bathroom",
@@ -141,6 +142,16 @@ export const SERVICES: CatalogService[] = [
     pricing: { kind: "inspection" },
     durationMinutes: 90,
     highlights: ["Shelves, rails and drawers cleaned inside", "Dust and odours removed", "Doors and mirrors polished", "Clothes neatly put back"],
+  },
+  {
+    key: "restaurant",
+    name: "Restaurant cleaning",
+    nameAr: "تنظيف المطاعم",
+    category: "cleaning",
+    pricing: { kind: "inspection" },
+    durationMinutes: 240,
+    highlights: ["Kitchen, hoods and equipment degreased", "Dining area, tables and seating cleaned", "Washrooms disinfected", "Out-of-hours visits to suit your opening times", MATERIALS],
+    propertyTypes: ["restaurant"],
   },
   {
     key: "cupboard",
@@ -185,39 +196,37 @@ export function serviceName(key: string): string {
 export interface Quote {
   priceAed: number | null;
   pricing: "fixed" | "inspection";
-  tier: PricingTier | null;
   label: string;
+  /** Time on site and team size, when known up front (regular cleaning of apartments). */
+  durationMinutes: number | null;
+  cleaners: number | null;
+}
+
+const DEFAULT_TYPES: PropertyType[] = ["apartment", "villa", "office"];
+
+export function propertyTypesFor(service: CatalogService): PropertyType[] {
+  return service.propertyTypes ?? DEFAULT_TYPES;
 }
 
 /**
  * Server-side price. The app never sends a price; it sends the service and property,
  * and the booking stores whatever this returns at the moment of booking.
  */
-export function quote(input: {
-  serviceKey: string;
-  propertyType: PropertyType;
-  propertySize: string;
-  plan?: "one_off" | "amc";
-}): Quote | { error: string } {
+export function quote(input: { serviceKey: string; propertyType: PropertyType; propertySize: string; plan?: "one_off" | "amc" | undefined }): Quote | { error: string } {
   const service = findService(input.serviceKey);
   if (!service) return { error: "Unknown service" };
-  const sizes = PRICE_TABLE[input.propertyType];
-  if (!sizes[input.propertySize]) return { error: `Size "${input.propertySize}" is not valid for ${input.propertyType}` };
+  if (!propertyTypesFor(service).includes(input.propertyType)) return { error: `${service.name} is not offered for this property type` };
+  if (!PROPERTY_SIZES[input.propertyType]?.includes(input.propertySize)) return { error: `Size "${input.propertySize}" is not valid for ${input.propertyType}` };
 
-  if (service.pricing.kind === "inspection") {
-    return { priceAed: null, pricing: "inspection", tier: null, label: "Quoted by our team on site; pay securely in the app" };
+  const rate = service.pricing.kind === "tiered" && input.propertyType === "apartment" ? REGULAR_RATES[input.propertySize] : undefined;
+  if (!rate) {
+    return { priceAed: null, pricing: "inspection", label: "Our team visits, inspects and quotes on site; pay securely in the app", durationMinutes: null, cleaners: null };
   }
-  const row = sizes[input.propertySize]!;
-  let tier: PricingTier = service.pricing.tier;
-  if (tier === "deep" && input.plan === "amc") tier = "deep_amc";
-  const price = tier === "regular" ? row[0] : tier === "deep" ? row[1] : row[2];
-  if (price == null) return { error: "Annual plan is not offered for this property" };
-  return { priceAed: price, pricing: "fixed", tier, label: `AED ${price} per visit` };
+  return { priceAed: rate.priceAed, pricing: "fixed", label: `AED ${rate.priceAed} per visit`, durationMinutes: rate.minutes, cleaners: rate.cleaners };
 }
 
 /** Lowest per-visit price for a fixed-price service, for "from AED …" labels. */
 export function startingFrom(service: CatalogService): number | null {
   if (service.pricing.kind !== "tiered") return null;
-  const col = service.pricing.tier === "regular" ? 0 : 1;
-  return Math.min(...Object.values(PRICE_TABLE).flatMap((sizes) => Object.values(sizes).map((row) => row[col]!)));
+  return Math.min(...Object.values(REGULAR_RATES).map((r) => r.priceAed));
 }

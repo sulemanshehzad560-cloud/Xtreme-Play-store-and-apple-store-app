@@ -27,7 +27,9 @@ const createdAt = () => ts("created_at").notNull().defaultNow();
 export const userRole = pgEnum("user_role", ["customer", "staff", "admin"]);
 export const authProvider = pgEnum("auth_provider", ["phone", "google", "facebook", "apple"]);
 export const staffStatus = pgEnum("staff_status", ["off_duty", "available", "en_route", "on_job", "on_break"]);
-export const propertyType = pgEnum("property_type", ["apartment", "villa", "office"]);
+export const propertyType = pgEnum("property_type", ["apartment", "villa", "office", "restaurant"]);
+export const bookingFrequency = pgEnum("booking_frequency", ["one_time", "weekly", "biweekly"]);
+export const supportSender = pgEnum("support_sender", ["customer", "bot", "staff"]);
 export const bookingPlan = pgEnum("booking_plan", ["one_off", "amc"]);
 export const pricingKind = pgEnum("pricing_kind", ["fixed", "inspection"]);
 /** How the customer intends to pay. "card" and "tamara" are paid in the app. */
@@ -260,6 +262,10 @@ export const bookings = pgTable(
     propertyType: propertyType("property_type").notNull(),
     propertySize: text("property_size").notNull(),
     plan: bookingPlan("plan").notNull().default("one_off"),
+    /** Regular cleaning can repeat weekly or every two weeks; each visit is its own booking. */
+    frequency: bookingFrequency("frequency").notNull().default("one_time"),
+    /** The visit this one follows in a repeating series. */
+    repeatOfId: uuid("repeat_of_id"),
     pricing: pricingKind("pricing").notNull(),
     priceAed: integer("price_aed"),
     paymentMethod: paymentMethod("payment_method").notNull().default("cash"),
@@ -447,6 +453,8 @@ export const payments = pgTable(
     provider: paymentProvider("provider").notNull(),
     status: paymentStatus("status").notNull().default("pending"),
     amountMinor: integer("amount_minor").notNull(),
+    /** Part of amountMinor that is a payment-method fee (Tamara instalments), shown separately on the invoice. */
+    feeMinor: integer("fee_minor").notNull().default(0),
     refundedMinor: integer("refunded_minor").notNull().default(0),
     currency: text("currency").notNull().default("AED"),
     providerRef: text("provider_ref"),
@@ -531,6 +539,25 @@ export const notifications = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index("notifications_user_created_idx").on(t.userId, t.createdAt)],
+);
+
+/** "Chat with us": one thread per customer, with instant automated answers and replies from the office. */
+export const supportMessages = pgTable(
+  "support_messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    customerId: uuid("customer_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sender: supportSender("sender").notNull(),
+    /** Office user who replied (sender = staff). */
+    authorId: uuid("author_id").references(() => users.id, { onDelete: "set null" }),
+    body: text("body").notNull(),
+    /** Customer messages: when the office read them. Office/bot messages: when the customer read them. */
+    readAt: ts("read_at"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("support_messages_customer_created_idx").on(t.customerId, t.createdAt)],
 );
 
 export type User = typeof users.$inferSelect;

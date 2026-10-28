@@ -176,6 +176,10 @@ export default function BookingDetail() {
         <Text variant="heading">Details</Text>
         <Detail label="Property" value={`${b.property.type[0]!.toUpperCase()}${b.property.type.slice(1)} · ${SIZE_LABEL[b.property.size] ?? b.property.size}`} />
         <Detail label="Address" value={[b.address.unit, b.address.building, b.address.area].filter(Boolean).join(", ")} />
+        {b.frequency && b.frequency !== "one_time" ? (
+          <Detail label="Repeats" value={`${b.frequency === "weekly" ? "Every week" : "Every two weeks"} · the next visit is set up after this one. Cancel a visit to stop repeating.`} />
+        ) : null}
+        <Detail label="Cleaning materials" value="Included free" />
         {b.notes ? <Detail label="Notes" value={b.notes} /> : null}
         <Divider />
         <Row style={{ justifyContent: "space-between" }}>

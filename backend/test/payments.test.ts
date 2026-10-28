@@ -22,10 +22,10 @@ async function profiled() {
 describe("card payments (Stripe)", () => {
   it("shows options with VAT and pays through PaymentSheet + webhook", async () => {
     const me = await profiled();
-    const booking = await book(t, me.auth); // deep, 2bhk apartment = AED 450
+    const booking = await book(t, me.auth); // regular, 2bhk apartment = AED 150
 
     const options = (await get(`/v1/bookings/${booking.id}/payment-options`, me.auth)).json();
-    expect(options.amount).toEqual({ priceAed: 450, discountAed: 0, totalAed: 450, vatAed: 21.43, vatIncluded: true, currency: "AED" });
+    expect(options.amount).toEqual({ priceAed: 150, discountAed: 0, totalAed: 150, vatAed: 7.14, vatIncluded: true, currency: "AED" });
     expect(options.methods.map((m: { method: string; available: boolean }) => [m.method, m.available])).toEqual([["card", true], ["tamara", true]]);
 
     const start = await post(`/v1/bookings/${booking.id}/payments`, me.auth, { method: "card" });
@@ -33,7 +33,7 @@ describe("card payments (Stripe)", () => {
     const { paymentId, stripe } = start.json();
     expect(stripe).toMatchObject({ publishableKey: "pk_test_fake", customerEphemeralKeySecret: "ek_test", currency: "AED" });
     const intentId = [...t.card.intents.keys()].at(-1)!;
-    expect(t.card.intents.get(intentId)!.amountMinor).toBe(45000);
+    expect(t.card.intents.get(intentId)!.amountMinor).toBe(15000);
     expect((await get(`/v1/bookings/${booking.id}`, me.auth)).json().paymentStatus).toBe("pending");
 
     // Bad signatures are rejected; good ones reconcile with Stripe and are processed once.
@@ -46,13 +46,13 @@ describe("card payments (Stripe)", () => {
     expect(detail).toMatchObject({ paymentStatus: "paid", paymentMethod: "card", canPay: false });
     const inbox = (await get("/v1/me/notifications", me.auth)).json();
     expect(inbox.filter((n: { title: string }) => n.title === "Payment received")).toHaveLength(1);
-    expect((await get(`/v1/bookings/${booking.id}/payments`, me.auth)).json()[0]).toMatchObject({ id: paymentId, status: "captured", amountAed: 450 });
+    expect((await get(`/v1/bookings/${booking.id}/payments`, me.auth)).json()[0]).toMatchObject({ id: paymentId, status: "captured", amountAed: 150 });
 
     // The tax invoice is the one place VAT is broken out (prices are VAT-inclusive).
     const invoice = (await get(`/v1/bookings/${booking.id}/invoice`, me.auth)).json();
-    expect(invoice).toMatchObject({ totalAed: 450, vatAed: 21.43, subtotalAed: 428.57, vatRate: 0.05, currency: "AED", payment: { method: "Card" } });
+    expect(invoice).toMatchObject({ totalAed: 150, vatAed: 7.14, subtotalAed: 142.86, vatRate: 0.05, currency: "AED", payment: { method: "Card" } });
     expect(invoice.invoiceNumber).toMatch(/^INV-/);
-    expect(invoice.lines[0].description).toContain("Deep cleaning");
+    expect(invoice.lines[0].description).toContain("Regular cleaning");
 
     // Can't pay twice.
     expect((await post(`/v1/bookings/${booking.id}/payments`, me.auth, { method: "card" })).json().error.code).toBe("already_paid");
@@ -79,7 +79,7 @@ describe("card payments (Stripe)", () => {
 
     const cancelled = await post(`/v1/bookings/${booking.id}/cancel`, me.auth, { reason: "Travelling" });
     expect(cancelled.statusCode).toBe(200);
-    expect(t.card.refunds).toEqual([{ intentId, amountMinor: 45000 }]);
+    expect(t.card.refunds).toEqual([{ intentId, amountMinor: 15000 }]);
     const detail = (await get(`/v1/bookings/${booking.id}`, me.auth)).json();
     expect(detail.paymentStatus).toBe("refunded");
     expect(detail.timeline.some((e: { type: string }) => e.type === "refund")).toBe(true);
@@ -128,8 +128,9 @@ describe("Tamara (pay later)", () => {
 
     const checkout = t.tamara.checkouts.at(-1)!;
     expect(checkout).toMatchObject({
-      amountMinor: 45000,
-      taxMinor: 2143,
+      // AED 150 + the 8% Tamara fee.
+      amountMinor: 16200,
+      taxMinor: 771,
       instalments: 4,
       consumer: { firstName: "Sara", lastName: "Al Mansoori", email: "sara@example.com" },
       urls: { notification: "https://api.xtreme.test/v1/webhooks/tamara" },
@@ -142,7 +143,7 @@ describe("Tamara (pay later)", () => {
     t.tamara.approve(orderId);
     const hook = await t.app.inject({ method: "POST", url: "/v1/webhooks/tamara?tamaraToken=tamara-ok", headers: { "content-type": "application/json" }, payload: JSON.stringify({ order_id: orderId, event_type: "order_approved" }) });
     expect(hook.statusCode).toBe(200);
-    expect(t.tamara.calls).toEqual([`authorise:${orderId}`, `capture:${orderId}:45000`]);
+    expect(t.tamara.calls).toEqual([`authorise:${orderId}`, `capture:${orderId}:16200`]);
     expect((await get(`/v1/bookings/${booking.id}`, me.auth)).json()).toMatchObject({ paymentStatus: "paid", paymentMethod: "tamara" });
   });
 

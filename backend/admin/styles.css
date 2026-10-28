@@ -159,3 +159,24 @@ fieldset.services legend { font-size: 12px; font-weight: 700; color: var(--muted
 label.check { display: flex; align-items: center; gap: 8px; text-transform: none; letter-spacing: 0; font-size: 13.5px; font-weight: 600; color: var(--text); }
 label.check input { width: 16px; height: 16px; padding: 0; }
 .pill.awaiting { background: #fdf1dc; color: var(--warn); }
+
+/* Messages (Chat with us) */
+.badge { font-style: normal; background: var(--danger); color: #fff; font-size: 11px; font-weight: 800; border-radius: 999px; padding: 1px 7px; margin-left: auto; }
+.tab .badge { margin-left: 6px; }
+.chat-shell { display: grid; grid-template-columns: 320px 1fr; gap: 14px; height: calc(100vh - 150px); min-height: 480px; }
+.chat-list { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow-y: auto; }
+.chat-item { display: grid; gap: 4px; width: 100%; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--border); padding: 12px 14px; cursor: pointer; font: inherit; color: var(--text); }
+.chat-item .row { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.chat-item:hover, .chat-item.active { background: var(--gold-soft); }
+.chat-pane { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); display: flex; flex-direction: column; overflow: hidden; }
+.chat-head { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.chat-log { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; background: var(--alt); }
+.bubble { max-width: 70%; padding: 10px 13px; border-radius: 14px; line-height: 1.45; box-shadow: var(--shadow); }
+.bubble small { display: block; font-size: 11px; color: var(--muted); margin-bottom: 3px; font-weight: 600; }
+.bubble.customer { align-self: flex-start; background: #fff; border: 1px solid var(--border); }
+.bubble.bot { align-self: flex-end; background: #f1ece2; }
+.bubble.staff { align-self: flex-end; background: var(--ink); color: #fff; }
+.bubble.staff small { color: var(--gold-bright); }
+.chat-form { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--border); }
+.chat-form input { flex: 1; }
+@media (max-width: 900px) { .chat-shell { grid-template-columns: 1fr; height: auto; } .chat-pane { min-height: 420px; } }

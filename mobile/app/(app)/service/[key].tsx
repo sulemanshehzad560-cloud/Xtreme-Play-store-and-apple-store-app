@@ -12,13 +12,22 @@ import { colors, fonts, radius, space } from "@/lib/theme";
 import type { Booking, Service } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { TamaraBadge } from "@/components/BrandIcons";
-import { SlotPicker, abuDhabiTime, hourLabel, nextDays } from "@/components/SlotPicker";
+import { SlotPicker, abuDhabiTime, firstOpenDay, hourLabel, nextDays } from "@/components/SlotPicker";
 
-type PropertyType = "apartment" | "villa" | "office";
+type PropertyType = "apartment" | "villa" | "office" | "restaurant";
 type Pay = "card" | "tamara";
+type Frequency = "one_time" | "weekly" | "biweekly";
 interface Catalog {
   services: Service[];
   propertySizes: Record<PropertyType, { key: string; label: string }[]>;
+  regularRates?: Record<string, { priceAed: number; minutes: number; cleaners: number }>;
+  payments?: { tamaraFeePercent: number; tamaraInstalments: number };
+}
+interface Quote {
+  priceAed: number | null;
+  pricing: "fixed" | "inspection";
+  durationMinutes: number | null;
+  cleaners: number | null;
 }
 interface Address {
   id: string;
@@ -36,7 +45,15 @@ const PROPERTY: [PropertyType, string, string][] = [
   ["apartment", "Apartment", "🏢"],
   ["villa", "Villa", "🏡"],
   ["office", "Office", "🏬"],
+  ["restaurant", "Restaurant", "🍽️"],
 ];
+const FREQUENCY: [Frequency, string, string][] = [
+  ["one_time", "One time", "A single visit"],
+  ["weekly", "Weekly", "Same day and time every week"],
+  ["biweekly", "Bi-weekly", "Every two weeks"],
+];
+
+const duration = (min: number) => (min < 60 ? `${min} min` : min % 60 ? `${Math.floor(min / 60)}½ hrs` : `${min / 60} hr${min > 60 ? "s" : ""}`);
 
 export default function BookService() {
   const { key } = useLocalSearchParams<{ key: string }>();
@@ -47,22 +64,33 @@ export default function BookService() {
   const [step, setStep] = useState(0);
   const [type, setType] = useState<PropertyType>("apartment");
   const [size, setSize] = useState("2bhk");
-  const [plan, setPlan] = useState<"one_off" | "amc">("one_off");
+  const [frequency, setFrequency] = useState<Frequency>("one_time");
   const days = useMemo(() => nextDays(14), []);
-  const [day, setDay] = useState(days[0]!);
+  const [day, setDay] = useState(() => firstOpenDay(days));
   const [hour, setHour] = useState<number | null>(null);
   const [addressId, setAddressId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState<Partial<NewAddress>>({ label: "Home" });
   const [notes, setNotes] = useState("");
   const [pay, setPay] = useState<Pay>("card");
-  const [price, setPrice] = useState<number | null | undefined>(undefined);
+  const [q, setQ] = useState<Quote | null | undefined>(undefined);
+  const price = q === undefined ? undefined : (q?.priceAed ?? null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const idempotencyKey = useRef(Crypto.randomUUID()).current;
 
   const sizes = catalog.data?.propertySizes[type] ?? [];
-  const fixed = service?.pricing.kind === "tiered";
+  const types = PROPERTY.filter(([t]) => (service?.propertyTypes ?? ["apartment", "villa", "office"]).includes(t));
+  // Fixed price only for regular cleaning of apartments; everything else is quoted on a site visit.
+  const fixed = q?.pricing === "fixed" && price != null;
+  const rates = service?.key === "regular" && type === "apartment" ? catalog.data?.regularRates : undefined;
+  const feePct = catalog.data?.payments?.tamaraFeePercent ?? 8;
+  const tamaraFee = price != null ? Math.round(price * feePct) / 100 : 0;
+  const payTotal = price != null ? (pay === "tamara" ? Math.round((price + tamaraFee) * 100) / 100 : price) : null;
+
+  useEffect(() => {
+    if (service && !types.some(([t]) => t === type)) setType(types[0]![0]);
+  }, [service?.key]);
 
   useEffect(() => {
     if (sizes.length && !sizes.some((s) => s.key === size)) setSize(sizes[Math.min(1, sizes.length - 1)]!.key);
@@ -77,10 +105,11 @@ export default function BookService() {
 
   useEffect(() => {
     if (!service) return;
-    api<{ priceAed: number | null }>(`/catalog/quote?serviceKey=${service.key}&propertyType=${type}&propertySize=${size}&plan=${plan}`)
-      .then((q) => setPrice(q.priceAed))
-      .catch(() => setPrice(undefined));
-  }, [service?.key, type, size, plan]);
+    if (!sizes.some((s) => s.key === size)) return;
+    api<Quote>(`/catalog/quote?serviceKey=${service.key}&propertyType=${type}&propertySize=${size}`)
+      .then(setQ)
+      .catch(() => setQ(undefined));
+  }, [service?.key, type, size, sizes.length]);
 
   const newAddressOk = Boolean(completeAddress(draft));
   const canContinue = [true, hour != null, adding ? newAddressOk : Boolean(addressId), true][step];
@@ -101,7 +130,8 @@ export default function BookService() {
           serviceKey: key,
           propertyType: type,
           propertySize: size,
-          plan,
+          plan: "one_off",
+          ...(service?.key === "regular" ? { frequency } : {}),
           scheduledAt: abuDhabiTime(day, hour!),
           notes: notes.trim() || undefined,
           // Survey-priced services are paid in the app once the price is set.
@@ -130,8 +160,8 @@ export default function BookService() {
   }
 
   const selectedAddress = saved.data?.find((a) => a.id === addressId);
-  const totalLabel = fixed ? (price != null ? aed(price) : "…") : "On quote";
-  const cta = step < 3 ? "Continue" : fixed && price != null ? `Pay ${aed(price)}` : "Confirm booking";
+  const totalLabel = q === undefined ? "…" : fixed ? aed(step === 3 ? payTotal : price!) : "On site visit";
+  const cta = step < 3 ? "Continue" : fixed ? `Pay ${aed(payTotal)}` : "Book site visit";
 
   return (
     <Screen
@@ -139,7 +169,7 @@ export default function BookService() {
       footer={
         <StickyFooter>
           <View style={{ flex: 1 }}>
-            <Text variant="small">{fixed ? "Total" : "Price"}</Text>
+            <Text variant="small">{fixed ? (frequency === "one_time" ? "Total" : "Per visit") : "Price"}</Text>
             <Text variant="price">{totalLabel}</Text>
           </View>
           <Button title={cta} onPress={() => (step < 3 ? setStep(step + 1) : submit())} disabled={!canContinue} loading={busy} style={{ flex: 1.3 }} />
@@ -171,12 +201,16 @@ export default function BookService() {
               <View style={{ flex: 1, gap: 2 }}>
                 <Text variant="heading">{service.name}</Text>
                 <Text variant="small">
-                  {ratingLabel(service)} · approx. {Math.max(1, Math.round(service.durationMinutes / 60))} hours
+                  {ratingLabel(service)} · {service.startingFromAed ? `from ${aed(service.startingFromAed)}` : "price on site visit"}
                 </Text>
               </View>
             </Row>
             <Divider />
-            {service.highlights.map((h) => (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: space(2), backgroundColor: colors.successSoft, borderRadius: radius.md, paddingHorizontal: space(3), paddingVertical: space(2) }}>
+              <RNText style={{ fontSize: 16 }}>🧴</RNText>
+              <Text style={{ flex: 1, color: colors.success, fontFamily: fonts.bold, fontSize: 13.5 }}>Cleaning materials included FREE</Text>
+            </View>
+            {service.highlights.filter((h) => !/materials included free/i.test(h)).map((h) => (
               <Row key={h} style={{ gap: space(2) }}>
                 <RNText style={{ color: colors.success, fontSize: 15 }}>✓</RNText>
                 <Text style={{ fontSize: 14, flex: 1 }}>{h}</Text>
@@ -186,7 +220,7 @@ export default function BookService() {
 
           <Text variant="heading">Property type</Text>
           <Row style={{ gap: space(2) }}>
-            {PROPERTY.map(([t, label, icon]) => (
+            {types.map(([t, label, icon]) => (
               <View key={t} style={{ flex: 1 }}>
                 <Chip icon={icon} label={label} selected={type === t} onPress={() => setType(t)} />
               </View>
@@ -194,36 +228,78 @@ export default function BookService() {
           </Row>
 
           <Text variant="heading">Size</Text>
-          <Row style={{ flexWrap: "wrap", gap: space(2) }}>
-            {sizes.map((s) => (
-              <Chip key={s.key} label={SIZE_LABEL[s.key] ?? s.label} selected={size === s.key} onPress={() => setSize(s.key)} />
-            ))}
-          </Row>
+          {rates ? (
+            <View style={{ gap: space(2) }}>
+              {sizes.map((s) => {
+                const r = rates[s.key];
+                if (!r) return null;
+                const on = size === s.key;
+                return (
+                  <OptionCard
+                    key={s.key}
+                    selected={on}
+                    onPress={() => setSize(s.key)}
+                    title={SIZE_LABEL[s.key] ?? s.label}
+                    subtitle={`${duration(r.minutes)} · ${r.cleaners} cleaners · materials free`}
+                    right={<Text style={{ fontFamily: fonts.extrabold, fontSize: 16, color: on ? colors.gold : colors.text }}>{aed(r.priceAed)}</Text>}
+                  />
+                );
+              })}
+            </View>
+          ) : (
+            <Row style={{ flexWrap: "wrap", gap: space(2) }}>
+              {sizes.map((s) => (
+                <Chip key={s.key} label={SIZE_LABEL[s.key] ?? s.label} selected={size === s.key} onPress={() => setSize(s.key)} />
+              ))}
+            </Row>
+          )}
 
-          {service.key === "deep" && type !== "office" ? (
+          {service.key === "regular" ? (
             <>
               <Text variant="heading">How often?</Text>
-              <OptionCard selected={plan === "one_off"} onPress={() => setPlan("one_off")} title="One-time deep clean" subtitle="Single visit" />
-              <OptionCard
-                selected={plan === "amc"}
-                onPress={() => setPlan("amc")}
-                title="Annual plan"
-                subtitle="Lower price per visit, scheduled through the year"
-                right={<Text style={{ color: colors.success, fontFamily: fonts.bold, fontSize: 13 }}>Save more</Text>}
-              />
+              <Row style={{ gap: space(2) }}>
+                {FREQUENCY.map(([f, label, sub]) => (
+                  <View key={f} style={{ flex: 1 }}>
+                    <Chip label={label} sub={sub} selected={frequency === f} onPress={() => setFrequency(f)} />
+                  </View>
+                ))}
+              </Row>
+              {frequency !== "one_time" ? (
+                <Text variant="small">
+                  After each visit we set up the next one {frequency === "weekly" ? "a week" : "two weeks"} later at the same time. You pay each visit in the app, and can skip or stop any time.
+                </Text>
+              ) : null}
             </>
           ) : null}
 
-          {!fixed ? (
-            <Card>
-              <Text style={{ fontFamily: fonts.bold }}>How pricing works</Text>
-              <Text variant="small">Our team inspects on arrival and sends your quote to the app. You pay securely by card or Tamara, right there. No gateway fees or hidden charges.</Text>
+          {q && !fixed ? (
+            <Card tone="gold">
+              <Row style={{ gap: space(2) }}>
+                <RNText style={{ fontSize: 20 }}>📋</RNText>
+                <Text style={{ fontFamily: fonts.bold, flex: 1 }}>Priced on a site visit</Text>
+              </Row>
+              <Text style={{ fontSize: 14, lineHeight: 20 }}>
+                {service.key === "deep"
+                  ? "Every deep clean is different. The price depends on the property and whether it is empty or occupied. "
+                  : ""}
+                Our team visits at the time you choose, checks the job and sends your quote to the app. Nothing to pay now; you pay securely in the app once you accept the quote.
+              </Text>
             </Card>
           ) : null}
         </>
       ) : null}
 
-      {step === 1 ? <SlotPicker days={days} day={day} onDay={setDay} hour={hour} onHour={setHour} /> : null}
+      {step === 1 ? (
+        <SlotPicker
+          days={days}
+          day={day}
+          onDay={setDay}
+          hour={hour}
+          onHour={setHour}
+          title={fixed ? "Pick a day" : "When can we visit?"}
+          note={fixed ? undefined : "This is the time for the site visit. The schedule for the work is agreed with you once the quotation is finalized."}
+        />
+      ) : null}
 
       {step === 2 ? (
         <>
@@ -255,9 +331,14 @@ export default function BookService() {
         <>
           <Card>
             <Text variant="heading">Booking summary</Text>
-            <SummaryRow icon={<ServiceIcon name={service.key} size={26} tile={false} />} label="Service" value={`${service.name}${plan === "amc" ? " · Annual plan" : ""}`} />
+            <SummaryRow
+              icon={<ServiceIcon name={service.key} size={26} tile={false} />}
+              label="Service"
+              value={`${service.name}${frequency !== "one_time" && service.key === "regular" ? ` · ${frequency === "weekly" ? "Weekly" : "Bi-weekly"}` : ""}`}
+            />
+            {q?.durationMinutes ? <SummaryRow icon="⏱️" label="Team & time" value={`${q.cleaners} cleaners · about ${duration(q.durationMinutes)} · materials free`} /> : null}
             <SummaryRow icon="🏠" label="Property" value={`${PROPERTY.find(([t]) => t === type)![1]} · ${SIZE_LABEL[size] ?? size}`} />
-            <SummaryRow icon="🗓️" label="Date & time" value={`${day.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} · ${hour != null ? hourLabel(hour) : ""}`} />
+            <SummaryRow icon="🗓️" label={fixed ? "Date & time" : "Site visit"} value={`${day.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} · ${hour != null ? hourLabel(hour) : ""}`} />
             <SummaryRow
               icon="📍"
               label="Address"
@@ -273,22 +354,23 @@ export default function BookService() {
                 selected={pay === "tamara"}
                 onPress={() => setPay("tamara")}
                 title="Tamara: pay in 4"
-                subtitle={price ? `4 interest-free payments of ${aed(Math.round((price / 4) * 100) / 100)}` : "Split into 4 interest-free payments"}
+                subtitle={price ? `4 payments of ${aed(Math.round(((price + tamaraFee) / 4) * 100) / 100)} · includes ${feePct}% Tamara fee` : "Split into 4 payments"}
                 icon={<TamaraBadge />}
               />
             </>
           ) : (
             <Card tone="gold">
-              <Text style={{ fontSize: 14 }}>Nothing to pay now. Our team confirms the price in the app before your visit, then you pay by card or Tamara.</Text>
+              <Text style={{ fontSize: 14 }}>Nothing to pay now. Our team inspects on the visit and sends your quote to the app; you pay by card or Tamara once you accept it.</Text>
             </Card>
           )}
 
           {fixed && price != null ? (
             <Card>
               <PriceRow label={`${service.name} (${SIZE_LABEL[size] ?? size})`} value={aed(price)} />
-              <PriceRow label="Gateway fees" value="AED 0" muted />
+              <PriceRow label="Cleaning materials" value="FREE" muted />
+              {pay === "tamara" ? <PriceRow label={`Tamara fee (${feePct}%)`} value={aed(tamaraFee)} muted /> : <PriceRow label="Card fees" value="AED 0" muted />}
               <Divider />
-              <PriceRow label="Total" value={aed(price)} bold />
+              <PriceRow label={frequency === "one_time" ? "Total" : "Total per visit"} value={aed(payTotal)} bold />
             </Card>
           ) : null}
           <Text variant="small">Free cancellation until your team sets off. Paid bookings are refunded automatically.</Text>

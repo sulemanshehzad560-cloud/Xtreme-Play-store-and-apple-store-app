@@ -26,7 +26,9 @@ export interface Service {
   name: string;
   nameAr: string;
   category: string;
-  pricing: { kind: "tiered"; tier: string } | { kind: "inspection" };
+  pricing: { kind: "tiered" } | { kind: "inspection" };
+  /** Property types this service is offered for. */
+  propertyTypes?: ("apartment" | "villa" | "office" | "restaurant")[];
   durationMinutes: number;
   highlights: string[];
   startingFromAed: number | null;
@@ -55,6 +57,8 @@ export interface Booking {
   paymentMethod: string;
   paymentStatus: "unpaid" | "pending" | "paid" | "partially_refunded" | "refunded" | "included";
   subscriptionId?: string | null;
+  frequency?: "one_time" | "weekly" | "biweekly";
+  repeatOfId?: string | null;
   discountAed?: number;
   amountDueAed?: number | null;
   promoCode?: string | null;

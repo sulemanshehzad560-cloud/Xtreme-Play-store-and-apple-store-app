@@ -25,6 +25,7 @@ export default function AppLayout() {
       <Stack.Screen name="plans" options={{ title: "Cleaning plans" }} />
       <Stack.Screen name="subscribe/[planId]" options={{ title: "Subscribe" }} />
       <Stack.Screen name="subscriptions" options={{ title: "My subscriptions" }} />
+      <Stack.Screen name="chat" options={{ title: "Chat with us" }} />
     </Stack>
   );
 }

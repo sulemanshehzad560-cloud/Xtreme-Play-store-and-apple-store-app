@@ -14,7 +14,16 @@ const PRICES: Record<string, Record<string, [number, number, number | null]>> = 
   apartment: { studio: [100, 300, 250], "1bhk": [120, 350, 325], "2bhk": [150, 450, 375], "3bhk": [190, 600, 425], "4bhk": [240, 850, 500] },
   villa: { "2bhk": [300, 1100, 850], "3bhk": [350, 1300, 1050], "4bhk": [450, 1600, 1200], "5bhk": [600, 1900, 1350], "6bhk": [850, 2300, 1575] },
   office: { small: [200, 600, null], medium: [320, 900, null], large: [500, 1400, null] },
+  restaurant: { small: [0, 0, null], medium: [0, 0, null], large: [0, 0, null] },
 };
+const REGULAR_RATES: Record<string, { priceAed: number; minutes: number; cleaners: number }> = {
+  studio: { priceAed: 90, minutes: 45, cleaners: 2 },
+  "1bhk": { priceAed: 120, minutes: 60, cleaners: 2 },
+  "2bhk": { priceAed: 150, minutes: 90, cleaners: 2 },
+  "3bhk": { priceAed: 190, minutes: 120, cleaners: 3 },
+  "4bhk": { priceAed: 240, minutes: 180, cleaners: 3 },
+};
+const chat: { id: string; sender: string; body: string; createdAt: string }[] = [];
 const SIZE_LABELS: Record<string, string> = {
   studio: "Studio", "1bhk": "1 BHK", "2bhk": "2 BHK", "3bhk": "3 BHK", "4bhk": "4 BHK", "5bhk": "5 BHK", "6bhk": "6 BHK",
   small: "Small (up to 1,000 sq ft)", medium: "Medium (1,001–3,000 sq ft)", large: "Large (3,001–5,000 sq ft)",
@@ -28,23 +37,25 @@ const S = (key: string, name: string, tier: "regular" | "deep" | null, minutes: 
   pricing: tier ? { kind: "tiered", tier } : { kind: "inspection" },
   durationMinutes: minutes,
   highlights,
-  startingFromAed: tier === "regular" ? 100 : tier === "deep" ? 300 : null,
+  startingFromAed: tier === "regular" ? 90 : null,
+  propertyTypes: key === "restaurant" ? ["restaurant"] : ["apartment", "villa", "office"],
   // Sample ratings for the demo build only; the live API reports real review averages.
   rating: ({ regular: 4.9, deep: 4.8, sofa: 4.8, carpet: 4.7, kitchen: 4.8, bathroom: 4.7 } as Record<string, number>)[key] ?? null,
   reviewCount: ({ regular: 214, deep: 187, sofa: 96, carpet: 73, kitchen: 58, bathroom: 41 } as Record<string, number>)[key] ?? 0,
 });
 
 const SERVICES = [
-  S("regular", "Regular cleaning", "regular", 180, ["Trained, vetted cleaners", "All materials and equipment included", "Weekly, bi-weekly or one-off visits", "Same trusted team every visit"]),
-  S("deep", "Deep cleaning", "deep", 360, ["Kitchen degreasing and appliance exteriors", "Bathrooms descaled and disinfected", "Inside wardrobes, cabinets and windows", "Floors, skirting and upholstery vacuumed"]),
+  S("regular", "Regular cleaning", "regular", 180, ["Trained, vetted cleaners", "All cleaning materials included free", "Weekly, bi-weekly or one-time visits", "Same trusted team every visit"]),
+  S("deep", "Deep cleaning", null, 360, ["Appliances cleaned inside and out", "Kitchen degreased; bathrooms descaled and disinfected", "Inside wardrobes, cabinets and windows", "Price depends on the home: empty or occupied"]),
   S("sofa", "Sofa cleaning", null, 120, ["Deep extraction lifts dust and allergens", "Stain and odour treatment", "Fabric-safe products for every material", "Fast drying"]),
   S("mattress", "Mattress cleaning", null, 90, ["Deep vacuum and steam sanitising", "Removes dust mites and allergens", "Stain and odour treatment", "Both sides, any size"]),
   S("carpet", "Carpet cleaning", null, 120, ["Hot-water extraction for carpets and rugs", "Spot and stain treatment", "Refreshes colour and pile", "Fast drying"]),
   S("glass", "Glass & window cleaning", null, 150, ["Windows, glass doors and mirrors", "Frames, tracks and sills wiped", "Streak-free finish", "Inside and reachable outside panes"]),
-  S("kitchen", "Kitchen cleaning", null, 180, ["Grease removed from hob, hood and tiles", "Appliance exteriors and sink polished", "Counters and cabinet fronts wiped", "Floor scrubbed and disinfected"]),
+  S("kitchen", "Kitchen cleaning", null, 180, ["Appliances cleaned inside and out", "Counters and cabinets wiped inside and out", "Grease removed from hob, hood and tiles", "Floor scrubbed and disinfected"]),
   S("bathroom", "Bathroom cleaning", null, 90, ["Limescale removed from taps, glass and tiles", "Toilet, basin and shower disinfected", "Grout and sealant cleaned", "Mirrors and fittings polished"]),
   S("balcony", "Balcony cleaning", null, 90, ["Dust and sand washed away", "Railings and glass panels cleaned", "Floor scrubbed and drained", "Outdoor furniture wiped"]),
   S("wardrobe", "Wardrobe cleaning", null, 90, ["Shelves, rails and drawers cleaned inside", "Dust and odours removed", "Doors and mirrors polished", "Clothes neatly put back"]),
+  S("restaurant", "Restaurant cleaning", null, 240, ["Kitchen, hoods and equipment degreased", "Dining area, tables and seating cleaned", "Washrooms disinfected", "Out-of-hours visits to suit your opening times"]),
   S("cupboard", "Cupboard cleaning", null, 90, ["Kitchen and storage cupboards emptied and wiped", "Shelves and hinges degreased", "Food-safe products", "Items returned in order"]),
 ];
 
@@ -310,19 +321,40 @@ export async function demoApi(path: string, method: string, body: Json | undefin
       vatIncluded: true,
       services: SERVICES,
       propertySizes: Object.fromEntries(Object.entries(PRICES).map(([t, sizes]) => [t, Object.keys(sizes).map((key) => ({ key, label: SIZE_LABELS[key] }))])),
+      regularRates: REGULAR_RATES,
+      payments: { tamaraFeePercent: 8, tamaraInstalments: 4 },
     };
   }
   if (route === "/catalog/quote") {
     const svc = SERVICES.find((s) => s.key === q.serviceKey);
     const row = PRICES[q.propertyType!]?.[q.propertySize!];
     if (!svc || !row) throw new DemoError(400, "invalid_quote", "Choose a property size");
-    if (svc.pricing.kind === "inspection") return { priceAed: null, pricing: "inspection", label: "Quoted by our team on site; pay securely in the app" };
-    const price = (svc.pricing as { tier: string }).tier === "regular" ? row[0] : q.plan === "amc" ? row[2] : row[1];
-    return { priceAed: price, pricing: "fixed", label: `AED ${price} per visit` };
+    const rate = svc.key === "regular" && q.propertyType === "apartment" ? REGULAR_RATES[q.propertySize!] : undefined;
+    if (!rate) return { priceAed: null, pricing: "inspection", label: "Our team visits, inspects and quotes on site", durationMinutes: null, cleaners: null };
+    return { priceAed: rate.priceAed, pricing: "fixed", label: `AED ${rate.priceAed} per visit`, durationMinutes: rate.minutes, cleaners: rate.cleaners };
   }
   if (route === "/staff/availability") return { onDuty: 14, available: 6, deployed: 8, onBreak: 0, nearbyAvailable: 3, nearestEtaMinutes: 12 };
 
   if (!user) throw new DemoError(401, "unauthorized", "Sign in required");
+
+  // chat
+  if (route === "/me/support/unread") return { unread: 0 };
+  if (route === "/me/support/messages" && method === "GET") return chat;
+  if (route === "/me/support/messages" && method === "POST") {
+    const now = new Date().toISOString();
+    const text = String(body!.body);
+    const answer = /material/i.test(text)
+      ? "All cleaning materials and equipment are included free of cost."
+      : /price|cost|how much/i.test(text)
+        ? "Regular cleaning of apartments: Studio AED 90, 1 BHK AED 120, 2 BHK AED 150, 3 BHK AED 190, 4 BHK AED 240. Other services are priced on a site visit."
+        : "Thanks for your message! Our team will reply here shortly.";
+    const added = [
+      { id: uid(), sender: "customer", body: text, createdAt: now },
+      { id: uid(), sender: "bot", body: answer, createdAt: now },
+    ];
+    chat.push(...added);
+    return added;
+  }
 
   // me
   if (route === "/me" && method === "GET") return user;
@@ -467,8 +499,8 @@ export async function demoApi(path: string, method: string, body: Json | undefin
         promoCode: (b as any).promoCode ?? null,
         amount: { priceAed: b.priceAed, discountAed, totalAed: total, vatAed: Math.round((total - total / 1.05) * 100) / 100, vatIncluded: true, currency: "AED" },
         methods: [
-          { method: "card", available: true, label: "Credit / debit card, Apple Pay or Google Pay" },
-          { method: "tamara", available: true, label: "Split into 4 interest-free payments" },
+          { method: "card", available: true, label: "Credit / debit card, Apple Pay or Google Pay", feeAed: 0, totalAed: total },
+          { method: "tamara", available: true, label: "Pay in 4 with Tamara", feePercent: 8, feeAed: Math.round(total * 8) / 100, totalAed: Math.round(total * 108) / 100, instalments: 4 },
         ],
       };
     }

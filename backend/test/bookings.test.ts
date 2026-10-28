@@ -29,19 +29,22 @@ describe("booking a service", () => {
   it("prices on the server, snapshots the address and gives a reference", async () => {
     const me = await signInPhone(t);
     const res = await post("/v1/bookings", me.auth, {
-      serviceKey: "deep",
-      propertyType: "villa",
+      serviceKey: "regular",
+      propertyType: "apartment",
       propertySize: "3bhk",
       scheduledAt: slot(),
       address: ADDRESS,
       priceAed: 1, // ignored: clients never set prices
     });
     expect(res.statusCode).toBe(201);
-    expect(res.json()).toMatchObject({ status: "requested", priceAed: 1300, pricing: "fixed", paymentStatus: "unpaid", canPay: true });
+    expect(res.json()).toMatchObject({ status: "requested", priceAed: 190, pricing: "fixed", paymentStatus: "unpaid", canPay: true, durationMinutes: 120 });
     expect(res.json().reference).toMatch(/^XT-\d+$/);
 
-    const amc = await book(t, me.auth, { plan: "amc", propertySize: "2bhk" });
-    expect(amc.priceAed).toBe(375);
+    // Everything except regular cleaning of apartments is priced on a site visit.
+    const villa = await book(t, me.auth, { propertyType: "villa", propertySize: "3bhk", scheduledAt: slot(3) });
+    expect(villa).toMatchObject({ priceAed: null, pricing: "inspection", awaitingPayment: false });
+    const deep = await book(t, me.auth, { serviceKey: "deep", scheduledAt: slot(4) });
+    expect(deep.priceAed).toBeNull();
     const survey = await book(t, me.auth, { serviceKey: "sofa" });
     expect(survey.priceAed).toBeNull();
   });
@@ -60,7 +63,7 @@ describe("booking a service", () => {
 
   it("validates the schedule and needs a verified phone", async () => {
     const me = await signInPhone(t);
-    const tooSoon = await post("/v1/bookings", me.auth, { serviceKey: "deep", propertyType: "apartment", propertySize: "2bhk", scheduledAt: new Date(Date.now() + 3600_000).toISOString(), address: ADDRESS });
+    const tooSoon = await post("/v1/bookings", me.auth, { serviceKey: "deep", propertyType: "apartment", propertySize: "2bhk", scheduledAt: new Date(Date.now() + 30 * 60_000).toISOString(), address: ADDRESS });
     expect(tooSoon.json().error.code).toBe("too_soon");
     const night = new Date(slot());
     night.setUTCHours(20); // midnight Abu Dhabi
@@ -207,7 +210,7 @@ describe("dispatch, job updates and live tracking", () => {
 describe("catalog ratings", () => {
   it("reports real ratings from reviews", async () => {
     const before = (await t.app.inject({ method: "GET", url: "/v1/catalog/services" })).json();
-    expect(before.services.find((s: { key: string }) => s.key === "deep")).toMatchObject({ rating: null, reviewCount: 0 });
+    expect(before.services.find((s: { key: string }) => s.key === "regular")).toMatchObject({ rating: null, reviewCount: 0 });
 
     const customer = await signInPhone(t);
     const admin = await signInAs(t, "admin");
@@ -218,6 +221,6 @@ describe("catalog ratings", () => {
     await post(`/v1/bookings/${booking.id}/review`, customer.auth, { rating: 4 });
 
     const after = (await t.app.inject({ method: "GET", url: "/v1/catalog/services" })).json();
-    expect(after.services.find((s: { key: string }) => s.key === "deep")).toMatchObject({ rating: 4, reviewCount: 1 });
+    expect(after.services.find((s: { key: string }) => s.key === "regular")).toMatchObject({ rating: 4, reviewCount: 1 });
   });
 });

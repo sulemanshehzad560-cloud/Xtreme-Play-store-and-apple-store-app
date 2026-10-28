@@ -11,6 +11,7 @@ export const SERVICE_SHORT: Record<string, string> = {
   balcony: "Balcony",
   wardrobe: "Wardrobe",
   cupboard: "Cupboards",
+  restaurant: "Restaurant",
 };
 
 export const MOST_BOOKED = ["deep", "regular", "sofa", "carpet", "kitchen", "bathroom"];

@@ -34,8 +34,9 @@ const SLIDE = W - space(8);
 
 const PROMOS = [
   { title: "Monthly & yearly plans", body: "Regular visits by the same team. Pay once, book visits any time.", cta: "See plans", service: "plans", bg: colors.ink, fg: "#fff", ctaBg: colors.goldBright, ctaFg: colors.ink, Art: LivingRoomScene },
-  { title: "Deep clean from AED 300", body: "Kitchen, bathrooms, inside cupboards. Every corner.", cta: "Book deep clean", service: "deep", bg: colors.ink, fg: "#fff", ctaBg: colors.goldBright, ctaFg: colors.ink, Art: LivingRoomScene },
-  { title: "Pay in 4 with Tamara", body: "Split any booking into 4 interest-free payments.", cta: "Book now", service: "regular", bg: "#F3E3BC", fg: colors.ink, ctaBg: colors.ink, ctaFg: "#fff", Art: PayInFourScene },
+  { title: "Home cleaning from AED 90", body: "2–3 trained cleaners. All cleaning materials FREE.", cta: "Book a clean", service: "regular", bg: colors.ink, fg: "#fff", ctaBg: colors.goldBright, ctaFg: colors.ink, Art: LivingRoomScene },
+  { title: "Deep cleaning, priced on site", body: "Appliances inside and out, every corner. Free site visit and quote.", cta: "Book a visit", service: "deep", bg: colors.ink, fg: "#fff", ctaBg: colors.goldBright, ctaFg: colors.ink, Art: LivingRoomScene },
+  { title: "Pay in 4 with Tamara", body: "Split your booking into 4 payments.", cta: "Book now", service: "regular", bg: "#F3E3BC", fg: colors.ink, ctaBg: colors.ink, ctaFg: "#fff", Art: PayInFourScene },
   { title: "Fresh sofas & carpets", body: "Deep extraction lifts dust, stains and odours.", cta: "Book sofa cleaning", service: "sofa", bg: "#EFE6D6", fg: colors.ink, ctaBg: colors.ink, ctaFg: "#fff", Art: LivingRoomScene },
 ];
 
@@ -46,6 +47,7 @@ export default function Home() {
   const addresses = useApi<Address[]>("/me/addresses");
   const company = useApi<Company>("/company");
   const inbox = useApi<{ read: boolean }[]>("/me/notifications?limit=50");
+  const chatUnread = useApi<{ unread: number }>("/me/support/unread");
   const [teams, setTeams] = useState<Availability | null>(null);
   const [query, setQuery] = useState("");
   const [slide, setSlide] = useState(0);
@@ -85,7 +87,7 @@ export default function Home() {
 
   async function refresh() {
     setRefreshing(true);
-    await Promise.all([services.reload(), active.reload(), addresses.reload(), inbox.reload(), loadTeams()]);
+    await Promise.all([services.reload(), active.reload(), addresses.reload(), inbox.reload(), chatUnread.reload(), loadTeams()]);
     setRefreshing(false);
   }
 
@@ -175,6 +177,37 @@ export default function Home() {
               ))}
             </Card>
           ) : null}
+
+          {/* What every booking includes */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -space(4) }} contentContainerStyle={{ gap: space(2), paddingHorizontal: space(4) }}>
+            {[
+              ["🧴", "Cleaning materials", "FREE", true],
+              ["⭐", "Best value", "in the area", false],
+              ["⚡", "Book for", "today", false],
+              ["🛡️", "Vetted &", "insured teams", false],
+            ].map(([icon, a, b, hot]) => (
+              <View
+                key={String(a)}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: space(2),
+                  backgroundColor: hot ? colors.successSoft : colors.surface,
+                  borderWidth: 1,
+                  borderColor: hot ? "#BFE5CC" : colors.border,
+                  borderRadius: radius.lg,
+                  paddingHorizontal: space(3),
+                  paddingVertical: space(2.5),
+                }}
+              >
+                <RNText style={{ fontSize: 20 }}>{icon}</RNText>
+                <View>
+                  <RNText style={{ fontFamily: fonts.medium, fontSize: 11.5, color: hot ? colors.success : colors.muted }}>{a}</RNText>
+                  <RNText style={{ fontFamily: fonts.extrabold, fontSize: 14, color: hot ? colors.success : colors.text }}>{b}</RNText>
+                </View>
+              </View>
+            ))}
+          </ScrollView>
 
           {active.data?.map((b) => (
             <FadeIn key={b.id}>
@@ -275,10 +308,8 @@ export default function Home() {
                     <Text style={{ fontFamily: fonts.bold, fontSize: 14 }} numberOfLines={1}>
                       {s.name}
                     </Text>
-                    <Text variant="small">
-                      {ratingLabel(s)} · {Math.max(1, Math.round(s.durationMinutes / 60))} hrs
-                    </Text>
-                    <Text style={{ fontFamily: fonts.bold, fontSize: 14, color: colors.gold }}>{s.startingFromAed ? `From ${aed(s.startingFromAed)}` : "Price on quote"}</Text>
+                    <Text variant="small">{ratingLabel(s)} · materials free</Text>
+                    <Text style={{ fontFamily: fonts.bold, fontSize: 14, color: colors.gold }}>{s.startingFromAed ? `From ${aed(s.startingFromAed)}` : "Free site visit & quote"}</Text>
                   </View>
                 </Pressable>
               ))}
@@ -301,20 +332,23 @@ export default function Home() {
             ))}
           </Card>
 
-          {company.data ? (
-            <Card tone="ink" onPress={() => Linking.openURL(company.data!.whatsapp)}>
-              <Row>
-                <View style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: "#25D366", alignItems: "center", justifyContent: "center" }}>
-                  <RNText style={{ fontSize: 22 }}>💬</RNText>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <RNText style={{ color: "#fff", fontFamily: fonts.bold, fontSize: 16 }}>Need help? Chat with us</RNText>
-                  <RNText style={{ color: "#BDB4A3", fontFamily: fonts.medium, fontSize: 13 }}>WhatsApp {company.data.phoneDisplay} · 7 days a week</RNText>
-                </View>
-                <RNText style={{ color: colors.goldBright, fontSize: 24 }}>›</RNText>
-              </Row>
-            </Card>
-          ) : null}
+          <Card tone="ink" onPress={() => router.push("/chat")}>
+            <Row>
+              <View style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: colors.goldBright, alignItems: "center", justifyContent: "center" }}>
+                <RNText style={{ fontSize: 22 }}>💬</RNText>
+                {chatUnread.data?.unread ? (
+                  <View style={{ position: "absolute", top: -2, right: -2, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: colors.danger, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: colors.ink }}>
+                    <RNText style={{ color: "#fff", fontFamily: fonts.bold, fontSize: 10 }}>{chatUnread.data.unread}</RNText>
+                  </View>
+                ) : null}
+              </View>
+              <View style={{ flex: 1 }}>
+                <RNText style={{ color: "#fff", fontFamily: fonts.bold, fontSize: 16 }}>Need help? Chat with us</RNText>
+                <RNText style={{ color: "#BDB4A3", fontFamily: fonts.medium, fontSize: 13 }}>Instant answers · our team replies 7 days a week</RNText>
+              </View>
+              <RNText style={{ color: colors.goldBright, fontSize: 24 }}>›</RNText>
+            </Row>
+          </Card>
         </View>
       </ScrollView>
     </View>

@@ -262,6 +262,17 @@ function Glyph({ name }: { name: string }) {
           <Path d="M32 11 Q32 9 30 9 M30 9 L35 14 L25 14 L30 9" fill="none" strokeWidth={1.6} />
         </G>
       );
+    case "restaurant": // serving dome on a plate, with fork and knife
+      return (
+        <G {...common}>
+          <Path d="M10 32 Q10 15 24 15 Q38 15 38 32 Z" fill={GOLD} />
+          <Circle cx={24} cy={12.5} r={2.5} fill={CREAM} />
+          <Path d="M15 27 Q16 21 21 19" fill="none" strokeWidth={1.6} stroke={CREAM} />
+          <Rect x={6} y={32} width={36} height={4} rx={2} fill={CREAM} />
+          <Line x1={9} y1={41} x2={39} y2={41} />
+          <Path d={sparkle(41, 13, 3.4)} fill={CREAM} strokeWidth={1.2} />
+        </G>
+      );
     case "cupboard": // kitchen cupboards with shelf
       return (
         <G {...common}>

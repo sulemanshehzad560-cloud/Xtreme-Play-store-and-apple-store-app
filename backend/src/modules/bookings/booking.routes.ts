@@ -24,9 +24,11 @@ export async function bookingRoutes(app: FastifyInstance, c: Container) {
         body: z
           .object({
             serviceKey: z.string().min(1).max(40),
-            propertyType: z.enum(["apartment", "villa", "office"]),
+            propertyType: z.enum(["apartment", "villa", "office", "restaurant"]),
             propertySize: z.string().min(1).max(20),
             plan: z.enum(["one_off", "amc"]).default("one_off"),
+            /** Regular cleaning can repeat; the next visit is created when one is completed. */
+            frequency: z.enum(["one_time", "weekly", "biweekly"]).default("one_time"),
             scheduledAt: isoDate,
             addressId: z.uuid().optional(),
             address: addressInput.optional(),

@@ -3,7 +3,7 @@ import { View } from "react-native";
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import { AddressPicker, completeAddress, type NewAddress } from "@/components/AddressPicker";
 import { ServiceIcon } from "@/components/art/ServiceIcon";
-import { SlotPicker, abuDhabiTime, hourLabel, nextDays } from "@/components/SlotPicker";
+import { SlotPicker, abuDhabiTime, firstOpenDay, hourLabel, nextDays } from "@/components/SlotPicker";
 import { Button, Card, Chip, Divider, ErrorText, InlineLoader, Input, OptionCard, Row, Screen, StepBar, StickyFooter, Text } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
 import { aed, SIZE_LABEL } from "@/lib/format";
@@ -40,7 +40,7 @@ export default function Subscribe() {
   const [type, setType] = useState<PropertyType>("apartment");
   const [size, setSize] = useState("2bhk");
   const days = useMemo(() => nextDays(14), []);
-  const [day, setDay] = useState(days[0]!);
+  const [day, setDay] = useState(() => firstOpenDay(days));
   const [hour, setHour] = useState<number | null>(null);
   const [addressId, setAddressId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);

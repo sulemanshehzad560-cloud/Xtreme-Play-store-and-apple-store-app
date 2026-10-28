@@ -194,6 +194,7 @@ function card(b) {
     <div class="meta">👤 ${esc(b.customer?.fullName ?? "Customer")} · <a href="tel:${esc(b.customer?.phone)}">${esc(b.customer?.phone ?? "")}</a></div>
     <div class="meta">📍 ${esc([b.address.unit, b.address.building, b.address.area].filter(Boolean).join(", "))}</div>
     <div class="row"><span class="meta">${esc(b.property.type)} · ${esc(b.property.size)}</span><b>${b.discountAed ? `<s class="muted">${aed(b.priceAed)}</s> ${aed(b.amountDueAed)}` : aed(b.priceAed)}</b></div>
+    ${b.frequency && b.frequency !== "one_time" ? `<div class="meta">↻ Repeats ${b.frequency === "weekly" ? "weekly" : "every 2 weeks"}${b.repeatOfId ? " · next visit in series" : ""}</div>` : ""}
     ${b.discountAed ? `<div class="meta">🏷️ Discount ${aed(b.discountAed)}${b.promoCode ? ` · code ${esc(b.promoCode)}` : ""}</div>` : ""}
     ${b.awaitingPayment ? `<div class="meta warn">⏳ Waiting for the customer to pay. Unpaid bookings are released after 1 hour.</div>` : ""}
     <div class="row"><span class="pill ${b.paymentStatus}">${esc(b.paymentStatus.replace("_", " "))} · ${esc(b.paymentMethod.replace("_", " "))}</span></div>
@@ -686,6 +687,55 @@ $("#tab-subscriptions").addEventListener("click", (e) => {
   if (t.dataset.subCancel) cancelSub(subState.subs.find((s) => s.id === t.dataset.subCancel));
 });
 
+// ------------------------------------------------------------------ messages (Chat with us)
+
+const chat = { threads: [], open: null, timer: null };
+const SENDER = { customer: "Customer", bot: "Automatic answer", staff: "Xtreme team" };
+const clock = (iso) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Dubai" }).format(new Date(iso));
+
+async function loadThreads() {
+  chat.threads = await api("/admin/support/threads");
+  const unread = chat.threads.reduce((n, t) => n + t.unread, 0);
+  $("#msg-badge").textContent = unread;
+  $("#msg-badge").classList.toggle("hidden", !unread);
+  $("#chat-list").innerHTML = chat.threads.length
+    ? chat.threads
+        .map(
+          (t) => `<button class="chat-item ${chat.open === t.customerId ? "active" : ""}" data-thread="${t.customerId}">
+            <div class="row"><b>${esc(t.customer.fullName ?? t.customer.phone ?? "Customer")}</b>${t.unread ? `<em class="badge">${t.unread}</em>` : `<small class="muted">${clock(t.lastAt)}</small>`}</div>
+            <div class="meta">${t.lastSender === "customer" ? "" : "You: "}${esc(t.lastMessage.slice(0, 80))}</div></button>`,
+        )
+        .join("")
+    : `<p class="muted" style="padding:16px">No messages yet. When customers use “Chat with us” in the app, conversations appear here. Common questions get an automatic answer straight away.</p>`;
+}
+
+async function openThread(customerId) {
+  chat.open = customerId;
+  const t = await api(`/admin/support/threads/${customerId}`);
+  $("#chat-head").innerHTML = `<b>${esc(t.customer?.fullName ?? "Customer")}</b> <a href="tel:${esc(t.customer?.phone)}">${esc(t.customer?.phone ?? "")}</a> ${t.customer?.email ? `<span class="muted">· ${esc(t.customer.email)}</span>` : ""}`;
+  $("#chat-log").innerHTML = t.messages
+    .map((m) => `<div class="bubble ${m.sender}"><small>${SENDER[m.sender]} · ${clock(m.createdAt)}</small><div>${esc(m.body).replace(/\n/g, "<br/>")}</div></div>`)
+    .join("");
+  $("#chat-log").scrollTop = $("#chat-log").scrollHeight;
+  $("#chat-form").classList.remove("hidden");
+  await loadThreads();
+}
+
+$("#chat-list").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-thread]");
+  if (b) openThread(b.dataset.thread).catch((err) => toast(err.message));
+});
+$("#chat-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const body = $("#chat-input").value.trim();
+  if (!body || !chat.open) return;
+  act(async () => {
+    await api(`/admin/support/threads/${chat.open}`, { body: { body } });
+    $("#chat-input").value = "";
+    await openThread(chat.open);
+  });
+});
+
 // ------------------------------------------------------------------ promotions
 
 const promoState = { list: [] };
@@ -838,6 +888,7 @@ const PAGE_SUB = {
   map: "Where every team is right now",
   subscriptions: "Monthly and yearly cleaning contracts",
   promotions: "First-booking offers and promo codes",
+  messages: "Customer chats: automatic answers and your replies",
   staff: "Team members, sign-in and alerts",
   customers: "Customer accounts",
   payments: "Card and Tamara payments and refunds",
@@ -848,12 +899,13 @@ document.querySelectorAll(".tab").forEach((t) =>
   t.addEventListener("click", () => {
     document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("active", x === t));
     document.querySelectorAll(".tab-panel").forEach((p) => p.classList.toggle("hidden", p.id !== `tab-${t.dataset.tab}`));
-    $("#page-title").textContent = t.lastChild.textContent.trim();
+    $("#page-title").textContent = t.querySelector("span").nextSibling.textContent.trim();
     $("#page-sub").textContent = PAGE_SUB[t.dataset.tab] ?? "";
     $("#kpis").classList.toggle("hidden", t.dataset.tab !== "board");
     if (t.dataset.tab === "customers") loadCustomers().catch((e) => toast(e.message));
     if (t.dataset.tab === "subscriptions") loadSubscriptions().catch((e) => toast(e.message));
     if (t.dataset.tab === "promotions") loadPromotions().catch((e) => toast(e.message));
+    if (t.dataset.tab === "messages") loadThreads().catch((e) => toast(e.message));
     if (t.dataset.tab === "admin") loadAdminTab().catch((e) => toast(e.message));
     if (t.dataset.tab === "map") {
       if (!map) {
@@ -885,6 +937,11 @@ function connectRealtime() {
     reloadSoon();
   });
   socket.on("booking:status", reloadSoon);
+  socket.on("support:message", (p) => {
+    toast("New customer message");
+    loadThreads().catch(() => {});
+    if (chat.open && p?.customerId === chat.open) openThread(chat.open).catch(() => {});
+  });
   socket.on("staff:status", reloadSoon);
   socket.on("staff:location", (p) => {
     const s = state.staff.find((x) => x.id === p.staffId);
@@ -899,6 +956,7 @@ async function start() {
   $("#me-name").textContent = session.user.fullName ?? session.user.phone;
   await loadAll().catch((e) => toast(e.message));
   connectRealtime();
+  loadThreads().catch(() => {});
   setInterval(() => loadAll().catch(() => {}), 60_000);
 }
 

@@ -67,6 +67,8 @@ const EnvSchema = z.object({
   TAMARA_API_TOKEN: z.string().optional(),
   TAMARA_NOTIFICATION_TOKEN: z.string().optional(),
   TAMARA_INSTALMENTS: z.coerce.number().int().min(2).max(12).default(4),
+  /** Fee added when the customer pays with Tamara, in percent of the amount due (0 = none). */
+  TAMARA_FEE_PERCENT: z.coerce.number().min(0).max(20).default(8),
 
   // Invoice emails. Zoho Mail SMTP for an organisation mailbox on your own domain:
   // smtppro.zoho.com, port 465, the mailbox address and an app-specific password.

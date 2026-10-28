@@ -44,7 +44,7 @@ export async function subscriptionRoutes(app: FastifyInstance, c: Container) {
           .object({
             planId: z.uuid(),
             interval: z.enum(["monthly", "yearly"]),
-            propertyType: z.enum(["apartment", "villa", "office"]),
+            propertyType: z.enum(["apartment", "villa", "office", "restaurant"]),
             propertySize: z.string().min(1).max(20),
             addressId: z.uuid().optional(),
             address: addressInput.optional(),

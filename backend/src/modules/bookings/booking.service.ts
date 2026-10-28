@@ -49,6 +49,10 @@ export interface CreateBookingInput {
   notes?: string | undefined;
   paymentMethod: "card" | "tamara" | "cash" | "card_on_site" | "bank_transfer";
   idempotencyKey?: string | undefined;
+  /** Regular cleaning only: repeat weekly or every two weeks. */
+  frequency?: "one_time" | "weekly" | "biweekly" | undefined;
+  /** Set only for the next visit of a repeating series (never from the request body). */
+  repeatOfId?: string | undefined;
   /**
    * Set only by the subscriptions module (never from the request body): a visit that belongs
    * to a subscription. priceAed > 0 is the period charge the customer pays; 0 is an included visit.
@@ -65,7 +69,7 @@ export interface BookingRules {
   etaSpeedKmh: number;
 }
 
-export const DEFAULT_RULES: BookingRules = { minLeadMinutes: 120, maxAdvanceDays: 90, openHour: 7, lastStartHour: 20, etaSpeedKmh: 32 };
+export const DEFAULT_RULES: BookingRules = { minLeadMinutes: 60, maxAdvanceDays: 90, openHour: 7, lastStartHour: 20, etaSpeedKmh: 32 };
 
 /** Automated actions (account deletion, jobs) act with admin rights but no user id. */
 export const SYSTEM_ACTOR: Actor = { id: "system", role: "admin" };
@@ -78,6 +82,9 @@ export type StatusListener = (booking: Booking, from: BookingStatus, actor: Acto
 
 /** Unpaid fixed-price bookings are cancelled after this long, freeing the slot. */
 export const UNPAID_HOLD_MINUTES = 60;
+
+/** Days between visits of a repeating booking. */
+const REPEAT_DAYS = { weekly: 7, biweekly: 14 } as const;
 
 /**
  * Fixed-price bookings are paid in advance: they stay "requested" (out of dispatch and the
@@ -150,7 +157,9 @@ export class BookingService {
             priceAed: priced.priceAed,
             paymentMethod: input.paymentMethod,
             scheduledAt: input.scheduledAt,
-            durationMinutes: service.durationMinutes,
+            durationMinutes: quoted.durationMinutes ?? service.durationMinutes,
+            frequency: service.key === "regular" && !sub ? (input.frequency ?? "one_time") : "one_time",
+            repeatOfId: input.repeatOfId ?? null,
             addressId: place.addressId,
             address: place.snapshot,
             lat: place.lat,
@@ -218,7 +227,10 @@ export class BookingService {
           eq(bookings.pricing, "fixed"),
           eq(bookings.paymentStatus, "unpaid"),
           sql`${bookings.priceAed} > 0`,
-          sql`(${bookings.createdAt} < ${cutoff} or ${bookings.scheduledAt} < ${now})`,
+          // New bookings hold their slot for an hour. The next visit of a repeating clean is
+          // created days ahead, so it is only released if still unpaid a day before.
+          sql`((${bookings.repeatOfId} is null and (${bookings.createdAt} < ${cutoff} or ${bookings.scheduledAt} < ${now}))
+            or (${bookings.repeatOfId} is not null and ${bookings.scheduledAt} < ${new Date(now.getTime() + 86_400_000)}))`,
         ),
       )
       .limit(200);
@@ -380,7 +392,44 @@ export class BookingService {
     if (to === "confirmed" && from === "assigned") for (const id of team) this.hub.leave(id, rooms.booking(bookingId));
     await this.announce(updated, actor, team);
     for (const listener of this.listeners) await listener(updated, from, actor);
+    if (to === "completed" && updated.frequency !== "one_time") void this.scheduleNextVisit(updated).catch(() => undefined);
     return this.view(updated, actor);
+  }
+
+  /**
+   * A repeating regular clean: once a visit is completed, the next one is booked at the same
+   * time a week (or two) later. It waits for payment like any booking; skipping it (cancelling)
+   * ends the series.
+   */
+  async scheduleNextVisit(done: Booking) {
+    if (done.frequency === "one_time") return null;
+    const [existing] = await this.db.select({ id: bookings.id }).from(bookings).where(eq(bookings.repeatOfId, done.id)).limit(1);
+    if (existing) return null;
+    const step = REPEAT_DAYS[done.frequency] * 86_400_000;
+    let at = done.scheduledAt.getTime() + step;
+    while (at < Date.now() + this.rules.minLeadMinutes * 60_000) at += step;
+    const next = await this.create(
+      { id: done.customerId, role: "customer" },
+      {
+        serviceKey: done.serviceKey,
+        propertyType: done.propertyType,
+        propertySize: done.propertySize,
+        plan: "one_off",
+        frequency: done.frequency,
+        repeatOfId: done.id,
+        scheduledAt: new Date(at),
+        address: { ...done.address, label: done.address.label, area: done.address.area, lat: done.lat, lng: done.lng },
+        notes: done.notes ?? undefined,
+        paymentMethod: "card",
+        idempotencyKey: `repeat-${done.id}`,
+      },
+    );
+    void this.notifications.notify([done.customerId], {
+      title: `Your next ${done.frequency === "weekly" ? "weekly" : "bi-weekly"} clean is ready`,
+      body: `${formatWhen(new Date(at))} · ${next.reference}. Pay in the app to confirm it, or cancel to stop repeating.`,
+      data: { type: "booking", bookingId: next.id },
+    });
+    return next;
   }
 
   /** Assigns (or reassigns) the team for a booking. Admin only. */
@@ -743,6 +792,8 @@ export class BookingService {
         service: { key: b.serviceKey, name: serviceName(b.serviceKey), nameAr: service?.nameAr ?? null },
         property: { type: b.propertyType, size: b.propertySize },
         plan: b.plan,
+        frequency: b.frequency,
+        repeatOfId: b.repeatOfId,
         pricing: b.pricing,
         priceAed: b.priceAed,
         paymentMethod: b.paymentMethod,

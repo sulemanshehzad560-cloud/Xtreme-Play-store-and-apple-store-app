@@ -126,9 +126,9 @@ describe("automatic invoice email", () => {
     expect(mail.subject).toContain(booking.reference);
     expect(mail.html).toContain("TAX INVOICE");
     expect(mail.html).toContain("VAT 5%");
-    expect(mail.html).toContain("AED 21.43");
+    expect(mail.html).toContain("AED 7.14");
     expect(mail.html).toContain("https://api.xtreme.test/brand/logo.png");
-    expect(mail.text).toContain("Total (incl. VAT): AED 450.00");
+    expect(mail.text).toContain("Total (incl. VAT): AED 150.00");
 
     const detail = (await get(`/v1/bookings/${booking.id}`, admin.auth)).json();
     expect(detail.invoiceSentAt).toBeTruthy();

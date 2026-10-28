@@ -37,6 +37,7 @@
         <button class="tab active" data-tab="board"><span>▦</span>Dispatch board</button>
         <button class="tab" data-tab="map"><span>◎</span>Live map</button>
         <button class="tab" data-tab="subscriptions"><span>↻</span>Subscriptions</button>
+        <button class="tab" data-tab="messages"><span>✉</span>Messages <em id="msg-badge" class="badge hidden"></em></button>
         <button class="tab" data-tab="promotions"><span>%</span>Promotions</button>
         <button class="tab" data-tab="staff"><span>☺</span>Staff</button>
         <button class="tab" data-tab="customers"><span>◉</span>Customers</button>
@@ -99,6 +100,16 @@
         </div>
       </div>
       <div id="tab-payments" class="tab-panel hidden"><table class="table" id="payments-table"></table></div>
+      <div id="tab-messages" class="tab-panel hidden">
+        <div class="chat-shell">
+          <aside class="chat-list" id="chat-list"></aside>
+          <section class="chat-pane">
+            <header class="chat-head" id="chat-head"><span class="muted">Choose a conversation</span></header>
+            <div class="chat-log" id="chat-log"></div>
+            <form class="chat-form hidden" id="chat-form"><input id="chat-input" maxlength="2000" placeholder="Write a reply… the customer gets a notification" autocomplete="off" /><button class="btn primary">Send</button></form>
+          </section>
+        </div>
+      </div>
       <div id="tab-promotions" class="tab-panel hidden">
         <section class="panel">
           <div class="panel-head"><div><h2>Promotions</h2><p class="muted">Automatic offers apply by themselves (like a first-booking discount); code offers apply when the customer enters the code at checkout. Bookings are confirmed only after payment.</p></div>

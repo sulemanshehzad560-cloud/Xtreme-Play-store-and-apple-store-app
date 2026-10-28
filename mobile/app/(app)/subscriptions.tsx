@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Alert, View } from "react-native";
 import { router } from "expo-router";
 import { ServiceIcon } from "@/components/art/ServiceIcon";
-import { SlotPicker, abuDhabiTime, nextDays } from "@/components/SlotPicker";
+import { SlotPicker, abuDhabiTime, firstOpenDay, nextDays } from "@/components/SlotPicker";
 import { Button, Card, Divider, ErrorText, InlineLoader, Row, Screen, StatusPill, Text } from "@/components/ui";
 import { api } from "@/lib/api";
 import { aed, when } from "@/lib/format";
@@ -40,7 +40,7 @@ export default function MySubscriptions() {
 function SubscriptionCard({ sub, onChange }: { sub: Subscription; onChange: () => void }) {
   const days = useMemo(() => nextDays(21), []);
   const [mode, setMode] = useState<"none" | "visit" | "renew">("none");
-  const [d, setD] = useState(days[0]!);
+  const [d, setD] = useState(() => firstOpenDay(days));
   const [hour, setHour] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

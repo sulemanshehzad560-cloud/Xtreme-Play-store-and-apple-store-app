@@ -8,7 +8,7 @@ import { SERVICE_ZONE } from "../../config/service-zone.js";
 import type { Container } from "../../container.js";
 import { badRequest } from "../../lib/errors.js";
 import { lat, lng } from "../../lib/schemas.js";
-import { PRICE_TABLE, SERVICES, SIZE_LABELS, quote, startingFrom } from "./catalog.js";
+import { PROPERTY_SIZES, REGULAR_RATES, SERVICES, SIZE_LABELS, propertyTypesFor, quote, startingFrom } from "./catalog.js";
 
 const tags = ["catalog"];
 
@@ -54,13 +54,18 @@ export async function catalogRoutes(app: FastifyInstance, c: Container) {
       vatIncluded: true,
       services: SERVICES.map((s) => ({
         ...s,
+        propertyTypes: propertyTypesFor(s),
         startingFromAed: startingFrom(s),
         rating: byKey.get(s.key)?.avg ?? null,
         reviewCount: byKey.get(s.key)?.count ?? 0,
       })),
       propertySizes: Object.fromEntries(
-        Object.entries(PRICE_TABLE).map(([type, sizes]) => [type, Object.keys(sizes).map((key) => ({ key, label: SIZE_LABELS[key] ?? key }))]),
+        Object.entries(PROPERTY_SIZES).map(([type, sizes]) => [type, sizes.map((key) => ({ key, label: SIZE_LABELS[key] ?? key }))]),
       ),
+      // Regular cleaning of apartments: price, time on site and team size per size.
+      regularRates: REGULAR_RATES,
+      materialsIncluded: true,
+      payments: { tamaraFeePercent: c.env.TAMARA_FEE_PERCENT, tamaraInstalments: c.env.TAMARA_INSTALMENTS },
     };
   });
 
@@ -72,7 +77,7 @@ export async function catalogRoutes(app: FastifyInstance, c: Container) {
         summary: "Price for a service and property",
         querystring: z.object({
           serviceKey: z.string(),
-          propertyType: z.enum(["apartment", "villa", "office"]),
+          propertyType: z.enum(["apartment", "villa", "office", "restaurant"]),
           propertySize: z.string(),
           plan: z.enum(["one_off", "amc"]).default("one_off"),
         }),

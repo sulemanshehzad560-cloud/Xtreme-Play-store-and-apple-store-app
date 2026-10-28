@@ -19,22 +19,22 @@ describe("promotions", () => {
     expect((await post("/v1/admin/promotions", admin.auth, FIRST)).statusCode).toBe(201);
     const customer = await signInPhone(t);
 
-    // Deep clean 2BHK is AED 450: 20% is 90.
+    // Regular clean 2BHK is AED 150: 20% is 30.
     const booking = await book(t, customer.auth);
-    expect(booking).toMatchObject({ priceAed: 450, discountAed: 90, amountDueAed: 360 });
+    expect(booking).toMatchObject({ priceAed: 150, discountAed: 30, amountDueAed: 120 });
     const options = (await get(`/v1/bookings/${booking.id}/payment-options`, customer.auth)).json();
-    expect(options.amount).toMatchObject({ priceAed: 450, discountAed: 90, totalAed: 360 });
+    expect(options.amount).toMatchObject({ priceAed: 150, discountAed: 30, totalAed: 120 });
 
     await pay(t, customer.auth, booking.id);
     const payments = (await get(`/v1/bookings/${booking.id}/payments`, customer.auth)).json();
-    expect(payments[0]).toMatchObject({ amountAed: 360, status: "captured" });
+    expect(payments[0]).toMatchObject({ amountAed: 120, status: "captured" });
     const invoice = (await get(`/v1/bookings/${booking.id}/invoice`, customer.auth)).json();
-    expect(invoice.lines.map((l: { amountAed: number }) => l.amountAed)).toEqual([450, -90]);
-    expect(invoice.totalAed).toBe(360);
+    expect(invoice.lines.map((l: { amountAed: number }) => l.amountAed)).toEqual([150, -30]);
+    expect(invoice.totalAed).toBe(120);
 
     // Only the first booking qualifies.
     const second = await book(t, customer.auth, { scheduledAt: slot(3) });
-    expect(second).toMatchObject({ discountAed: 0, amountDueAed: 450 });
+    expect(second).toMatchObject({ discountAed: 0, amountDueAed: 150 });
     const promos = (await get("/v1/admin/promotions", admin.auth)).json();
     expect(promos[0]).toMatchObject({ usedCount: 1 });
   });
@@ -42,30 +42,30 @@ describe("promotions", () => {
   it("applies codes with their rules, keeps the best discount and caps at the minimum charge", async () => {
     const admin = await signInAs(t, "admin");
     await post("/v1/admin/promotions", admin.auth, { ...FIRST, value: 10 });
-    const res = await post("/v1/admin/promotions", admin.auth, { name: "Eid 100", code: "eid100", kind: "fixed", value: 100, autoApply: false, firstBookingOnly: false, serviceKeys: ["deep"], minOrderAed: 300, active: true });
+    const res = await post("/v1/admin/promotions", admin.auth, { name: "Eid 100", code: "eid100", kind: "fixed", value: 100, autoApply: false, firstBookingOnly: false, serviceKeys: ["regular"], minOrderAed: 140, active: true });
     expect(res.json()).toMatchObject({ code: "EID100" });
     expect((await post("/v1/admin/promotions", admin.auth, { name: "Dup", code: "EID100", kind: "fixed", value: 5, autoApply: false, firstBookingOnly: false, active: true })).json().error.code).toBe("code_taken");
     expect((await post("/v1/admin/promotions", admin.auth, { name: "No code", kind: "fixed", value: 5, autoApply: false, firstBookingOnly: false, active: true })).json().error.code).toBe("code_required");
 
     const customer = await signInPhone(t);
     const booking = await book(t, customer.auth);
-    expect(booking).toMatchObject({ discountAed: 45 });
+    expect(booking).toMatchObject({ discountAed: 15 });
     expect((await post(`/v1/bookings/${booking.id}/promo`, customer.auth, { code: "nope" })).json().error.code).toBe("invalid_code");
     const applied = (await post(`/v1/bookings/${booking.id}/promo`, customer.auth, { code: " eid100 " })).json();
-    expect(applied).toMatchObject({ discountAed: 100, amountDueAed: 350, promoCode: "EID100" });
+    expect(applied).toMatchObject({ discountAed: 100, amountDueAed: 50, promoCode: "EID100" });
 
     // Wrong service and too small an order are refused with a reason.
-    const regular = await book(t, customer.auth, { serviceKey: "regular", scheduledAt: slot(3) });
-    expect((await post(`/v1/bookings/${regular.id}/promo`, customer.auth, { code: "EID100" })).json().error.code).toBe("code_not_applicable");
+    const small = await book(t, customer.auth, { propertySize: "1bhk", scheduledAt: slot(3) });
+    expect((await post(`/v1/bookings/${small.id}/promo`, customer.auth, { code: "EID100" })).json().error.code).toBe("code_not_applicable");
 
     // Removing the code falls back to the automatic offer.
-    expect((await t.app.inject({ method: "DELETE", url: `/v1/bookings/${booking.id}/promo`, headers: customer.auth })).json()).toMatchObject({ discountAed: 45, promoCode: null });
+    expect((await t.app.inject({ method: "DELETE", url: `/v1/bookings/${booking.id}/promo`, headers: customer.auth })).json()).toMatchObject({ discountAed: 15, promoCode: null });
 
     // A paused promotion stops applying before payment.
     const auto = (await get("/v1/admin/promotions", admin.auth)).json().find((p: { autoApply: boolean }) => p.autoApply);
     await t.app.inject({ method: "PATCH", url: `/v1/admin/promotions/${auto.id}`, headers: admin.auth, payload: { active: false } });
     const options = (await get(`/v1/bookings/${booking.id}/payment-options`, customer.auth)).json();
-    expect(options.amount).toMatchObject({ discountAed: 0, totalAed: 450 });
+    expect(options.amount).toMatchObject({ discountAed: 0, totalAed: 150 });
 
     // Customers cannot manage promotions.
     expect((await post("/v1/admin/promotions", customer.auth, FIRST)).statusCode).toBe(403);
