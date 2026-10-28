@@ -136,14 +136,21 @@ export default function Home() {
               <RNText style={{ color: colors.goldBright, fontFamily: fonts.semibold, fontSize: 15 }}>Hi{first ? ` ${first}` : " there"} 👋</RNText>
               <RNText style={{ color: "#fff", fontFamily: fonts.extrabold, fontSize: 26, lineHeight: 33, letterSpacing: -0.4 }}>What can we help you with today?</RNText>
             </View>
-            {teams ? (
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-start", backgroundColor: "#24201A", borderRadius: radius.pill, paddingHorizontal: space(3), paddingVertical: space(1.5) }}>
-                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#3DDC84" }} />
-                <RNText style={{ color: "#E9E3D6", fontFamily: fonts.semibold, fontSize: 12 }}>
-                  {teams.available} teams available now{teams.nearestEtaMinutes != null ? ` · nearest ~${teams.nearestEtaMinutes} min` : ""}
-                </RNText>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: space(2) }}>
+              {/* Every booking includes cleaning materials at no cost. */}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.goldBright, borderRadius: radius.pill, paddingLeft: space(2.5), paddingRight: space(3.5), paddingVertical: space(1.5) }}>
+                <RNText style={{ fontSize: 15 }}>🧴</RNText>
+                <RNText style={{ color: colors.ink, fontFamily: fonts.extrabold, fontSize: 13 }}>Cleaning materials FREE</RNText>
               </View>
-            ) : null}
+              {teams && teams.available > 0 ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#24201A", borderRadius: radius.pill, paddingHorizontal: space(3), paddingVertical: space(1.5) }}>
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#3DDC84" }} />
+                  <RNText style={{ color: "#E9E3D6", fontFamily: fonts.semibold, fontSize: 12 }}>
+                    {teams.available} teams available{teams.nearestEtaMinutes != null ? ` · ~${teams.nearestEtaMinutes} min` : ""}
+                  </RNText>
+                </View>
+              ) : null}
+            </View>
           </SafeAreaView>
         </View>
 
@@ -181,8 +188,7 @@ export default function Home() {
           {/* What every booking includes */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -space(4) }} contentContainerStyle={{ gap: space(2), paddingHorizontal: space(4) }}>
             {[
-              ["🧴", "Cleaning materials", "FREE", true],
-              ["⭐", "Best value", "in the area", false],
+              ["⭐", "Best value", "in the area", true],
               ["⚡", "Book for", "today", false],
               ["🛡️", "Vetted &", "insured teams", false],
             ].map(([icon, a, b, hot]) => (

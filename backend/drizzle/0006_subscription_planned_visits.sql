@@ -1,0 +1,1 @@
+ALTER TABLE "subscriptions" ADD COLUMN "planned_visits" jsonb;

@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Alert, View } from "react-native";
 import { router } from "expo-router";
 import { ServiceIcon } from "@/components/art/ServiceIcon";
-import { SlotPicker, abuDhabiTime, firstOpenDay, nextDays } from "@/components/SlotPicker";
+import { abuDhabiTime } from "@/components/SlotPicker";
+import { MonthCalendar, fromKey, isoDayKey } from "@/components/MonthCalendar";
 import { Button, Card, Divider, ErrorText, InlineLoader, Row, Screen, StatusPill, Text } from "@/components/ui";
 import { api } from "@/lib/api";
 import { aed, when } from "@/lib/format";
@@ -38,28 +39,35 @@ export default function MySubscriptions() {
 }
 
 function SubscriptionCard({ sub, onChange }: { sub: Subscription; onChange: () => void }) {
-  const days = useMemo(() => nextDays(21), []);
   const [mode, setMode] = useState<"none" | "visit" | "renew">("none");
-  const [d, setD] = useState(() => firstOpenDay(days));
+  const [picked, setPicked] = useState<string[]>([]);
   const [hour, setHour] = useState<number | null>(null);
+  const booked = Object.fromEntries(sub.visits.filter((v) => v.status !== "cancelled").map((v) => [isoDayKey(v.scheduledAt), v.status]));
+  const perMonth = sub.visitsPerMonth ?? Math.max(1, Math.round(sub.visitsPerPeriod / (sub.interval === "monthly" ? 1 : 12)));
+  const periodEnd = sub.currentPeriodEnd ? new Date(sub.currentPeriodEnd) : new Date(Date.now() + 30 * 86_400_000);
+  const upcoming = [...sub.visits].filter((v) => v.status !== "cancelled").sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const st = STATUS[sub.status];
   const used = sub.visitsPerPeriod ? sub.visitsUsed / sub.visitsPerPeriod : 0;
 
   async function confirm() {
-    if (hour == null) return setError("Pick a time");
+    if (!picked.length) return setError("Tap the days you want");
+    if (hour == null) return setError("Pick a start time");
+    const times = [...picked].sort().map((k) => abuDhabiTime(fromKey(k), hour));
     setBusy(true);
     setError(null);
     try {
       if (mode === "visit") {
-        const b = await api<Booking>(`/subscriptions/${sub.id}/visits`, { body: { scheduledAt: abuDhabiTime(d, hour) } });
+        const booked = await api<Booking[]>(`/subscriptions/${sub.id}/schedule`, { body: { visits: times } });
         setMode("none");
+        setPicked([]);
         onChange();
-        router.push(`/booking/${b.id}?new=1`);
+        Alert.alert(booked.length > 1 ? `${booked.length} visits booked` : "Visit booked", "You'll find them in your calendar and in Bookings.");
       } else {
-        const r = await api<{ paymentBookingId: string }>(`/subscriptions/${sub.id}/renew`, { body: { firstVisitAt: abuDhabiTime(d, hour) } });
+        const r = await api<{ paymentBookingId: string }>(`/subscriptions/${sub.id}/renew`, { body: { firstVisitAt: times[0], moreVisits: times.slice(1) } });
         setMode("none");
+        setPicked([]);
         router.push(`/booking/${r.paymentBookingId}/pay`);
       }
     } catch (e) {
@@ -118,31 +126,55 @@ function SubscriptionCard({ sub, onChange }: { sub: Subscription; onChange: () =
       {sub.paymentBookingId ? <Button title="Pay to activate" variant="gold" onPress={() => router.push(`/booking/${sub.paymentBookingId}/pay`)} /> : null}
       {mode === "none" ? (
         <Row style={{ gap: space(2) }}>
-          {sub.canBookVisit ? <Button title="Book a visit" style={{ flex: 1 }} onPress={() => setMode("visit")} /> : null}
+          {sub.canBookVisit ? <Button title={sub.visitsLeft > 1 ? "Plan visits" : "Book a visit"} style={{ flex: 1 }} onPress={() => setMode("visit")} /> : null}
           {sub.canRenew && sub.status !== "pending_payment" ? <Button title={sub.status === "active" ? "Pay next period" : "Renew"} variant="secondary" style={{ flex: 1 }} onPress={() => setMode("renew")} /> : null}
           {sub.canCancel ? <Button title="Cancel" variant="secondary" style={{ flex: 1 }} onPress={cancel} /> : null}
         </Row>
       ) : (
         <View style={{ gap: space(3) }}>
           <Divider />
-          <Text style={{ fontFamily: fonts.bold }}>{mode === "visit" ? "Book an included visit" : `Renew: first visit of the next ${sub.interval === "monthly" ? "month" : "year"}`}</Text>
-          <SlotPicker days={days} day={d} onDay={setD} hour={hour} onHour={setHour} />
+          <Text style={{ fontFamily: fonts.bold }}>
+            {mode === "visit" ? `Pick your visits (${sub.visitsLeft} left until ${day(sub.currentPeriodEnd)})` : `Plan your next ${sub.interval === "monthly" ? "month" : "period"}: the first visit is paid now`}
+          </Text>
+          <MonthCalendar
+            selected={picked}
+            onChange={setPicked}
+            max={mode === "visit" ? sub.visitsLeft : perMonth}
+            until={mode === "visit" ? periodEnd : new Date(Date.now() + 30 * 86_400_000)}
+            hour={hour}
+            onHour={setHour}
+            booked={booked}
+            firstLabel={mode === "renew" ? "PAID" : undefined}
+          />
           <ErrorText error={error} />
           <Row style={{ gap: space(2) }}>
             <Button title="Back" variant="secondary" style={{ flex: 1 }} onPress={() => setMode("none")} />
-            <Button title={mode === "visit" ? "Book visit" : `Renew · ${aed(sub.priceAed)}`} style={{ flex: 1.4 }} loading={busy} onPress={confirm} />
+            <Button
+              title={mode === "visit" ? `Book ${picked.length || ""} visit${picked.length === 1 ? "" : "s"}`.replace("  ", " ") : `Renew · ${aed(sub.priceAed)}`}
+              style={{ flex: 1.4 }}
+              loading={busy}
+              disabled={!picked.length || hour == null}
+              onPress={confirm}
+            />
           </Row>
         </View>
       )}
 
-      {sub.visits.length ? (
+      {sub.plannedVisits?.length ? (
+        <Text variant="small">
+          📅 {sub.plannedVisits.length} more visit{sub.plannedVisits.length > 1 ? "s" : ""} planned (
+          {sub.plannedVisits.map((iso) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" })).join(", ")}); booked as soon as you pay.
+        </Text>
+      ) : null}
+      {upcoming.length ? (
         <>
           <Divider />
-          <Text variant="label">VISITS</Text>
-          {sub.visits.slice(0, 5).map((v) => (
+          <Text variant="label">YOUR VISITS</Text>
+          {upcoming.map((v) => (
             <Row key={v.id} style={{ justifyContent: "space-between" }}>
               <Text style={{ fontSize: 14, flex: 1 }} onPress={() => router.push(`/booking/${v.id}`)}>
-                {when(v.scheduledAt)}{v.included ? "" : " · first visit (paid)"}
+                {when(v.scheduledAt)}
+                {v.included ? "" : " · paid visit"}
               </Text>
               <StatusPill status={v.status} />
             </Row>

@@ -380,6 +380,8 @@ export const subscriptions = pgTable(
     lat: doublePrecision("lat").notNull(),
     lng: doublePrecision("lng").notNull(),
     notes: text("notes"),
+    /** Dates the customer picked for the rest of the period; booked as included visits once paid. */
+    plannedVisits: jsonb("planned_visits").$type<string[]>(),
     cancelledAt: ts("cancelled_at"),
     createdAt: createdAt(),
     updatedAt: ts("updated_at").notNull().defaultNow(),

@@ -43,6 +43,13 @@
       "when": 1793179987897,
       "tag": "0005_repeat_visits_tamara_fee_chat",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793181658663,
+      "tag": "0006_subscription_planned_visits",
+      "breakpoints": true
     }
   ]
 }

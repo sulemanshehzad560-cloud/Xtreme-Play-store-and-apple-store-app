@@ -29,8 +29,13 @@ export interface SubscribeInput {
   addressId?: string | undefined;
   address?: AddressInput | undefined;
   firstVisitAt: Date;
+  /** The rest of the first month's visits, picked on the calendar. */
+  moreVisits?: Date[] | undefined;
   notes?: string | undefined;
 }
+
+/** Visits picked at checkout must fall within this many days of the first one. */
+const PLAN_WINDOW_DAYS = 31;
 
 const MONTHS: Record<Interval, number> = { monthly: 1, yearly: 12 };
 
@@ -109,6 +114,7 @@ export class SubscriptionService {
     const [user] = await this.db.select().from(users).where(eq(users.id, customer.id)).limit(1);
     if (!user?.phone || !user.phoneVerifiedAt) throw badRequest("phone_required", "Add and verify your mobile number so the team can reach you");
 
+    const planned = this.checkPlanned(plan.visitsPerMonth, input.firstVisitAt, input.moreVisits);
     const place = await this.bookingsSvc.resolveAddress(customer.id, input);
     const sub = await this.insertWithReference({
       customerId: customer.id,
@@ -125,6 +131,7 @@ export class SubscriptionService {
       lat: place.lat,
       lng: place.lng,
       notes: input.notes ?? null,
+      plannedVisits: planned,
     });
 
     try {
@@ -167,12 +174,26 @@ export class SubscriptionService {
     return booking;
   }
 
+  /** Book several included visits at once, picked on the calendar. */
+  async scheduleVisits(id: string, actor: Actor, dates: Date[]) {
+    const unique = [...new Map(dates.map((d) => [d.getTime(), d])).values()].sort((a, b) => a.getTime() - b.getTime());
+    const sub = await this.refreshExpiry(await this.load(id, actor));
+    if (sub.status !== "active") throw conflict("not_active", "This subscription is not active. Renew it to book visits.");
+    const left = allowance(sub) - (await this.visitsUsed(sub));
+    if (unique.length > left) throw conflict("no_visits_left", `You have ${left} visit${left === 1 ? "" : "s"} left in this period`);
+    const booked = [];
+    for (const at of unique) booked.push(await this.requestVisit(id, actor, at));
+    return booked;
+  }
+
   /** Start the next paid period (or retry an unpaid one). Returns the booking to pay. */
-  async renew(id: string, customer: Actor, firstVisitAt: Date) {
+  async renew(id: string, customer: Actor, firstVisitAt: Date, moreVisits?: Date[]) {
     const sub = await this.refreshExpiry(await this.load(id, customer));
     if (sub.status === "cancelled") throw conflict("cancelled", "This subscription was cancelled");
     const open = await this.openCharge(sub.id);
     if (open) return { subscription: await this.view(sub, customer), paymentBookingId: open.id };
+    const planned = this.checkPlanned(sub.visitsPerMonth, firstVisitAt, moreVisits);
+    await this.db.update(subscriptions).set({ plannedVisits: planned, updatedAt: new Date() }).where(eq(subscriptions.id, sub.id));
     const visit = await this.chargeVisit(sub, firstVisitAt);
     return { subscription: await this.view(sub, customer), paymentBookingId: visit.id };
   }
@@ -232,11 +253,25 @@ export class SubscriptionService {
     const end = addMonths(start, MONTHS[sub.interval]);
     await this.db
       .update(subscriptions)
-      .set({ status: "active", currentPeriodStart: start, currentPeriodEnd: end, updatedAt: now })
+      .set({ status: "active", currentPeriodStart: start, currentPeriodEnd: end, plannedVisits: null, updatedAt: now })
       .where(eq(subscriptions.id, sub.id));
+    // Book the rest of the schedule the customer picked on the calendar.
+    let scheduled = 0;
+    for (const iso of sub.plannedVisits ?? []) {
+      const at = new Date(iso);
+      if (at <= now || at > end) continue;
+      try {
+        await this.bookingsSvc.create({ id: sub.customerId, role: "customer" }, { ...this.bookingInput(sub, at, null, 0), idempotencyKey: `sub-${sub.id}-${at.getTime()}` });
+        scheduled++;
+      } catch {
+        // A slot that is no longer bookable (e.g. paid late) is left for the customer to rebook.
+      }
+    }
     void this.notifications.notify([sub.customerId], {
       title: "Subscription active",
-      body: `${sub.planName} is active until ${fmtDate(end)}. Book your included visits any time in the app.`,
+      body: scheduled
+        ? `${sub.planName} is active until ${fmtDate(end)}. Your ${scheduled + 1} visits are booked; see them in your calendar.`
+        : `${sub.planName} is active until ${fmtDate(end)}. Book your included visits any time in the app.`,
       data: { type: "subscription", subscriptionId: sub.id },
     });
     void this.notifications.notifyAdmins({
@@ -247,6 +282,18 @@ export class SubscriptionService {
   }
 
   // ------------------------------------------------------------ internals
+
+  /** Validates the extra visits picked at checkout and returns them as ISO strings. */
+  private checkPlanned(visitsPerMonth: number, first: Date, more: Date[] | undefined) {
+    if (!more?.length) return null;
+    const dates = [...new Map(more.map((d) => [d.getTime(), d])).values()].filter((d) => d.getTime() !== first.getTime());
+    if (dates.length > visitsPerMonth - 1) throw badRequest("too_many_visits", `This plan includes ${visitsPerMonth} visit${visitsPerMonth === 1 ? "" : "s"} a month`);
+    const limit = first.getTime() + PLAN_WINDOW_DAYS * 86_400_000;
+    for (const d of dates) {
+      if (d.getTime() < Date.now() || d.getTime() > limit) throw badRequest("outside_window", "Pick visits within a month of your first visit");
+    }
+    return dates.sort((a, b) => a.getTime() - b.getTime()).map((d) => d.toISOString());
+  }
 
   private async chargeVisit(sub: Subscription, scheduledAt: Date, notes?: string | null) {
     return this.bookingsSvc.create({ id: sub.customerId, role: "customer" }, this.bookingInput(sub, scheduledAt, notes, sub.priceAed));
@@ -360,6 +407,7 @@ export class SubscriptionService {
       address: { ...sub.address, lat: sub.lat, lng: sub.lng },
       notes: sub.notes,
       paymentBookingId: open?.id ?? null,
+      plannedVisits: sub.plannedVisits ?? [],
       canBookVisit: sub.status === "active" && left > 0,
       canRenew: sub.status !== "cancelled" && !open,
       canCancel: actor.role === "admin" ? sub.status !== "cancelled" : sub.status === "pending_payment",

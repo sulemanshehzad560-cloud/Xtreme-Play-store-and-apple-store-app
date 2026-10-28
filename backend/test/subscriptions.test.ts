@@ -99,6 +99,29 @@ describe("subscriptions", () => {
     expect((await post(`/v1/admin/subscriptions/${subscription.id}/cancel`, admin.auth, { reason: "Moved away" })).json().status).toBe("cancelled");
   });
 
+  it("books the whole month picked on the calendar once the first visit is paid", async () => {
+    const admin = await signInAs(t, "admin");
+    const customer = await signInPhone(t);
+    const plan = await homePlan(admin);
+    const more = [slot(9), slot(16), slot(23)];
+    // A plan of 4 a month takes at most 3 more dates, all within a month.
+    expect((await post("/v1/subscriptions", customer.auth, { ...subscribeBody(plan.id), moreVisits: [...more, slot(26)] })).json().error.code).toBe("too_many_visits");
+    expect((await post("/v1/subscriptions", customer.auth, { ...subscribeBody(plan.id), moreVisits: [slot(40)] })).json().error.code).toBe("outside_window");
+
+    const res = (await post("/v1/subscriptions", customer.auth, { ...subscribeBody(plan.id), moreVisits: more })).json();
+    expect(res.subscription.plannedVisits).toHaveLength(3);
+    // Nothing is booked for the planned dates until the first visit is paid.
+    expect(res.subscription.visits).toHaveLength(1);
+
+    await payCard(customer.auth, res.paymentBookingId);
+    const sub = (await get(`/v1/subscriptions/${res.subscription.id}`, customer.auth)).json();
+    expect(sub).toMatchObject({ status: "active", visitsUsed: 4, visitsLeft: 0, plannedVisits: [] });
+    expect(sub.visits.filter((v: { included: boolean }) => v.included)).toHaveLength(3);
+
+    // Visits can also be added in one go from the calendar later (here: none left).
+    expect((await post(`/v1/subscriptions/${res.subscription.id}/schedule`, customer.auth, { visits: [slot(12)] })).json().error.code).toBe("no_visits_left");
+  });
+
   it("renews into a new paid period and keeps the price the customer bought", async () => {
     const admin = await signInAs(t, "admin");
     const customer = await signInPhone(t);

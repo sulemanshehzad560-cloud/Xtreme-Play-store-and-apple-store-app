@@ -49,6 +49,8 @@ export async function subscriptionRoutes(app: FastifyInstance, c: Container) {
             addressId: z.uuid().optional(),
             address: addressInput.optional(),
             firstVisitAt: isoDate,
+            /** The rest of the month's visits, picked on the calendar; booked once the first visit is paid. */
+            moreVisits: z.array(isoDate).max(30).optional(),
             notes: z.string().trim().max(1000).optional(),
           })
           .refine((b) => b.addressId || b.address, { message: "Give addressId or address", path: ["address"] }),
@@ -71,9 +73,18 @@ export async function subscriptionRoutes(app: FastifyInstance, c: Container) {
   );
 
   r.post(
+    "/subscriptions/:id/schedule",
+    {
+      preHandler: customer,
+      schema: { tags, summary: "Book several included visits at once (calendar)", params: uuidParam, body: z.object({ visits: z.array(isoDate).min(1).max(31) }) },
+    },
+    async (req, reply) => reply.status(201).send(await c.subscriptions.scheduleVisits(req.params.id, req.user, req.body.visits)),
+  );
+
+  r.post(
     "/subscriptions/:id/renew",
-    { preHandler: customer, schema: { tags, summary: "Start the next paid period", params: uuidParam, body: z.object({ firstVisitAt: isoDate }) } },
-    async (req) => c.subscriptions.renew(req.params.id, req.user, req.body.firstVisitAt),
+    { preHandler: customer, schema: { tags, summary: "Start the next paid period", params: uuidParam, body: z.object({ firstVisitAt: isoDate, moreVisits: z.array(isoDate).max(30).optional() }) } },
+    async (req) => c.subscriptions.renew(req.params.id, req.user, req.body.firstVisitAt, req.body.moreVisits),
   );
 
   r.post("/subscriptions/:id/cancel", { preHandler: customer, schema: { tags, summary: "Cancel an unpaid subscription", params: uuidParam } }, async (req) =>

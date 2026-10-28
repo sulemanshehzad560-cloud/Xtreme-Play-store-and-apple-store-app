@@ -124,6 +124,9 @@ export interface Subscription {
   currentPeriodEnd: string | null;
   address: { label: string; area: string; building: string | null; unit: string | null };
   paymentBookingId: string | null;
+  /** Dates picked at checkout, booked once the period is paid. */
+  plannedVisits?: string[];
+  visitsPerMonth?: number;
   canBookVisit: boolean;
   canRenew: boolean;
   canCancel: boolean;

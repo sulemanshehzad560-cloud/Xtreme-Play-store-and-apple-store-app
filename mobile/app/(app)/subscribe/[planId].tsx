@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { View } from "react-native";
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import { AddressPicker, completeAddress, type NewAddress } from "@/components/AddressPicker";
 import { ServiceIcon } from "@/components/art/ServiceIcon";
-import { SlotPicker, abuDhabiTime, firstOpenDay, hourLabel, nextDays } from "@/components/SlotPicker";
+import { abuDhabiTime, hourLabel } from "@/components/SlotPicker";
+import { MonthCalendar, fromKey } from "@/components/MonthCalendar";
 import { Button, Card, Chip, Divider, ErrorText, InlineLoader, Input, OptionCard, Row, Screen, StepBar, StickyFooter, Text } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
 import { aed, SIZE_LABEL } from "@/lib/format";
@@ -21,7 +22,8 @@ interface Address {
   isDefault: boolean;
 }
 
-const STEPS = ["Plan", "First visit", "Address", "Review & pay"];
+const STEPS = ["Plan", "Schedule", "Address", "Review & pay"];
+const shortDay = (k: string) => fromKey(k).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
 const PROPERTY: [PropertyType, string, string][] = [
   ["apartment", "Apartment", "🏢"],
   ["villa", "Villa", "🏡"],
@@ -39,9 +41,9 @@ export default function Subscribe() {
   const [interval, setInterval] = useState<Interval>(params.interval === "yearly" ? "yearly" : "monthly");
   const [type, setType] = useState<PropertyType>("apartment");
   const [size, setSize] = useState("2bhk");
-  const days = useMemo(() => nextDays(14), []);
-  const [day, setDay] = useState(() => firstOpenDay(days));
+  const [picked, setPicked] = useState<string[]>([]);
   const [hour, setHour] = useState<number | null>(null);
+  const until = new Date(Date.now() + 30 * 86_400_000);
   const [addressId, setAddressId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState<Partial<NewAddress>>({ label: "Home" });
@@ -73,7 +75,8 @@ export default function Subscribe() {
 
   const price = (interval === "monthly" ? plan.priceMonthlyAed : plan.priceYearlyAed) ?? 0;
   const visits = plan.visitsPerMonth * (interval === "monthly" ? 1 : 12);
-  const canContinue = [true, hour != null, adding ? Boolean(completeAddress(draft)) : Boolean(addressId), true][step];
+  const visitDays = [...picked].sort();
+  const canContinue = [true, visitDays.length > 0 && hour != null, adding ? Boolean(completeAddress(draft)) : Boolean(addressId), true][step];
   const selectedAddress = saved.data?.find((a) => a.id === addressId);
 
   async function submit() {
@@ -89,7 +92,8 @@ export default function Subscribe() {
           interval,
           propertyType: type,
           propertySize: size,
-          firstVisitAt: abuDhabiTime(day, hour!),
+          firstVisitAt: abuDhabiTime(fromKey(visitDays[0]!), hour!),
+          moreVisits: visitDays.slice(1).map((k) => abuDhabiTime(fromKey(k), hour!)),
           notes: notes.trim() || undefined,
           ...(useId ? { addressId: useId } : { address: newAddress }),
         },
@@ -185,8 +189,14 @@ export default function Subscribe() {
 
       {step === 1 ? (
         <>
-          <Text variant="small">Choose your first visit. You can book the other included visits any time from My subscriptions.</Text>
-          <SlotPicker days={days} day={day} onDay={setDay} hour={hour} onHour={setHour} />
+          <Card tone="gold">
+            <Text style={{ fontFamily: fonts.bold }}>Plan your month</Text>
+            <Text style={{ fontSize: 14, lineHeight: 20 }}>
+              Your plan includes {plan.visitsPerMonth} visit{plan.visitsPerMonth > 1 ? "s" : ""} a month. Tap the days you want; the first one is paid now and the rest are booked
+              automatically as soon as the payment goes through. You can add or change visits later from My subscriptions.
+            </Text>
+          </Card>
+          <MonthCalendar selected={picked} onChange={setPicked} max={plan.visitsPerMonth} until={until} hour={hour} onHour={setHour} firstLabel="PAID" />
         </>
       ) : null}
 
@@ -221,7 +231,7 @@ export default function Subscribe() {
           <Line label="Plan" value={`${plan.name} · ${interval}`} />
           <Line label="Included visits" value={`${visits} ${interval === "monthly" ? "this month" : "over 12 months"}`} />
           <Line label="Property" value={`${type} · ${SIZE_LABEL[size] ?? size}`} />
-          <Line label="First visit" value={`${day.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} · ${hour != null ? hourLabel(hour) : ""}`} />
+          <Line label={visitDays.length > 1 ? `Visits (${visitDays.length})` : "Visit"} value={`${visitDays.map(shortDay).join("\n")}\nat ${hour != null ? hourLabel(hour) : ""}`} />
           <Line label="Address" value={adding ? (draft.area ?? "") : `${selectedAddress?.label ?? ""} · ${selectedAddress?.area ?? ""}`} />
           <Divider />
           <Row style={{ justifyContent: "space-between" }}>
