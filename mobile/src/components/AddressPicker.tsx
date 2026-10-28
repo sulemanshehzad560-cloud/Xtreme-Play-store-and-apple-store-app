@@ -4,6 +4,7 @@ import * as Location from "expo-location";
 import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
 import { Platform } from "react-native";
 import { MAPS_AVAILABLE } from "./LiveMap";
+import { OsmPicker } from "./OsmMap";
 import { Button, Chip, Input, Row, Text } from "./ui";
 import { OUTSIDE_ZONE_MESSAGE, SERVICE_ZONE_NAME, inServiceZone } from "../lib/serviceZone";
 import { colors, radius, shadow, space } from "../lib/theme";
@@ -70,7 +71,12 @@ export function AddressPicker({ value, onChange }: { value: Partial<NewAddress>;
             <Text variant="small">Move the map to your building</Text>
           </View>
         </View>
-      ) : null}
+      ) : (
+        <View style={{ gap: space(1) }}>
+          <OsmPicker value={{ lat: value.lat ?? 24.4539, lng: value.lng ?? 54.3773 }} onChange={(p) => set({ lat: p.lat, lng: p.lng })} />
+          <Text variant="small">Drag the map so the pin is on your building.</Text>
+        </View>
+      )}
       {outside ? (
         <View style={{ backgroundColor: colors.dangerSoft, borderColor: colors.danger, borderWidth: 1, borderRadius: radius.md, padding: space(3) }}>
           <Text variant="small" style={{ color: colors.danger }}>{OUTSIDE_ZONE_MESSAGE}</Text>
@@ -83,7 +89,7 @@ export function AddressPicker({ value, onChange }: { value: Partial<NewAddress>;
       <Text variant="label">Area</Text>
       <Row style={{ flexWrap: "wrap", gap: space(2) }}>
         {AREAS.map(([a, lat, lng]) => (
-          <Chip key={a} label={a} selected={value.area === a} onPress={() => set({ area: a, ...(MAPS_AVAILABLE && value.lat ? {} : { lat, lng }) })} />
+          <Chip key={a} label={a} selected={value.area === a} onPress={() => set({ area: a, lat, lng })} />
         ))}
       </Row>
       {value.area && !AREAS.some(([a]) => a === value.area) ? <Text variant="small">📍 {value.area}</Text> : null}

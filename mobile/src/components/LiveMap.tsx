@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { Platform, Text as RNText, View, type LayoutChangeEvent } from "react-native";
 import Constants from "expo-constants";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
-import Svg, { Circle, Path, Rect } from "react-native-svg";
+import Svg, { Circle, Path } from "react-native-svg";
+import { OsmAttribution, OsmTiles, fitZoom, project, unproject } from "./OsmMap";
 import { colors } from "../lib/theme";
 
 type LatLng = { lat: number; lng: number };
@@ -47,39 +48,30 @@ function RealMap({ destination, van, heading }: { destination: LatLng; van: LatL
 }
 
 /**
- * A drawn street map used when no map provider is configured (e.g. demo builds):
- * a neighbourhood grid centred on the customer, with the van positioned to scale.
+ * OpenStreetMap version (Android without a Google Maps key): real streets, the customer's
+ * home and the team's van, zoomed so both fit above the bottom sheet.
  */
 function DrawnMap({ destination, van, heading }: { destination: LatLng; van: LatLng | null; heading?: number | null }) {
   const [size, setSize] = useState({ w: 360, h: 640 });
   const onLayout = (e: LayoutChangeEvent) => setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height });
-  // Zoom so both the home and the van fit, with room for the bottom sheet.
-  const reach = van ? Math.max(Math.abs(van.lat - destination.lat), Math.abs(van.lng - destination.lng)) : 0;
-  const span = Math.max(0.02, reach * 2.6); // degrees shown across the width
-  const scale = size.w / span;
-  // Centre on the midpoint between van and home (upper part of the screen, above the sheet).
-  const mid = van ? { lat: (van.lat + destination.lat) / 2, lng: (van.lng + destination.lng) / 2 } : destination;
-  const cx = size.w / 2;
-  const cy = size.h * 0.3;
-  const toXY = (p: LatLng) => ({ x: cx + (p.lng - mid.lng) * scale, y: cy - (p.lat - mid.lat) * scale });
+  // Room above the bottom sheet (which covers roughly the lower 40%).
+  const box = { w: size.w - 120, h: size.h * 0.42 };
+  const zoom = van ? fitZoom(destination, van, box.w, box.h) : 15;
+  const mid = van ? unproject({ x: (project(destination, zoom).x + project(van, zoom).x) / 2, y: (project(destination, zoom).y + project(van, zoom).y) / 2 }, zoom) : destination;
+  const anchor = { x: size.w / 2, y: size.h * 0.32 };
+  const c = project(mid, zoom);
+  const toXY = (p: LatLng) => {
+    const q = project(p, zoom);
+    return { x: anchor.x + q.x - c.x, y: anchor.y + q.y - c.y };
+  };
   const home = toXY(destination);
   const v = van ? toXY(van) : null;
-
-  const roads: string[] = [];
-  for (let i = -6; i <= 6; i++) {
-    roads.push(`M ${cx + i * 70 - 40} -20 L ${cx + i * 70 + 40} ${size.h + 20}`);
-    roads.push(`M -20 ${cy + i * 85} L ${size.w + 20} ${cy + i * 85 - 30}`);
-  }
   return (
     <View style={{ flex: 1, backgroundColor: "#EEF0EA" }} onLayout={onLayout}>
+      <OsmTiles width={size.w} height={size.h} center={mid} zoom={zoom} anchor={anchor} />
       <Svg width={size.w} height={size.h} style={{ position: "absolute" }}>
-        <Rect x={size.w * 0.62} y={-10} width={size.w * 0.5} height={size.h * 0.22} rx={40} fill="#CFE3F1" />
-        <Rect x={-30} y={size.h * 0.7} width={size.w * 0.45} height={size.h * 0.18} rx={30} fill="#DDEBD5" />
-        {roads.map((d, i) => (
-          <Path key={i} d={d} stroke="#FFFFFF" strokeWidth={i % 4 === 0 ? 14 : 8} strokeLinecap="round" />
-        ))}
         {v ? <Path d={`M ${v.x} ${v.y} L ${home.x} ${home.y}`} stroke={colors.gold} strokeWidth={4} strokeDasharray="2 8" strokeLinecap="round" /> : null}
-        <Circle cx={home.x} cy={home.y} r={34} fill={colors.gold} opacity={0.14} />
+        <Circle cx={home.x} cy={home.y} r={34} fill={colors.gold} opacity={0.18} />
       </Svg>
       <View style={{ position: "absolute", left: home.x - 18, top: home.y - 42 }}>
         <HomePin />
@@ -89,6 +81,15 @@ function DrawnMap({ destination, van, heading }: { destination: LatLng; van: Lat
           <VanDot />
         </View>
       ) : null}
+      <SafeTopAttribution />
+    </View>
+  );
+}
+
+function SafeTopAttribution() {
+  return (
+    <View pointerEvents="none" style={{ position: "absolute", right: 0, top: 44 }}>
+      <OsmAttribution />
     </View>
   );
 }
