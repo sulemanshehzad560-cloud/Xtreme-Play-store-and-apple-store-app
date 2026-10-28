@@ -8,7 +8,7 @@ import { LivingRoomScene, PayInFourScene } from "@/components/art/Scenes";
 import { ServiceIcon } from "@/components/art/ServiceIcon";
 import { BrandMark } from "@/components/BrandMark";
 import { FreeMaterials, PlanPromo } from "@/components/Promo";
-import { LineIcon } from "@/components/LineIcon";
+import { LineIcon, type LineIconName } from "@/components/LineIcon";
 import { Card, Row, SectionHeader, StatusPill, Text } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
@@ -136,14 +136,14 @@ export default function Home() {
               </RNText>
             </Pressable>
             <View style={{ gap: 2 }}>
-              <RNText style={{ color: colors.goldBright, fontFamily: fonts.semibold, fontSize: 15 }}>Hi{first ? ` ${first}` : " there"} 👋</RNText>
+              <RNText style={{ color: colors.goldBright, fontFamily: fonts.semibold, fontSize: 15 }}>Hi{first ? ` ${first}` : " there"},</RNText>
               <RNText style={{ color: "#fff", fontFamily: fonts.extrabold, fontSize: 26, lineHeight: 33, letterSpacing: -0.4 }}>What can we help you with today?</RNText>
             </View>
             <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: space(2) }}>
               {/* Every booking includes cleaning materials at no cost. */}
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.goldBright, borderRadius: radius.pill, paddingLeft: space(2.5), paddingRight: space(3.5), paddingVertical: space(1.5) }}>
-                <RNText style={{ fontSize: 15 }}>🧴</RNText>
-                <RNText style={{ color: colors.ink, fontFamily: fonts.extrabold, fontSize: 13 }}>Cleaning materials FREE</RNText>
+                <LineIcon name="bottle" size={16} color="#16130E" />
+                <RNText style={{ color: "#16130E", fontFamily: fonts.extrabold, fontSize: 13 }}>Cleaning materials FREE</RNText>
               </View>
               {teams && teams.available > 0 ? (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#24201A", borderRadius: radius.pill, paddingHorizontal: space(3), paddingVertical: space(1.5) }}>
@@ -159,7 +159,7 @@ export default function Home() {
 
         <View style={{ paddingHorizontal: space(4), marginTop: -space(7), gap: space(5) }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: space(2), backgroundColor: colors.surface, borderRadius: radius.lg, paddingHorizontal: space(4), height: 56, ...shadow.raised }}>
-            <RNText style={{ fontSize: 16, color: colors.faint }}>🔍</RNText>
+            <LineIcon name="search" size={20} color={colors.faint} />
             <TextInput
               value={query}
               onChangeText={setQuery}
@@ -189,40 +189,41 @@ export default function Home() {
           ) : null}
 
           {/* What every booking includes */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -space(4) }} contentContainerStyle={{ gap: space(2), paddingHorizontal: space(4) }}>
+          <View style={{ flexDirection: "row", gap: space(2) }}>
             {[
-              ["⭐", "Best value", "in the area", true],
-              ["⚡", "Book for", "today", false],
-              ["🛡️", "Vetted &", "insured teams", false],
+              ["star", "Best value", "in the area", true],
+              ["bolt", "Book for", "today", false],
+              ["shield", "Vetted &", "insured", false],
             ].map(([icon, a, b, hot]) => (
               <View
                 key={String(a)}
                 style={{
+                  flex: 1,
                   flexDirection: "row",
                   alignItems: "center",
-                  gap: space(2),
+                  gap: space(1.5),
                   backgroundColor: hot ? colors.successSoft : colors.surface,
                   borderWidth: 1,
-                  borderColor: hot ? "#BFE5CC" : colors.border,
+                  borderColor: hot ? colors.successLine : colors.border,
                   borderRadius: radius.lg,
-                  paddingHorizontal: space(3),
+                  paddingHorizontal: space(2.5),
                   paddingVertical: space(2.5),
                 }}
               >
-                <RNText style={{ fontSize: 20 }}>{icon}</RNText>
+                <LineIcon name={icon as LineIconName} size={20} color={hot ? colors.success : colors.gold} />
                 <View>
                   <RNText style={{ fontFamily: fonts.medium, fontSize: 11.5, color: hot ? colors.success : colors.muted }}>{a}</RNText>
                   <RNText style={{ fontFamily: fonts.extrabold, fontSize: 14, color: hot ? colors.success : colors.text }}>{b}</RNText>
                 </View>
               </View>
             ))}
-          </ScrollView>
+          </View>
 
           {active.data?.map((b) => (
             <FadeIn key={b.id}>
               <Card onPress={() => router.push(b.trackable ? `/booking/${b.id}/track` : `/booking/${b.id}`)} tone="gold">
                 <Row style={{ justifyContent: "space-between" }}>
-                  <Text variant="label">YOUR UPCOMING BOOKING</Text>
+                  <Text variant="label">UPCOMING</Text>
                   <StatusPill status={b.status} awaitingPayment={b.awaitingPayment} />
                 </Row>
                 <Row>
@@ -236,7 +237,10 @@ export default function Home() {
                 </Row>
                 {b.trackable ? (
                   <View style={{ backgroundColor: colors.ink, borderRadius: radius.md, paddingVertical: space(3), alignItems: "center" }}>
-                    <RNText style={{ color: colors.goldBright, fontFamily: fonts.bold }}>📍 Track your team live</RNText>
+                    <Row style={{ gap: space(2) }}>
+                      <LineIcon name="map" size={18} color={colors.goldBright} />
+                      <RNText style={{ color: colors.goldBright, fontFamily: fonts.bold }}>Track your team live</RNText>
+                    </Row>
                   </View>
                 ) : null}
               </Card>
@@ -333,7 +337,7 @@ export default function Home() {
           <Card tone="ink" onPress={() => router.push("/chat")}>
             <Row>
               <View style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: colors.goldBright, alignItems: "center", justifyContent: "center" }}>
-                <RNText style={{ fontSize: 22 }}>💬</RNText>
+                <LineIcon name="chat" size={24} color="#16130E" />
                 {chatUnread.data?.unread ? (
                   <View style={{ position: "absolute", top: -2, right: -2, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: colors.danger, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: colors.ink }}>
                     <RNText style={{ color: "#fff", fontFamily: fonts.bold, fontSize: 10 }}>{chatUnread.data.unread}</RNText>
@@ -363,11 +367,11 @@ function WhyXtreme() {
     green: { bg: colors.successSoft, fg: colors.success, sub: colors.successText, blob: colors.successLine },
     blue: { bg: colors.infoSoft, fg: colors.info, sub: colors.muted, blob: colors.surface },
   };
-  const blocks: [string, string, string, Tone][] = [
-    ["🛡️", "Vetted pros", "Background-checked, uniformed and insured teams", tones.ink],
-    ["💯", "Satisfaction guarantee", "Not happy? We come back and make it right", tones.gold],
-    ["🧴", "Materials free", "All materials and equipment included, every time", tones.green],
-    ["🔒", "Secure payments", "Card, Apple Pay, Google Pay or Tamara. No hidden fees", tones.blue],
+  const blocks: [LineIconName, string, string, Tone][] = [
+    ["shield", "Vetted pros", "Background-checked, uniformed and insured teams", tones.ink],
+    ["check", "Satisfaction guarantee", "Not happy? We come back and make it right", tones.gold],
+    ["bottle", "Materials free", "All materials and equipment included, every time", tones.green],
+    ["lock", "Secure payments", "Card, Apple Pay, Google Pay or Tamara, encrypted and secure", tones.blue],
   ];
   const tileW = (W - space(4) * 2 - space(3)) / 2;
   return (
@@ -382,7 +386,7 @@ function WhyXtreme() {
             <View style={{ minHeight: 168, borderRadius: radius.xl, padding: space(4), backgroundColor: t.bg, overflow: "hidden", gap: space(2), ...shadow.card }}>
               <View style={{ position: "absolute", right: -26, top: -26, width: 92, height: 92, borderRadius: 46, backgroundColor: t.blob, opacity: 0.7 }} />
               <View style={{ width: 46, height: 46, borderRadius: 14, backgroundColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center" }}>
-                <RNText style={{ fontSize: 24 }}>{icon}</RNText>
+                <LineIcon name={icon} size={26} color={t.fg} />
               </View>
               <RNText style={{ color: t.fg, fontFamily: fonts.extrabold, fontSize: 16, lineHeight: 20 }}>{title}</RNText>
               <RNText style={{ color: t.sub, fontFamily: fonts.medium, fontSize: 12.5, lineHeight: 17 }}>{body}</RNText>
@@ -391,8 +395,16 @@ function WhyXtreme() {
         ))}
       </View>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space(2) }}>
-        {["⚡ Book for today", "📅 Weekly or bi-weekly", "🏠 Free site visits", "💬 Help 7 days a week"].map((c) => (
-          <View key={c} style={{ backgroundColor: colors.surface, borderColor: colors.goldLine, borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: space(3), paddingVertical: space(1.5) }}>
+        {(
+          [
+            ["bolt", "Book for today"],
+            ["calendar", "Weekly or bi-weekly"],
+            ["home", "Free site visits"],
+            ["chat", "Help 7 days a week"],
+          ] as [LineIconName, string][]
+        ).map(([icon, c]) => (
+          <View key={c} style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: colors.surface, borderColor: colors.goldLine, borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: space(3), paddingVertical: space(1.5) }}>
+            <LineIcon name={icon} size={15} color={colors.gold} />
             <RNText style={{ color: colors.text, fontFamily: fonts.semibold, fontSize: 12.5 }}>{c}</RNText>
           </View>
         ))}

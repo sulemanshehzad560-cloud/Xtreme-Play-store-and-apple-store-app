@@ -117,7 +117,7 @@ export default function Account() {
             </RNText>
             <RNText style={{ color: "#BDB4A3", fontFamily: fonts.medium, fontSize: 13 }}>{user.phone ?? "No mobile number yet"}</RNText>
             {user.email ? <RNText style={{ color: "#BDB4A3", fontFamily: fonts.medium, fontSize: 13 }} numberOfLines={1}>{user.email}</RNText> : null}
-            {user.dateOfBirth ? <RNText style={{ color: "#BDB4A3", fontFamily: fonts.medium, fontSize: 13 }}>🎂 {formatDob(user.dateOfBirth)}</RNText> : null}
+            {user.dateOfBirth ? <RNText style={{ color: "#BDB4A3", fontFamily: fonts.medium, fontSize: 13 }}>Born {formatDob(user.dateOfBirth)}</RNText> : null}
           </View>
         </Row>
         <View style={{ flexDirection: "row", backgroundColor: "#211D17", borderRadius: radius.lg, borderWidth: 1, borderColor: "#3A3328" }}>
@@ -195,10 +195,10 @@ export default function Account() {
   );
 }
 
-const THEMES: [ThemeMode, string, string][] = [
-  ["light", "☀️", "Light"],
-  ["dark", "🌙", "Dark"],
-  ["system", "📱", "Auto"],
+const THEMES: [ThemeMode, LineIconName, string][] = [
+  ["light", "sun", "Light"],
+  ["dark", "moon", "Dark"],
+  ["system", "auto", "Auto"],
 ];
 
 function Appearance() {
@@ -222,7 +222,7 @@ function Appearance() {
               accessibilityState={{ selected: on }}
               style={{ flex: 1, alignItems: "center", gap: 4, paddingVertical: space(3), borderRadius: radius.md, borderWidth: 1.5, borderColor: on ? colors.gold : colors.border, backgroundColor: on ? colors.goldSoft : colors.surface }}
             >
-              <RNText style={{ fontSize: 20 }}>{icon}</RNText>
+              <LineIcon name={icon} size={22} color={on ? colors.gold : colors.muted} />
               <RNText style={{ color: on ? colors.gold : colors.text, fontFamily: fonts.bold, fontSize: 13 }}>{label}</RNText>
             </Pressable>
           );

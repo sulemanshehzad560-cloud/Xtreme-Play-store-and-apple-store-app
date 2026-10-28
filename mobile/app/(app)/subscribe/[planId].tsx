@@ -11,6 +11,7 @@ import { aed, SIZE_LABEL } from "@/lib/format";
 import { colors, fonts, space } from "@/lib/theme";
 import type { Interval, Subscription, SubscriptionPlan } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
+import { LineIcon, type LineIconName } from "@/components/LineIcon";
 
 type PropertyType = "apartment" | "villa" | "office";
 interface Address {
@@ -24,10 +25,10 @@ interface Address {
 
 const STEPS = ["Plan", "Schedule", "Address", "Review & pay"];
 const shortDay = (k: string) => fromKey(k).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
-const PROPERTY: [PropertyType, string, string][] = [
-  ["apartment", "Apartment", "🏢"],
-  ["villa", "Villa", "🏡"],
-  ["office", "Office", "🏬"],
+const PROPERTY: [PropertyType, string, LineIconName][] = [
+  ["apartment", "Apartment", "office"],
+  ["villa", "Villa", "villa"],
+  ["office", "Office", "briefcase"],
 ];
 
 export default function Subscribe() {
@@ -174,7 +175,7 @@ export default function Subscribe() {
           <Row style={{ gap: space(2) }}>
             {PROPERTY.map(([t, label, icon]) => (
               <View key={t} style={{ flex: 1 }}>
-                <Chip icon={icon} label={label} selected={type === t} onPress={() => setType(t)} />
+                <Chip icon={<LineIcon name={icon} size={24} color={type === t ? colors.gold : colors.muted} />} label={label} selected={type === t} onPress={() => setType(t)} />
               </View>
             ))}
           </Row>

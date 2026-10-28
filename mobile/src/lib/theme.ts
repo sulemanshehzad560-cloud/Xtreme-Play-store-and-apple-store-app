@@ -16,6 +16,8 @@ const LIGHT = {
   goldSoft: "#FBF1DA",
   goldLine: "#E9D6A6",
   onInk: "#FFFFFF",
+  primary: "#16130E", // main buttons
+  onPrimary: "#FFFFFF",
   success: "#1E9E5A",
   successSoft: "#E6F6EC",
   warning: "#C77C02",
@@ -47,6 +49,8 @@ const DARK: typeof LIGHT = {
   goldSoft: "#2E2616",
   goldLine: "#5A4A26",
   onInk: "#FFFFFF",
+  primary: "#E2C170", // gold buttons stand out on dark screens
+  onPrimary: "#16130E",
   success: "#3DCB7F",
   successSoft: "#12291C",
   warning: "#F0A43A",

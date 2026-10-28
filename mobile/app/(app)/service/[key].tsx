@@ -14,6 +14,7 @@ import { useApi } from "@/lib/useApi";
 import { TamaraBadge } from "@/components/BrandIcons";
 import { PlanPromo } from "@/components/Promo";
 import { SlotPicker, abuDhabiTime, firstOpenDay, hourLabel, nextDays } from "@/components/SlotPicker";
+import { LineIcon, type LineIconName } from "@/components/LineIcon";
 
 type PropertyType = "apartment" | "villa" | "office" | "restaurant";
 type Pay = "card" | "tamara";
@@ -47,11 +48,11 @@ interface Address {
 }
 
 const STEPS = ["Service details", "Date & time", "Address", "Review & pay"];
-const PROPERTY: [PropertyType, string, string][] = [
-  ["apartment", "Apartment", "🏢"],
-  ["villa", "Villa", "🏡"],
-  ["office", "Office", "🏬"],
-  ["restaurant", "Restaurant", "🍽️"],
+const PROPERTY: [PropertyType, string, LineIconName][] = [
+  ["apartment", "Apartment", "office"],
+  ["villa", "Villa", "villa"],
+  ["office", "Office", "briefcase"],
+  ["restaurant", "Restaurant", "restaurant"],
 ];
 const FREQUENCY: [Frequency, string, string][] = [
   ["one_time", "One time", "A single visit"],
@@ -218,7 +219,7 @@ export default function BookService() {
             </Row>
             <Divider />
             <View style={{ flexDirection: "row", alignItems: "center", gap: space(2), backgroundColor: colors.successSoft, borderRadius: radius.md, paddingHorizontal: space(3), paddingVertical: space(2) }}>
-              <RNText style={{ fontSize: 16 }}>🧴</RNText>
+              <LineIcon name="bottle" size={18} color={colors.success} />
               <Text style={{ flex: 1, color: colors.success, fontFamily: fonts.bold, fontSize: 13.5 }}>Cleaning materials included FREE</Text>
             </View>
             {service.highlights.filter((h) => !/materials included free/i.test(h)).map((h) => (
@@ -233,7 +234,7 @@ export default function BookService() {
           <Row style={{ gap: space(2) }}>
             {types.map(([t, label, icon]) => (
               <View key={t} style={{ flex: 1 }}>
-                <Chip icon={icon} label={label} selected={type === t} onPress={() => setType(t)} />
+                <Chip icon={<LineIcon name={icon} size={24} color={type === t ? colors.gold : colors.muted} />} label={label} selected={type === t} onPress={() => setType(t)} />
               </View>
             ))}
           </Row>
@@ -286,7 +287,7 @@ export default function BookService() {
           {q && !fixed ? (
             <Card tone="gold">
               <Row style={{ gap: space(2) }}>
-                <RNText style={{ fontSize: 20 }}>📋</RNText>
+                <LineIcon name="doc" size={22} color={colors.gold} />
                 <Text style={{ fontFamily: fonts.bold, flex: 1 }}>Priced on a site visit</Text>
               </Row>
               <Text style={{ fontSize: 14, lineHeight: 20 }}>
@@ -347,11 +348,11 @@ export default function BookService() {
               label="Service"
               value={`${service.name}${frequency !== "one_time" && service.key === "regular" ? ` · ${frequency === "weekly" ? "Weekly" : "Bi-weekly"}` : ""}`}
             />
-            {q?.durationMinutes ? <SummaryRow icon="⏱️" label="Team & time" value={`${q.cleaners} cleaners · about ${duration(q.durationMinutes)} · materials free`} /> : null}
-            <SummaryRow icon="🏠" label="Property" value={`${PROPERTY.find(([t]) => t === type)![1]} · ${SIZE_LABEL[size] ?? size}`} />
-            <SummaryRow icon="🗓️" label={fixed ? "Date & time" : "Site visit"} value={`${day.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} · ${hour != null ? hourLabel(hour) : ""}`} />
+            {q?.durationMinutes ? <SummaryRow icon={<LineIcon name="clock" size={20} color={colors.gold} />} label="Team & time" value={`${q.cleaners} cleaners · about ${duration(q.durationMinutes)} · materials free`} /> : null}
+            <SummaryRow icon={<LineIcon name="home" size={20} color={colors.gold} />} label="Property" value={`${PROPERTY.find(([t]) => t === type)![1]} · ${SIZE_LABEL[size] ?? size}`} />
+            <SummaryRow icon={<LineIcon name="calendar" size={20} color={colors.gold} />} label={fixed ? "Date & time" : "Site visit"} value={`${day.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} · ${hour != null ? hourLabel(hour) : ""}`} />
             <SummaryRow
-              icon="📍"
+              icon={<LineIcon name="pin" size={20} color={colors.gold} />}
               label="Address"
               value={(adding ? [draft.unit, draft.building, draft.area] : [selectedAddress?.unit, selectedAddress?.building, selectedAddress?.area]).filter(Boolean).join(", ")}
             />
@@ -360,7 +361,7 @@ export default function BookService() {
           <Text variant="heading">Payment method</Text>
           {fixed ? (
             <>
-              <OptionCard selected={pay === "card"} onPress={() => setPay("card")} title="Card, Apple Pay or Google Pay" subtitle="Pay securely now" icon={<RNText style={{ fontSize: 22 }}>💳</RNText>} />
+              <OptionCard selected={pay === "card"} onPress={() => setPay("card")} title="Card, Apple Pay or Google Pay" subtitle="Pay securely now" icon={<LineIcon name="card" size={24} color={colors.gold} />} />
               <OptionCard
                 selected={pay === "tamara"}
                 onPress={() => setPay("tamara")}

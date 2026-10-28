@@ -11,6 +11,7 @@ import { DEMO } from "@/lib/demo";
 import { aed, when } from "@/lib/format";
 import type { Booking } from "@/lib/types";
 import { colors, fonts, space } from "@/lib/theme";
+import { LineIcon } from "@/components/LineIcon";
 
 interface Options {
   amount: { priceAed: number; discountAed: number; totalAed: number; vatAed: number; serviceFeeAed?: number };
@@ -195,7 +196,7 @@ export default function Pay() {
 
           {options.amount.discountAed > 0 ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: space(2), backgroundColor: colors.successSoft, borderRadius: 14, padding: space(3) }}>
-              <RNText style={{ fontSize: 18 }}>🎉</RNText>
+              <LineIcon name="tag" size={20} color={colors.success} />
               <Text style={{ flex: 1, color: colors.success, fontFamily: fonts.bold }}>You save {aed(options.amount.discountAed)} on this booking</Text>
             </View>
           ) : null}
@@ -238,7 +239,7 @@ export default function Pay() {
             onPress={() => setMethod("card")}
             title="Credit or debit card"
             subtitle="Visa, Mastercard, Apple Pay, Google Pay"
-            icon={<RNText style={{ fontSize: 22 }}>💳</RNText>}
+            icon={<LineIcon name="card" size={24} color={colors.gold} />}
           />
           <OptionCard
             selected={method === "tamara"}
@@ -254,7 +255,7 @@ export default function Pay() {
           />
 
           <View style={{ flexDirection: "row", alignItems: "center", gap: space(2), justifyContent: "center", marginTop: space(2) }}>
-            <RNText style={{ fontSize: 14 }}>🔒</RNText>
+            <LineIcon name="lock" size={15} color={colors.muted} />
             <Text variant="small" style={{ fontFamily: fonts.medium }}>
               Payments are encrypted and processed securely.
             </Text>

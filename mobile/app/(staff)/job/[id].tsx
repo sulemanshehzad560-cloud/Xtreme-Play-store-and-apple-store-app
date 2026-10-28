@@ -202,7 +202,7 @@ export default function Job() {
           {job.paymentStatus === "included"
             ? "Included in the customer's subscription"
             : job.paymentStatus === "paid"
-            ? `✅ Paid in the app · ${aed(job.priceAed)}`
+            ? `Paid in the app · ${aed(job.priceAed)}`
             : job.priceAed == null
               ? "Price to be quoted on site"
               : `${aed(job.priceAed)} · customer pays securely in the app`}

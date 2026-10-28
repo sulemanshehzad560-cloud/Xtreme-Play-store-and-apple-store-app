@@ -4,6 +4,7 @@ import { aed } from "../lib/format";
 import { colors, fonts, radius, shadow, space } from "../lib/theme";
 import type { SubscriptionPlan } from "../lib/types";
 import { useApi } from "../lib/useApi";
+import { LineIcon } from "./LineIcon";
 
 /** "Cleaning materials are free" — shown on every tab and through booking and checkout. */
 export function FreeMaterials({ compact = false }: { compact?: boolean }) {
@@ -24,7 +25,7 @@ export function FreeMaterials({ compact = false }: { compact?: boolean }) {
       }}
     >
       <View style={{ width: compact ? 34 : 42, height: compact ? 34 : 42, borderRadius: 21, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
-        <RNText style={{ fontSize: compact ? 17 : 21 }}>🧴</RNText>
+        <LineIcon name="bottle" size={compact ? 18 : 22} color={colors.success} />
       </View>
       <View style={{ flex: 1 }}>
         <RNText style={{ color: colors.success, fontFamily: fonts.extrabold, fontSize: compact ? 14 : 15.5 }}>Cleaning materials are FREE</RNText>

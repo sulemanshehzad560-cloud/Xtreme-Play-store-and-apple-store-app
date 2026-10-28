@@ -636,7 +636,7 @@ function renderPayments() {
       (p) => `<tr><td>${when(p.createdAt)}</td><td>${esc(p.bookingReference)}</td><td>${esc(p.method)}${p.instalments ? ` · ${p.instalments}x` : ""}</td>
       <td>${aed(p.amountAed)}</td><td>${p.refundedAed ? aed(p.refundedAed) : "—"}</td><td><span class="pill ${p.status}">${esc(p.status.replace("_", " "))}</span></td></tr>`,
     )
-    .join("")}`;
+    .join("") || '<tr><td colspan="6" class="muted">No payments yet. Card and Tamara payments appear here as customers pay.</td></tr>'}`;
 }
 
 // ------------------------------------------------------------------ subscriptions

@@ -203,7 +203,7 @@ export function Button({
   style?: StyleProp<ViewStyle>;
 }) {
   const off = disabled || loading;
-  const fg = variant === "primary" ? colors.onInk : variant === "gold" ? colors.ink : variant === "danger" ? colors.danger : variant === "ghost" ? colors.gold : colors.text;
+  const fg = variant === "primary" ? colors.onPrimary : variant === "gold" ? colors.ink : variant === "danger" ? colors.danger : variant === "ghost" ? colors.gold : colors.text;
   return (
     <Pressable
       accessibilityRole="button"
@@ -258,10 +258,10 @@ export function Input(props: TextInputProps & { label?: string; prefix?: ReactNo
   );
 }
 
-export function Chip({ label, selected, onPress, sub, icon }: { label: string; selected?: boolean; onPress?: () => void; sub?: string; icon?: string }) {
+export function Chip({ label, selected, onPress, sub, icon }: { label: string; selected?: boolean; onPress?: () => void; sub?: string; icon?: ReactNode }) {
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityState={{ selected }} style={({ pressed }) => [styles.chip, selected && styles.chipOn, pressed && { opacity: 0.85 }]}>
-      {icon ? <RNText style={{ fontSize: 22, textAlign: "center", marginBottom: 2 }}>{icon}</RNText> : null}
+      {icon ? (typeof icon === "string" ? <RNText style={{ fontSize: 22, textAlign: "center", marginBottom: 2 }}>{icon}</RNText> : <View style={{ alignItems: "center", marginBottom: 4 }}>{icon}</View>) : null}
       <RNText style={{ color: colors.text, fontFamily: selected ? fonts.bold : fonts.semibold, fontSize: 14, textAlign: "center" }}>{label}</RNText>
       {sub ? <RNText style={{ color: selected ? colors.gold : colors.muted, fontFamily: fonts.medium, fontSize: 11, textAlign: "center" }}>{sub}</RNText> : null}
     </Pressable>
@@ -392,7 +392,7 @@ const makeStyles = () =>
   listItem: { flexDirection: "row", alignItems: "center", gap: space(3), paddingVertical: space(3), paddingHorizontal: space(1), borderRadius: radius.sm },
   button: { minHeight: 54, borderRadius: radius.md, alignItems: "center", justifyContent: "center", paddingHorizontal: space(5) },
   buttonSm: { minHeight: 40, paddingHorizontal: space(4), borderRadius: radius.sm },
-  btn_primary: { backgroundColor: colors.ink },
+  btn_primary: { backgroundColor: colors.primary },
   btn_gold: { backgroundColor: colors.goldBright },
   btn_secondary: { backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.border },
   btn_ghost: { backgroundColor: "transparent", minHeight: 44 },

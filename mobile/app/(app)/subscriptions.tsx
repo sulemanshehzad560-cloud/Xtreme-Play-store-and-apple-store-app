@@ -120,7 +120,7 @@ function SubscriptionCard({ sub, onChange }: { sub: Subscription; onChange: () =
       ) : null}
       {sub.status === "expired" ? <Text variant="small">Your plan ended on {day(sub.currentPeriodEnd)}. Renew to keep your regular visits.</Text> : null}
       <Text variant="small">
-        📍 {[sub.address.unit, sub.address.building, sub.address.area].filter(Boolean).join(", ")}
+        {[sub.address.unit, sub.address.building, sub.address.area].filter(Boolean).join(", ")}
       </Text>
 
       {sub.paymentBookingId ? <Button title="Pay to activate" variant="gold" onPress={() => router.push(`/booking/${sub.paymentBookingId}/pay`)} /> : null}
@@ -162,7 +162,7 @@ function SubscriptionCard({ sub, onChange }: { sub: Subscription; onChange: () =
 
       {sub.plannedVisits?.length ? (
         <Text variant="small">
-          📅 {sub.plannedVisits.length} more visit{sub.plannedVisits.length > 1 ? "s" : ""} planned (
+          {sub.plannedVisits.length} more visit{sub.plannedVisits.length > 1 ? "s" : ""} planned (
           {sub.plannedVisits.map((iso) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" })).join(", ")}); booked as soon as you pay.
         </Text>
       ) : null}

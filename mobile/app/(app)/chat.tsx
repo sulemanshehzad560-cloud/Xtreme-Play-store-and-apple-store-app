@@ -67,7 +67,7 @@ export default function Chat() {
   const welcome: Message = {
     id: "welcome",
     sender: "bot",
-    body: "Hi! 👋 I'm the Xtreme assistant. Ask about prices, booking, payments or our areas and I'll answer straight away. For anything else, our team replies right here.",
+    body: "Hi! I'm the Xtreme assistant. Ask about prices, booking, payments or our areas and I'll answer straight away. For anything else, our team replies right here.",
     createdAt: new Date().toISOString(),
   };
   const data = messages ? [welcome, ...messages] : [];

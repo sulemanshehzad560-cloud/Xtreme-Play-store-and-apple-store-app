@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { LineIcon } from "@/components/LineIcon";
+import { LineIcon, type LineIconName } from "@/components/LineIcon";
 import { hasOnboarded } from "@/lib/onboarding";
 import { Alert, Platform, Pressable, Text as RNText, View } from "react-native";
 import { Image } from "expo-image";
@@ -10,10 +10,10 @@ import { Button, Text } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import { colors, fonts, radius, space } from "@/lib/theme";
 
-const PERKS = [
-  ["🛡️", "Vetted, trained & insured teams"],
-  ["📍", "Track your team live on the map"],
-  ["💳", "Card, Apple Pay, Google Pay or Tamara"],
+const PERKS: [LineIconName, string][] = [
+  ["shield", "Vetted, trained & insured teams"],
+  ["map", "Track your team live on the map"],
+  ["card", "Card, Apple Pay, Google Pay or Tamara"],
 ];
 
 export default function Welcome() {
@@ -57,7 +57,7 @@ export default function Welcome() {
           {PERKS.map(([icon, text]) => (
             <View key={text} style={{ flexDirection: "row", alignItems: "center", gap: space(3) }}>
               <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: "#2A251D", alignItems: "center", justifyContent: "center" }}>
-                <RNText style={{ fontSize: 14 }}>{icon}</RNText>
+                <LineIcon name={icon} size={16} color={colors.goldBright} />
               </View>
               <RNText style={{ color: "#E9E3D6", fontFamily: fonts.medium, fontSize: 15 }}>{text}</RNText>
             </View>
@@ -70,7 +70,7 @@ export default function Welcome() {
         <Text variant="muted" style={{ marginTop: -space(2), marginBottom: space(1) }}>
           Sign in or create your account
         </Text>
-        <Button title="Continue with mobile number" onPress={() => router.push("/(auth)/phone")} icon={<RNText style={{ fontSize: 16 }}>📱</RNText>} />
+        <Button title="Continue with mobile number" onPress={() => router.push("/(auth)/phone")} icon={<LineIcon name="phone" size={18} color="#fff" />} />
         {Platform.OS === "ios" ? (
           <Button title="Continue with Apple" variant="secondary" loading={busy === "apple"} onPress={run("apple", auth.signInWithApple)} icon={<AppleIcon color={colors.text} />} />
         ) : null}

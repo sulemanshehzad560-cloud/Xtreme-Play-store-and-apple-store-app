@@ -205,3 +205,4 @@ label.check input { width: 16px; height: 16px; padding: 0; }
 
 .deploy-panel #deploy-status { margin: 4px 0 14px; line-height: 1.5; }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
+.pricing-top small { text-transform: none; letter-spacing: 0; display: block; }

@@ -84,7 +84,7 @@ export default function StaffHome() {
             <View style={{ gap: space(2) }}>
               {today.length ? (
                 <RNText style={{ color: colors.goldBright, fontFamily: fonts.semibold, fontSize: 13 }}>
-                  ⚠️ You have {today.length === 1 ? "a job" : `${today.length} jobs`} today. Go on duty before you set off so your customer can follow you on the map.
+                  You have {today.length === 1 ? "a job" : `${today.length} jobs`} today. Go on duty before you set off so your customer can follow you on the map.
                 </RNText>
               ) : null}
               <Button title="Go on duty" variant="gold" onPress={() => setDuty("available")} loading={busy} />
@@ -104,7 +104,7 @@ export default function StaffHome() {
             <Stat value={String(live.length)} label="Live now" />
             <Stat value={next ? when(next.scheduledAt).split(", ").pop() ?? "—" : "—"} label="Next start" />
           </Row>
-          <RNText style={{ color: "#A79E8D", fontFamily: fonts.medium, fontSize: 12 }}>🔒 Your location is shared only while you're on duty, and only with your customer and the office.</RNText>
+          <RNText style={{ color: "#A79E8D", fontFamily: fonts.medium, fontSize: 12 }}>Your location is shared only while you're on duty, and only with your customer and the office.</RNText>
         </SafeAreaView>
       </View>
 

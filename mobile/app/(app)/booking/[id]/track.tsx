@@ -10,12 +10,13 @@ import { useBookingEvents } from "@/lib/realtime";
 import { colors, fonts, radius, shadow, space } from "@/lib/theme";
 import type { BookingStatus, Company, Tracking } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
+import { LineIcon } from "@/components/LineIcon";
 
 const HEADLINE: Partial<Record<BookingStatus, string>> = {
   assigned: "Your team is getting ready",
   arrived: "Your team has arrived",
   in_progress: "Cleaning in progress",
-  completed: "All done! ✨",
+  completed: "All done!",
 };
 
 export default function Track() {
@@ -75,8 +76,8 @@ export default function Track() {
             </View>
             {company.data ? (
               <Row style={{ gap: space(2) }}>
-                <RoundAction glyph="📞" label="Call" onPress={() => Linking.openURL(`tel:${company.data!.phone}`)} />
-                <RoundAction glyph="💬" label="WhatsApp" onPress={() => Linking.openURL(company.data!.whatsapp)} />
+                <RoundAction glyph="call" label="Call" onPress={() => Linking.openURL(`tel:${company.data!.phone}`)} />
+                <RoundAction glyph="chat" label="WhatsApp" onPress={() => Linking.openURL(company.data!.whatsapp)} />
               </Row>
             ) : null}
           </Row>
@@ -106,10 +107,10 @@ function EtaBar({ minutes }: { minutes: number | null }) {
   );
 }
 
-function RoundAction({ glyph, label, onPress }: { glyph: string; label: string; onPress: () => void }) {
+function RoundAction({ glyph, label, onPress }: { glyph: "call" | "chat"; label: string; onPress: () => void }) {
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: colors.goldSoft, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.goldLine }}>
-      <RNText style={{ fontSize: 20 }}>{glyph}</RNText>
+      <LineIcon name={glyph} size={22} color={colors.gold} />
     </Pressable>
   );
 }

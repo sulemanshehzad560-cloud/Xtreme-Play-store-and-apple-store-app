@@ -11,6 +11,7 @@ import { useBookingEvents } from "@/lib/realtime";
 import { colors, fonts, radius, space } from "@/lib/theme";
 import type { Booking, BookingStatus, Company } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
+import { LineIcon } from "@/components/LineIcon";
 
 const FLOW: [BookingStatus, string][] = [
   ["requested", "Booking received"],
@@ -86,14 +87,14 @@ export default function BookingDetail() {
       {b.awaitingPayment && b.canPay && !paid ? (
         <Card tone="ink" style={{ gap: space(2.5) }}>
           <Row style={{ gap: space(2) }}>
-            <RNText style={{ fontSize: 20 }}>⏳</RNText>
+            <LineIcon name="clock" size={22} color={colors.goldBright} />
             <Text style={{ color: colors.goldBright, fontFamily: fonts.extrabold, fontSize: 17, flex: 1 }}>Complete payment to confirm</Text>
           </Row>
           <Text style={{ color: "#D9D2C4", lineHeight: 20 }}>
             Once you pay, your booking is confirmed and we assign your team.
           </Text>
           {b.discountAed ? (
-            <Text style={{ color: colors.goldBright, fontFamily: fonts.bold }}>🎉 {aed(b.discountAed)} discount applied</Text>
+            <Text style={{ color: colors.goldBright, fontFamily: fonts.bold }}>{aed(b.discountAed)} discount applied</Text>
           ) : null}
           <Button title={`Pay ${aed(b.amountDueAed ?? b.priceAed)} securely`} variant="gold" onPress={() => router.push(`/booking/${b.id}/pay`)} />
         </Card>
@@ -112,7 +113,7 @@ export default function BookingDetail() {
             <StatusPill status={b.status} awaitingPayment={b.awaitingPayment} />
           </View>
         </Row>
-        {b.trackable ? <Button title="📍  Track your team live" onPress={() => router.push(`/booking/${b.id}/track`)} /> : null}
+        {b.trackable ? <Button title="Track your team live" icon={<LineIcon name="map" size={18} color={colors.onPrimary} />} onPress={() => router.push(`/booking/${b.id}/track`)} /> : null}
       </Card>
 
       {b.status !== "cancelled" ? (
@@ -165,8 +166,8 @@ export default function BookingDetail() {
           </Row>
           {company.data ? (
             <Row style={{ gap: space(2) }}>
-              <Button title="📞 Call" variant="secondary" size="sm" style={{ flex: 1 }} onPress={() => Linking.openURL(`tel:${company.data!.phone}`)} />
-              <Button title="💬 WhatsApp" variant="secondary" size="sm" style={{ flex: 1 }} onPress={() => Linking.openURL(company.data!.whatsapp)} />
+              <Button title="Call" icon={<LineIcon name="call" size={18} />} variant="secondary" size="sm" style={{ flex: 1 }} onPress={() => Linking.openURL(`tel:${company.data!.phone}`)} />
+              <Button title="WhatsApp" icon={<LineIcon name="chat" size={18} />} variant="secondary" size="sm" style={{ flex: 1 }} onPress={() => Linking.openURL(company.data!.whatsapp)} />
             </Row>
           ) : null}
         </Card>
@@ -229,7 +230,7 @@ export default function BookingDetail() {
       {b.review ? <Text variant="small" style={{ textAlign: "center" }}>You rated this service {"★".repeat(b.review.rating)}</Text> : null}
 
       {b.status === "completed" || b.status === "cancelled" ? <Button title="Book again" onPress={() => router.push(`/service/${b.service.key}`)} /> : null}
-      {b.canReschedule ? <Button title="🗓️  Reschedule" variant="secondary" onPress={() => setRescheduling(true)} /> : null}
+      {b.canReschedule ? <Button title="Reschedule" icon={<LineIcon name="calendar" size={18} />} variant="secondary" onPress={() => setRescheduling(true)} /> : null}
       {b.canCancel ? <Button title="Cancel booking" variant="danger" onPress={cancel} /> : null}
       <RescheduleSheet
         visible={rescheduling}
