@@ -1,0 +1,67 @@
+name: android-eas-local
+# Builds the Android test APK on GitHub's runner with `eas build --local`. Unlike android-apk
+# (debug-signed), this uses the app's real EAS signing key and EAS environment variables
+# (Firebase config), so Google sign-in and push notifications work. Local builds do not use
+# the Expo build quota. The APK goes to the "android-test" release and the apk-download branch.
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: "EAS build profile (preview = installable APK on the test server)"
+        default: preview
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-eas-local
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    defaults: { run: { working-directory: mobile } }
+    env:
+      NODE_OPTIONS: --max-old-space-size=6144
+      GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx6g -XX:MaxMetaspaceSize=1g"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: mobile/package-lock.json }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - name: Check EXPO_TOKEN
+        env: { EXPO_TOKEN: "${{ secrets.EXPO_TOKEN }}" }
+        run: test -n "$EXPO_TOKEN" || (echo "::error::Add the EXPO_TOKEN repository secret first" && exit 1)
+      - uses: expo/expo-github-action@v8
+        with: { eas-version: latest, token: "${{ secrets.EXPO_TOKEN }}" }
+      - run: npm ci --legacy-peer-deps
+      - run: npx tsc --noEmit
+      - name: Build APK locally with the EAS signing key
+        run: |
+          mkdir -p ../dist
+          eas build --platform android --profile "${{ github.event.inputs.profile || 'preview' }}" --local --non-interactive --output ../dist/Xtreme-Home-Partner-test.apk
+          ls -la ../dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Xtreme-Home-Partner-test-apk-eas
+          path: dist/Xtreme-Home-Partner-test.apk
+      - name: Publish to the "android-test" release
+        working-directory: .
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          NOTES="Test build of Xtreme-Home Partner from commit ${GITHUB_SHA::7} ($(date -u '+%Y-%m-%d %H:%M UTC')), signed with the app's EAS key. Install on Android: download the APK on the phone, open it and allow installing from this source."
+          gh release view android-test >/dev/null 2>&1 || gh release create android-test --target "$GITHUB_SHA" --prerelease --title "Android test build" --notes "$NOTES"
+          gh release edit android-test --target "$GITHUB_SHA" --notes "$NOTES"
+          gh release upload android-test dist/Xtreme-Home-Partner-test.apk --clobber
+      - name: Copy to the apk-download branch
+        working-directory: dist
+        run: |
+          git init -q -b apk-download
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          echo "Built from ${GITHUB_SHA::7} with the EAS signing key ($(date -u '+%Y-%m-%d %H:%M UTC'))" > BUILD.txt
+          git add Xtreme-Home-Partner-test.apk BUILD.txt
+          git commit -qm "Android test APK (EAS-signed)"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" apk-download
