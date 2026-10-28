@@ -131,7 +131,8 @@ export class BookingService {
     }
 
     const service = findService(input.serviceKey)!;
-    const quoted = quote(input);
+    const frequency = service.key === "regular" && !input.subscription ? (input.frequency ?? "one_time") : "one_time";
+    const quoted = quote({ ...input, frequency });
     if ("error" in quoted) throw badRequest("invalid_booking", quoted.error);
     const sub = input.subscription;
     const priced = sub ? { priceAed: sub.priceAed, pricing: "fixed" as const } : quoted;
@@ -155,7 +156,7 @@ export class BookingService {
             paymentMethod: input.paymentMethod,
             scheduledAt: input.scheduledAt,
             durationMinutes: quoted.durationMinutes ?? service.durationMinutes,
-            frequency: service.key === "regular" && !sub ? (input.frequency ?? "one_time") : "one_time",
+            frequency,
             repeatOfId: input.repeatOfId ?? null,
             addressId: place.addressId,
             address: place.snapshot,

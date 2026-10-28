@@ -1,0 +1,1 @@
+ALTER TABLE "payments" ADD COLUMN "service_fee_minor" integer DEFAULT 0 NOT NULL;

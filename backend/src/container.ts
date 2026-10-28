@@ -16,6 +16,7 @@ import { BookingService, DEFAULT_RULES, type BookingRules } from "./modules/book
 import { NotificationService } from "./modules/notifications/notification.service.js";
 import { ExpoPush, NoopPush, type PushSender } from "./modules/notifications/push.js";
 import type { BnplGateway, CardGateway, HostedCardGateway } from "./modules/payments/gateways.js";
+import { configureSealing } from "./lib/sealed.js";
 import { NGeniusGateway } from "./modules/payments/ngenius.gateway.js";
 import { PaymentService } from "./modules/payments/payment.service.js";
 import { StripeGateway } from "./modules/payments/stripe.gateway.js";
@@ -70,6 +71,7 @@ export interface ContainerOverrides {
 }
 
 export function createContainer(env: Env, log: FastifyBaseLogger, overrides: ContainerOverrides = {}): Container {
+  configureSealing(env.DATA_ENCRYPTION_KEY);
   const { db, pool } = createDb(env.DATABASE_URL, env.DATABASE_POOL_MAX);
   const hub = new RealtimeHub();
   const sms = overrides.sms ?? createSmsSender(env, log);
@@ -123,6 +125,12 @@ export function createContainer(env: Env, log: FastifyBaseLogger, overrides: Con
       get tamaraFeePercent() {
         return pricing().tamaraFeePercent;
       },
+      get cardFeePercent() {
+        return pricing().cardFeePercent;
+      },
+      get serviceFeeAed() {
+        return pricing().serviceFeeAed;
+      },
     },
     log,
   );
@@ -138,6 +146,9 @@ export function createContainer(env: Env, log: FastifyBaseLogger, overrides: Con
   const support = new SupportService(db, notifications, hub, admin, {
     get tamaraFeePercent() {
       return pricing().tamaraFeePercent;
+    },
+    get cardFeePercent() {
+      return pricing().cardFeePercent;
     },
   });
   bookings.onPriced((bookingId) => promotions.refresh(bookingId));

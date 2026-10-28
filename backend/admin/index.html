@@ -89,6 +89,12 @@
             <p class="muted">Shown on the app's help, account and booking screens. Changes reach customers within minutes, no app update needed.</p>
             <form id="company-form" class="form-grid"></form>
           </section>
+          <section class="panel deploy-panel">
+            <div class="panel-head"><h2>Server updates</h2></div>
+            <p class="muted">Puts the latest version of the server live on Render. Takes 2–5 minutes; the app keeps working while it switches over.</p>
+            <div id="deploy-status" class="muted"></div>
+            <button class="btn gold" id="deploy-now">Deploy latest version</button>
+          </section>
           <section class="panel">
             <div class="panel-head"><h2>Connected services</h2><button class="btn outline small" id="refresh-system">Recheck</button></div>
             <div id="system"></div>
@@ -115,7 +121,13 @@
         <section class="panel">
           <div class="panel-head"><div><h2>Price list</h2><p class="muted">Set a fixed price for any service, property type and size. Leave the price blank and that job is booked as a free site visit, then quoted on site. New prices apply to new bookings straight away (the app refreshes within a minute); bookings already made keep their price.</p></div>
             <button class="btn primary" id="save-pricing">Save prices</button></div>
-          <div class="pricing-top"><label>Tamara instalment fee (%)<input id="tamara-fee" type="number" min="0" max="20" step="0.5" /></label></div>
+          <div class="pricing-top">
+            <label>Service fee per booking (AED)<input id="service-fee" type="number" min="0" max="1000" step="1" /><small>Added to every payment. 0 = none.</small></label>
+            <label>Card fee (%)<input id="card-fee" type="number" min="0" max="10" step="0.1" /><small>Card, Apple Pay, Google Pay. 0 = none.</small></label>
+            <label>Tamara fee (%)<input id="tamara-fee" type="number" min="0" max="20" step="0.5" /><small>Added when paying in instalments.</small></label>
+            <label>Weekly discount (%)<input id="weekly-discount" type="number" min="0" max="50" step="1" /><small>Regular cleaning, booked weekly.</small></label>
+            <label>Bi-weekly discount (%)<input id="biweekly-discount" type="number" min="0" max="50" step="1" /><small>Regular cleaning, every two weeks.</small></label>
+          </div>
           <div id="pricing-services"></div>
         </section>
       </div>
@@ -142,6 +154,7 @@
   </section>
 
   <dialog id="modal"><form method="dialog" id="modal-body"></form></dialog>
+  <dialog id="confirm-dialog" class="confirm-dialog"></dialog>
   <div id="toast" class="toast"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>

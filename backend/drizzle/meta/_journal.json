@@ -64,6 +64,13 @@
       "when": 1793209417053,
       "tag": "0008_ngenius",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793209620201,
+      "tag": "0009_payment_fees",
+      "breakpoints": true
     }
   ]
 }

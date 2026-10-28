@@ -43,6 +43,8 @@ services:
       - { key: STRIPE_SECRET_KEY, sync: false }
       - { key: STRIPE_PUBLISHABLE_KEY, sync: false }
       - { key: STRIPE_WEBHOOK_SECRET, sync: false }
+      - { key: DATA_ENCRYPTION_KEY, sync: false } # openssl rand -base64 32; never change once set
+      - { key: RENDER_DEPLOY_HOOK_URL, sync: false } # Settings > Deploy Hook; enables "Deploy" in the dashboard
       - key: NGENIUS_API_URL
         value: https://api-gateway.sandbox.ngenius-payments.com # switch to https://api-gateway.ngenius-payments.com when live
       - { key: NGENIUS_API_KEY, sync: false }

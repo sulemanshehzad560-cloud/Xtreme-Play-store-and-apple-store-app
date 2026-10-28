@@ -5,7 +5,7 @@ import { and, count, eq, gte, isNull, lt, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { Container } from "../../container.js";
 import { bookingStatus, bookings, paymentStatus, payments, users } from "../../db/schema.js";
-import { notFound } from "../../lib/errors.js";
+import { badRequest, notFound } from "../../lib/errors.js";
 import { normalizePhone } from "../../lib/phone.js";
 import { isoDate, phoneInput, uuidParam } from "../../lib/schemas.js";
 import { requireAuth } from "../../plugins/auth.js";
@@ -348,10 +348,35 @@ export async function adminRoutes(app: FastifyInstance, c: Container) {
       schema: {
         tags,
         summary: "Update the price list (applies to new bookings at once)",
-        body: z.object({ rates: z.record(z.string(), z.record(z.string(), z.record(z.string(), rate))), tamaraFeePercent: z.number() }),
+        body: z.object({
+          rates: z.record(z.string(), z.record(z.string(), z.record(z.string(), rate))),
+          tamaraFeePercent: z.number(),
+          cardFeePercent: z.number().default(0),
+          serviceFeeAed: z.number().default(0),
+          frequencyDiscountPercent: z.object({ weekly: z.number(), biweekly: z.number() }).default({ weekly: 0, biweekly: 0 }),
+        }),
       },
     },
     async (req) => c.prices.update(req.user.id, req.body as PricingConfig),
+  );
+
+  // Server updates: redeploy the latest code on Render with one click (the hook URL stays on the server).
+  r.get("/admin/deploy", { schema: { tags, summary: "Whether redeploying from the dashboard is set up, and the last request" } }, async () => {
+    const [last] = await c.admin.auditList({ limit: 1, targetType: "deploy" });
+    return { configured: Boolean(c.env.RENDER_DEPLOY_HOOK_URL), last: last ?? null };
+  });
+  r.post(
+    "/admin/deploy",
+    { config: { rateLimit: { max: 3, timeWindow: "10 minutes" } }, schema: { tags, summary: "Deploy the latest version of the server" } },
+    async (req) => {
+      const hook = c.env.RENDER_DEPLOY_HOOK_URL;
+      if (!hook) throw badRequest("deploy_not_configured", "Add RENDER_DEPLOY_HOOK_URL on Render to deploy from here");
+      const res = await fetch(hook, { method: "POST", signal: AbortSignal.timeout(15_000) });
+      const body = (await res.json().catch(() => ({}))) as { deploy?: { id?: string } };
+      if (!res.ok) throw badRequest("deploy_failed", `Render did not accept the deploy (${res.status})`);
+      await c.admin.audit(req.user.id, "server.deploy_triggered", "deploy", body.deploy?.id ?? null);
+      return { ok: true, deployId: body.deploy?.id ?? null };
+    },
   );
 
   // IT: connected services, health and the audit trail

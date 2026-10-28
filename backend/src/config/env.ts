@@ -63,6 +63,18 @@ const EnvSchema = z.object({
   STRIPE_PUBLISHABLE_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
   STRIPE_MERCHANT_NAME: z.string().default("Xtreme Facilities Management"),
+  /** Encrypts chat messages and profile photos in the database (32 bytes, base64). Never change it once set. */
+  DATA_ENCRYPTION_KEY: z
+    .string()
+    .refine((k) => Buffer.from(k, "base64").length === 32, "DATA_ENCRYPTION_KEY must be 32 random bytes, base64 (openssl rand -base64 32)")
+    .optional(),
+  /** Render "Deploy Hook" URL (service Settings > Deploy Hook). Lets admins redeploy from the dashboard. */
+  RENDER_DEPLOY_HOOK_URL: z
+    .string()
+    .url()
+    .refine((u) => u.startsWith("https://api.render.com/deploy/"), "RENDER_DEPLOY_HOOK_URL must be a Render deploy hook (https://api.render.com/deploy/...)")
+    .optional(),
+
   // Network International N-Genius (card, Apple Pay, Google Pay). When the API key and outlet
   // are set, card payments go through N-Genius instead of Stripe.
   NGENIUS_API_URL: z.string().url().default("https://api-gateway.sandbox.ngenius-payments.com"),

@@ -53,11 +53,32 @@ async function api(path, { method, body } = {}, retry = true) {
 }
 
 function toast(msg) {
+  if (!msg) return; // a cancelled confirmation needs no message
   const t = $("#toast");
   t.textContent = msg;
   t.classList.add("show");
   clearTimeout(toast.timer);
   toast.timer = setTimeout(() => t.classList.remove("show"), 2600);
+}
+
+/** A confirm / cancel box for anything that changes money, prices, access or the live server. */
+function confirmBox({ title, message, confirm = "Confirm", danger = false }) {
+  return new Promise((resolve) => {
+    const d = $("#confirm-dialog");
+    d.innerHTML = `<form method="dialog" class="confirm">
+      <div class="confirm-icon ${danger ? "danger" : ""}">${danger ? "!" : "?"}</div>
+      <h3>${esc(title)}</h3><p>${esc(message)}</p>
+      <div class="confirm-actions"><button class="btn outline" value="cancel">Cancel</button><button class="btn ${danger ? "danger-solid" : "primary"}" value="ok" autofocus>${esc(confirm)}</button></div>
+    </form>`;
+    d.returnValue = "";
+    d.onclose = () => resolve(d.returnValue === "ok");
+    d.showModal();
+  });
+}
+
+/** Stops the action quietly when the confirmation is cancelled. */
+async function sure(opts) {
+  if (!(await confirmBox(opts))) throw new Error("");
 }
 
 async function act(fn, ok) {
@@ -106,6 +127,16 @@ function logout() {
   location.reload();
 }
 $("#logout").addEventListener("click", logout);
+
+// An unattended dashboard signs itself out after 30 minutes without activity.
+let lastActive = Date.now();
+["click", "keydown", "mousemove", "touchstart"].forEach((ev) => document.addEventListener(ev, () => (lastActive = Date.now()), { passive: true }));
+setInterval(() => {
+  if (session && Date.now() - lastActive > 30 * 60_000) {
+    logout();
+    toast("Signed out after 30 minutes without activity");
+  }
+}, 60_000);
 
 // ------------------------------------------------------------------ data
 
@@ -303,6 +334,7 @@ async function refundBooking(b) {
      <label>Reason<input name="reason" required minlength="3" placeholder="e.g. late arrival" /></label>
      <div class="modal-actions"><button class="btn outline" value="cancel" formnovalidate>Close</button><button class="btn primary">Refund</button></div>`,
     async (form) => {
+      await sure({ title: `Refund ${aed(Number(form.get("amount")))}?`, message: `The money goes back to the customer's ${p.method === "tamara" ? "Tamara account" : "card"}. This cannot be undone.`, confirm: "Refund", danger: true });
       await api(`/admin/payments/${p.id}/refund`, { body: { amountAed: Number(form.get("amount")), reason: form.get("reason") } });
       toast("Refund issued");
     },
@@ -425,7 +457,7 @@ async function staffForm(s) {
     },
   );
   $("#reset-pw")?.addEventListener("click", async () => {
-    if (!confirm(`Create a new app password for ${s.displayName}? Their current password stops working and they are signed out.`)) return;
+    if (!(await confirmBox({ title: "Create a new password?", message: `${s.displayName}'s current password stops working and they are signed out.`, confirm: "Create password", danger: true }))) return;
     try {
       const r = await api(`/admin/staff/${s.id}/password`, { body: {} });
       $("#new-pw").innerHTML = `New password: <code class="pw">${esc(r.password)}</code> <button type="button" class="btn outline small" id="copy-pw">Copy</button><br/>Give it to ${esc(s.displayName)} privately. It is shown only once.`;
@@ -462,11 +494,16 @@ $("#customer-search").addEventListener("input", () => {
   clearTimeout(customerTimer);
   customerTimer = setTimeout(() => loadCustomers().catch((e) => toast(e.message)), 300);
 });
-$("#customers-table").addEventListener("click", (e) => {
+$("#customers-table").addEventListener("click", async (e) => {
   const btn = e.target.closest("button[data-block]");
   if (!btn) return;
   const blocked = btn.dataset.blocked !== "true";
-  if (blocked && !confirm("Suspend this customer? They are signed out and can't book until restored.")) return;
+  const ok = await confirmBox(
+    blocked
+      ? { title: "Suspend this customer?", message: "They are signed out and can't book until restored.", confirm: "Suspend", danger: true }
+      : { title: "Restore this customer?", message: "They can sign in and book again.", confirm: "Restore" },
+  );
+  if (!ok) return;
   api(`/admin/users/${btn.dataset.block}/block`, { body: { blocked } })
     .then(() => (toast(blocked ? "Customer suspended" : "Customer restored"), loadCustomers()))
     .catch((err) => toast(err.message));
@@ -495,7 +532,29 @@ function logLine(l) {
     <small>${when(l.at)}</small></div>`;
 }
 
+async function loadDeploy() {
+  const d = await api("/admin/deploy");
+  $("#deploy-now").disabled = !d.configured;
+  $("#deploy-status").innerHTML = !d.configured
+    ? "Not set up yet: on Render open the service, <b>Settings → Deploy Hook</b>, copy the URL and add it as <code>RENDER_DEPLOY_HOOK_URL</code> in Environment."
+    : d.last
+      ? `Last deploy requested ${when(d.last.at)} by ${esc(d.last.actor?.name ?? "an admin")}.`
+      : "Ready. No deploy requested from here yet.";
+}
+
+$("#deploy-now").addEventListener("click", async () => {
+  try {
+    await sure({ title: "Deploy the latest version?", message: "Render rebuilds and restarts the server with the newest code. It takes 2–5 minutes and runs any database updates.", confirm: "Deploy now", danger: true });
+    await api("/admin/deploy", { body: {} });
+    toast("Deploy started. The new version is live in a few minutes.");
+    await loadDeploy();
+  } catch (e) {
+    toast(e.message);
+  }
+});
+
 async function loadAdminTab() {
+  loadDeploy().catch((e) => toast(e.message));
   const [admins, company, system, audit] = await Promise.all([api("/admin/admins"), api("/admin/settings/company"), api("/admin/system"), api("/admin/audit?limit=80")]);
   $("#admins-table").innerHTML = `<tr><th>Name</th><th>Mobile</th><th>Since</th><th></th></tr>${admins
     .map(
@@ -533,9 +592,9 @@ async function loadAdminTab() {
   $("#audit").innerHTML = audit.map(logLine).join("") || '<p class="muted">No changes yet.</p>';
 }
 
-$("#admins-table").addEventListener("click", (e) => {
+$("#admins-table").addEventListener("click", async (e) => {
   const btn = e.target.closest("button[data-revoke]");
-  if (!btn || !confirm("Remove this person's dashboard access? They are signed out immediately.")) return;
+  if (!btn || !(await confirmBox({ title: "Remove dashboard access?", message: "They are signed out immediately.", confirm: "Remove access", danger: true }))) return;
   api(`/admin/admins/${btn.dataset.revoke}`, { method: "DELETE" })
     .then(() => (toast("Admin access removed"), loadAdminTab()))
     .catch((err) => toast(err.message));
@@ -549,6 +608,7 @@ $("#add-admin").addEventListener("click", () => {
      <label>Mobile number<input name="phone" required placeholder="050 123 4567" /></label>
      <div class="modal-actions"><button class="btn outline" value="cancel" formnovalidate>Close</button><button class="btn primary">Give access</button></div>`,
     async (form) => {
+      await sure({ title: "Give dashboard access?", message: `${form.get("fullName")} will be able to see bookings, payments and customers, and change settings.`, confirm: "Give access" });
       await api("/admin/admins", { body: { fullName: form.get("fullName"), phone: form.get("phone") } });
       toast("Admin access granted");
       await loadAdminTab();
@@ -558,6 +618,7 @@ $("#add-admin").addEventListener("click", () => {
 $("#company-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   try {
+    await sure({ title: "Update company details?", message: "Customers see the new contacts in the app within minutes.", confirm: "Save" });
     await api("/admin/settings/company", { method: "PUT", body: Object.fromEntries(new FormData(e.target)) });
     toast("Company contacts updated");
     await loadAdminTab();
@@ -834,6 +895,7 @@ function promoForm(p, preset = {}) {
         serviceKeys: form.getAll("svc"),
         active: form.get("active") === "true",
       };
+      if (body.active) await sure({ title: p ? "Save this promotion?" : "Start this promotion?", message: "It applies to customers' checkouts straight away.", confirm: p ? "Save" : "Start" });
       await api(p ? `/admin/promotions/${p.id}` : "/admin/promotions", { method: p ? "PATCH" : "POST", body });
       toast(p ? "Promotion saved" : "Promotion created. It applies in the app straight away.");
       await loadPromotions();
@@ -852,6 +914,7 @@ $("#tab-promotions").addEventListener("click", (e) => {
   if (t.dataset.promoToggle) {
     const p = promoState.list.find((x) => x.id === t.dataset.promoToggle);
     act(async () => {
+      await sure(p.active ? { title: "Pause this promotion?", message: "Customers can no longer use it until you resume it.", confirm: "Pause" } : { title: "Resume this promotion?", message: "It applies to checkouts straight away.", confirm: "Resume" });
       await api(`/admin/promotions/${p.id}`, { method: "PATCH", body: { active: !p.active } });
       await loadPromotions();
     }, p.active ? "Promotion paused" : "Promotion live again");
@@ -897,6 +960,10 @@ let pricingData = null;
 async function loadPricing() {
   pricingData = await api("/admin/pricing");
   $("#tamara-fee").value = pricingData.tamaraFeePercent;
+  $("#card-fee").value = pricingData.cardFeePercent ?? 0;
+  $("#service-fee").value = pricingData.serviceFeeAed ?? 0;
+  $("#weekly-discount").value = pricingData.frequencyDiscountPercent?.weekly ?? 0;
+  $("#biweekly-discount").value = pricingData.frequencyDiscountPercent?.biweekly ?? 0;
   $("#pricing-services").innerHTML = pricingData.services
     .map((svc) => {
       const fixed = Object.values(pricingData.rates[svc.key] ?? {}).reduce((n, bySize) => n + Object.keys(bySize).length, 0);
@@ -929,8 +996,17 @@ $("#save-pricing").addEventListener("click", async () => {
     if (!v.minutes || !v.cleaners) return toast(`Add the time on site and number of cleaners for every fixed price (${svc}, ${type} ${size})`);
     ((rates[svc] ??= {})[type] ??= {})[size] = { priceAed: Number(v.priceAed), minutes: Number(v.minutes), cleaners: Number(v.cleaners) };
   }
+  const n = (sel) => Number($(sel).value || 0);
+  const body = {
+    rates,
+    tamaraFeePercent: n("#tamara-fee"),
+    cardFeePercent: n("#card-fee"),
+    serviceFeeAed: n("#service-fee"),
+    frequencyDiscountPercent: { weekly: n("#weekly-discount"), biweekly: n("#biweekly-discount") },
+  };
   try {
-    await api("/admin/pricing", { method: "PUT", body: { rates, tamaraFeePercent: Number($("#tamara-fee").value || 0) } });
+    await sure({ title: "Save the new prices?", message: "New bookings and payments use them straight away. Bookings already made keep their price.", confirm: "Save prices" });
+    await api("/admin/pricing", { method: "PUT", body });
     toast("Prices saved. New bookings use them now.");
     await loadPricing();
   } catch (e) {

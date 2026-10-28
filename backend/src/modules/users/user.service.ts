@@ -1,4 +1,5 @@
 import { createHmac } from "node:crypto";
+import { seal, unseal } from "../../lib/sealed.js";
 import { and, eq, isNull, ne } from "drizzle-orm";
 import type { Database } from "../../db/client.js";
 import { addresses, authIdentities, pushTokens, userAvatars, users } from "../../db/schema.js";
@@ -65,8 +66,8 @@ export class UserService {
     const now = new Date();
     await this.db
       .insert(userAvatars)
-      .values({ userId, contentType, data: bytes.toString("base64"), updatedAt: now })
-      .onConflictDoUpdate({ target: userAvatars.userId, set: { contentType, data: bytes.toString("base64"), updatedAt: now } });
+      .values({ userId, contentType, data: seal(bytes.toString("base64")), updatedAt: now })
+      .onConflictDoUpdate({ target: userAvatars.userId, set: { contentType, data: seal(bytes.toString("base64")), updatedAt: now } });
     // A signed, versioned link: it works without a sign-in token (the app, the office dashboard,
     // after a token expires) yet cannot be guessed, and changes when the photo changes.
     const v = String(now.getTime());
@@ -84,7 +85,7 @@ export class UserService {
   async avatar(userId: string) {
     const [row] = await this.db.select().from(userAvatars).where(eq(userAvatars.userId, userId)).limit(1);
     if (!row) throw notFound("Photo");
-    return { contentType: row.contentType, bytes: Buffer.from(row.data, "base64"), updatedAt: row.updatedAt };
+    return { contentType: row.contentType, bytes: Buffer.from(unseal(row.data), "base64"), updatedAt: row.updatedAt };
   }
 
   // ------------------------------------------------------------ addresses

@@ -459,6 +459,8 @@ export const payments = pgTable(
     amountMinor: integer("amount_minor").notNull(),
     /** Part of amountMinor that is a payment-method fee (Tamara instalments), shown separately on the invoice. */
     feeMinor: integer("fee_minor").notNull().default(0),
+    /** Part of feeMinor that is the flat service fee (the rest is the card or Tamara fee). */
+    serviceFeeMinor: integer("service_fee_minor").notNull().default(0),
     refundedMinor: integer("refunded_minor").notNull().default(0),
     currency: text("currency").notNull().default("AED"),
     providerRef: text("provider_ref"),

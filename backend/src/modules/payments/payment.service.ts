@@ -18,6 +18,10 @@ export interface PaymentConfig {
   tamaraInstalments: number;
   /** Fee added to Tamara payments, in percent. */
   tamaraFeePercent: number;
+  /** Fee added to card payments, in percent. */
+  cardFeePercent: number;
+  /** Flat service fee added to every payment, in AED. */
+  serviceFeeAed: number;
 }
 
 export type PayMethod = "card" | "tamara";
@@ -55,10 +59,12 @@ export class PaymentService {
     const booking = await this.payable(bookingId, customer);
     const amountMinor = dueMinor(booking);
     const [user] = await this.db.select().from(users).where(eq(users.id, customer.id)).limit(1);
-    const tamaraFee = this.tamaraFeeMinor(amountMinor);
+    const serviceFee = this.serviceFeeMinor();
+    const cardFee = this.methodFeeMinor("card", amountMinor);
+    const tamaraFee = this.methodFeeMinor("tamara", amountMinor);
     const tamara =
       this.bnpl.configured && user?.phone
-        ? await this.bnpl.eligibility({ amountMinor: amountMinor + tamaraFee, currency: CURRENCY, phone: user.phone })
+        ? await this.bnpl.eligibility({ amountMinor: amountMinor + serviceFee + tamaraFee, currency: CURRENCY, phone: user.phone })
         : { eligible: false, label: null };
     return {
       bookingId,
@@ -66,20 +72,28 @@ export class PaymentService {
         priceAed: booking.priceAed!,
         discountAed: booking.discountAed,
         totalAed: amountMinor / 100,
+        serviceFeeAed: serviceFee / 100,
         vatAed: this.vatMinor(amountMinor) / 100,
         vatIncluded: true,
         currency: CURRENCY,
       },
       promoCode: booking.promoCode,
       methods: [
-        { method: "card", available: this.cardAvailable, label: "Credit / debit card, Apple Pay or Google Pay", feeAed: 0, totalAed: amountMinor / 100 },
+        {
+          method: "card",
+          available: this.cardAvailable,
+          label: "Credit / debit card, Apple Pay or Google Pay",
+          feePercent: this.config.cardFeePercent,
+          feeAed: (serviceFee + cardFee) / 100,
+          totalAed: (amountMinor + serviceFee + cardFee) / 100,
+        },
         {
           method: "tamara",
           available: tamara.eligible,
           label: tamara.label ?? `Pay in ${this.config.tamaraInstalments} with Tamara`,
           feePercent: this.config.tamaraFeePercent,
-          feeAed: tamaraFee / 100,
-          totalAed: (amountMinor + tamaraFee) / 100,
+          feeAed: (serviceFee + tamaraFee) / 100,
+          totalAed: (amountMinor + serviceFee + tamaraFee) / 100,
           instalments: this.config.tamaraInstalments,
         },
       ],
@@ -96,7 +110,8 @@ export class PaymentService {
 
     await this.retirePendingAttempts(booking.id);
 
-    const feeMinor = method === "tamara" ? this.tamaraFeeMinor(dueMinor(booking)) : 0;
+    const serviceFeeMinor = this.serviceFeeMinor();
+    const feeMinor = serviceFeeMinor + this.methodFeeMinor(method, dueMinor(booking));
     const amountMinor = dueMinor(booking) + feeMinor;
     const [payment] = await this.db
       .insert(payments)
@@ -106,6 +121,7 @@ export class PaymentService {
         provider: method === "tamara" ? "tamara" : this.hosted.configured ? "ngenius" : "stripe",
         amountMinor,
         feeMinor,
+        serviceFeeMinor,
         currency: CURRENCY,
         instalments: method === "tamara" ? this.config.tamaraInstalments : null,
       })
@@ -249,6 +265,8 @@ export class PaymentService {
     const [customer] = await this.db.select().from(users).where(eq(users.id, booking.customerId)).limit(1);
     const totalMinor = paid?.amountMinor ?? dueMinor(booking);
     const feeMinor = paid?.feeMinor ?? 0;
+    const serviceFeeMinor = paid?.serviceFeeMinor ?? 0;
+    const methodFeeMinor = feeMinor - serviceFeeMinor;
     const discountMinor = booking.priceAed * 100 - (totalMinor - feeMinor);
     const vatMinor = this.vatMinor(totalMinor);
     const a = booking.address;
@@ -276,7 +294,10 @@ export class PaymentService {
           amountAed: booking.priceAed,
         },
         ...(discountMinor > 0 ? [{ description: "Promotional discount", serviceDate: null, amountAed: -discountMinor / 100 }] : []),
-        ...(feeMinor > 0 ? [{ description: `Tamara instalment fee (${this.config.tamaraFeePercent}%)`, serviceDate: null, amountAed: feeMinor / 100 }] : []),
+        ...(serviceFeeMinor > 0 ? [{ description: "Service fee", serviceDate: null, amountAed: serviceFeeMinor / 100 }] : []),
+        ...(methodFeeMinor > 0
+          ? [{ description: paid?.provider === "tamara" ? "Tamara instalment fee" : "Card processing fee", serviceDate: null, amountAed: methodFeeMinor / 100 }]
+          : []),
       ],
       currency: CURRENCY,
       vatRate: this.config.vatRate,
@@ -598,8 +619,14 @@ export class PaymentService {
     await this.db.insert(paymentWebhookEvents).values({ provider, eventId, type }).onConflictDoNothing();
   }
 
-  private tamaraFeeMinor(amountMinor: number) {
-    return Math.round((amountMinor * this.config.tamaraFeePercent) / 100);
+  /** Card or Tamara fee on the amount due, as set in the dashboard's price list. */
+  private methodFeeMinor(method: PayMethod, amountMinor: number) {
+    const pct = method === "tamara" ? this.config.tamaraFeePercent : this.config.cardFeePercent;
+    return Math.round((amountMinor * pct) / 100);
+  }
+
+  private serviceFeeMinor() {
+    return Math.round(this.config.serviceFeeAed * 100);
   }
 
   /** VAT contained in a VAT-inclusive amount. */

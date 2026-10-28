@@ -17,12 +17,24 @@ export interface PricingConfig {
   rates: RateTable;
   /** Added when the customer pays in instalments with Tamara, in percent. */
   tamaraFeePercent: number;
+  /** Added when the customer pays by card / Apple Pay / Google Pay, in percent (0 = none). */
+  cardFeePercent: number;
+  /** Flat service fee added to every payment, in AED (0 = none). */
+  serviceFeeAed: number;
+  /** Discount on repeat regular cleaning, in percent of the one-time price. */
+  frequencyDiscountPercent: { weekly: number; biweekly: number };
 }
 
 const KEY = "pricing";
 
 export function defaultPricing(tamaraFeePercent: number): PricingConfig {
-  return { rates: { regular: { apartment: structuredClone(REGULAR_RATES) } }, tamaraFeePercent };
+  return {
+    rates: { regular: { apartment: structuredClone(REGULAR_RATES) } },
+    tamaraFeePercent,
+    cardFeePercent: 0,
+    serviceFeeAed: 0,
+    frequencyDiscountPercent: { weekly: 0, biweekly: 0 },
+  };
 }
 
 // Set lazily: catalog.ts and this file import each other.
@@ -53,9 +65,18 @@ export function validatePricing(input: PricingConfig): PricingConfig {
       }
     }
   }
-  const fee = input.tamaraFeePercent;
-  if (typeof fee !== "number" || !(fee >= 0 && fee <= 20)) throw badRequest("invalid_pricing", "The Tamara fee must be between 0 and 20%");
-  return { rates, tamaraFeePercent: Math.round(fee * 100) / 100 };
+  const pct = (v: unknown, max: number, what: string) => {
+    if (typeof v !== "number" || !(v >= 0 && v <= max)) throw badRequest("invalid_pricing", `${what} must be between 0 and ${max}`);
+    return Math.round(v * 100) / 100;
+  };
+  const freq = input.frequencyDiscountPercent ?? { weekly: 0, biweekly: 0 };
+  return {
+    rates,
+    tamaraFeePercent: pct(input.tamaraFeePercent, 20, "The Tamara fee (%)"),
+    cardFeePercent: pct(input.cardFeePercent ?? 0, 10, "The card fee (%)"),
+    serviceFeeAed: pct(input.serviceFeeAed ?? 0, 1000, "The service fee (AED)"),
+    frequencyDiscountPercent: { weekly: pct(freq.weekly ?? 0, 50, "The weekly discount (%)"), biweekly: pct(freq.biweekly ?? 0, 50, "The bi-weekly discount (%)") },
+  };
 }
 
 /** Stores the price list in the database; the code values are only the first-run defaults. */

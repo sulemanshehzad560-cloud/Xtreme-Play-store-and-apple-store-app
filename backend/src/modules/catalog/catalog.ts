@@ -196,6 +196,9 @@ export function serviceName(key: string): string {
 
 export interface Quote {
   priceAed: number | null;
+  /** One-time price before a weekly / bi-weekly discount, when one applies. */
+  basePriceAed?: number;
+  discountPercent?: number;
   pricing: "fixed" | "inspection";
   label: string;
   /** Time on site and team size, when known up front (regular cleaning of apartments). */
@@ -213,7 +216,13 @@ export function propertyTypesFor(service: CatalogService): PropertyType[] {
  * Server-side price. The app never sends a price; it sends the service and property,
  * and the booking stores whatever this returns at the moment of booking.
  */
-export function quote(input: { serviceKey: string; propertyType: PropertyType; propertySize: string; plan?: "one_off" | "amc" | undefined }): Quote | { error: string } {
+export function quote(input: {
+  serviceKey: string;
+  propertyType: PropertyType;
+  propertySize: string;
+  plan?: "one_off" | "amc" | undefined;
+  frequency?: "one_time" | "weekly" | "biweekly" | undefined;
+}): Quote | { error: string } {
   const service = findService(input.serviceKey);
   if (!service) return { error: "Unknown service" };
   if (!propertyTypesFor(service).includes(input.propertyType)) return { error: `${service.name} is not offered for this property type` };
@@ -222,6 +231,12 @@ export function quote(input: { serviceKey: string; propertyType: PropertyType; p
   const rate = rateFor(service.key, input.propertyType, input.propertySize);
   if (!rate) {
     return { priceAed: null, pricing: "inspection", label: "Our team visits, inspects and quotes on site; pay securely in the app", durationMinutes: null, cleaners: null };
+  }
+  // Repeat regular cleans can be cheaper per visit (set in the dashboard).
+  const pct = input.frequency && input.frequency !== "one_time" && service.key === "regular" ? pricing().frequencyDiscountPercent[input.frequency] : 0;
+  if (pct > 0) {
+    const priceAed = Math.max(1, Math.round(rate.priceAed * (1 - pct / 100)));
+    return { priceAed, basePriceAed: rate.priceAed, discountPercent: pct, pricing: "fixed", label: `AED ${priceAed} per visit (${pct}% off)`, durationMinutes: rate.minutes, cleaners: rate.cleaners };
   }
   return { priceAed: rate.priceAed, pricing: "fixed", label: `AED ${rate.priceAed} per visit`, durationMinutes: rate.minutes, cleaners: rate.cleaners };
 }

@@ -76,6 +76,17 @@ export async function buildApp(env: Env, overrides: ContainerOverrides = {}): Pr
   app.setSerializerCompiler(serializerCompiler);
   registerErrorHandler(app);
 
+  // Encrypted connections only: anything arriving over plain HTTP is sent to HTTPS.
+  if (env.NODE_ENV === "production") {
+    app.addHook("onRequest", async (req, reply) => {
+      if (req.headers["x-forwarded-proto"] === "http") return reply.redirect(`https://${req.headers.host}${req.url}`, 301);
+    });
+    if (!/sslmode=(require|verify-ca|verify-full)/.test(env.DATABASE_URL) && !/@(localhost|127\.0\.0\.1)[:/]/.test(env.DATABASE_URL)) {
+      app.log.warn("DATABASE_URL has no sslmode=require: the database connection may not be encrypted");
+    }
+    if (!env.DATA_ENCRYPTION_KEY) app.log.warn("DATA_ENCRYPTION_KEY is not set: chat messages and profile photos are stored without field encryption");
+  }
+
   await app.register(helmet, {
     // Strict policy for the dashboard and legal pages: only our own scripts, the map library
     // and Google Fonts; no framing (clickjacking) and no plugins.
@@ -86,15 +97,15 @@ export async function buildApp(env: Env, overrides: ContainerOverrides = {}): Pr
         scriptSrc: ["'self'", "https://unpkg.com"],
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://unpkg.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
-        imgSrc: ["'self'", "data:", "https://*.tile.openstreetmap.org", "https://unpkg.com"],
-        connectSrc: ["'self'", "wss:", "ws:"],
+        imgSrc: ["'self'", "data:", "https://unpkg.com"],
+        connectSrc: ["'self'", ...(env.NODE_ENV === "production" ? ["wss:"] : ["wss:", "ws:"])],
         frameAncestors: ["'none'"],
         objectSrc: ["'none'"],
         baseUri: ["'self'"],
         formAction: ["'self'"],
       },
     },
-    strictTransportSecurity: { maxAge: 31_536_000, includeSubDomains: true },
+    strictTransportSecurity: { maxAge: 63_072_000, includeSubDomains: true, preload: true },
     referrerPolicy: { policy: "no-referrer" },
   });
   await app.register(cors, { origin: env.CORS_ORIGINS.length ? env.CORS_ORIGINS : env.NODE_ENV !== "production" });

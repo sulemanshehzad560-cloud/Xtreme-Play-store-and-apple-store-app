@@ -5,6 +5,7 @@ import type { AdminService } from "../admin/admin.service.js";
 import type { NotificationService } from "../notifications/notification.service.js";
 import { rooms, type RealtimeHub } from "../tracking/realtime.js";
 import { HANDOFF, botAnswer } from "./bot.js";
+import { seal, unseal } from "../../lib/sealed.js";
 
 type Message = typeof supportMessages.$inferSelect;
 
@@ -14,7 +15,7 @@ export class SupportService {
     private readonly notifications: NotificationService,
     private readonly hub: RealtimeHub,
     private readonly admin: AdminService,
-    private readonly opts: { tamaraFeePercent: number },
+    private readonly opts: { tamaraFeePercent: number; cardFeePercent?: number },
   ) {}
 
   /** The customer's thread; opening it marks our replies as read. */
@@ -29,9 +30,9 @@ export class SupportService {
 
   /** Customer writes: stored, answered instantly when we can, and passed to the office. */
   async send(customerId: string, body: string) {
-    const [mine] = await this.db.insert(supportMessages).values({ customerId, sender: "customer", body }).returning();
+    const [mine] = await this.db.insert(supportMessages).values({ customerId, sender: "customer", body: seal(body) }).returning();
     const company = await this.admin.company();
-    const ctx = { whatsappDisplay: company.phoneDisplay, tamaraFeePercent: this.opts.tamaraFeePercent };
+    const ctx = { whatsappDisplay: company.phoneDisplay, tamaraFeePercent: this.opts.tamaraFeePercent, cardFeePercent: this.opts.cardFeePercent };
     const answer = botAnswer(body, ctx);
     let reply: Message | undefined;
     if (answer) {
@@ -76,7 +77,7 @@ export class SupportService {
     return rows.rows.map((r) => ({
       customerId: r.customer_id,
       customer: { fullName: r.full_name, phone: r.phone },
-      lastMessage: r.last_body,
+      lastMessage: unseal(r.last_body),
       lastSender: r.last_sender,
       lastAt: new Date(r.last_at).toISOString(),
       unread: r.unread,
@@ -94,7 +95,7 @@ export class SupportService {
   }
 
   async reply(customerId: string, author: { id: string; role: UserRole }, body: string) {
-    const [msg] = await this.db.insert(supportMessages).values({ customerId, sender: "staff", authorId: author.id === "system" ? null : author.id, body }).returning();
+    const [msg] = await this.db.insert(supportMessages).values({ customerId, sender: "staff", authorId: author.id === "system" ? null : author.id, body: seal(body) }).returning();
     void this.notifications.notify([customerId], { title: "Xtreme team replied", body: body.slice(0, 140), data: { type: "support" } });
     this.hub.emit(rooms.user(customerId), "support:message", { id: msg!.id });
     return view(msg!);
@@ -110,6 +111,6 @@ export class SupportService {
 }
 
 function view(m: Message) {
-  return { id: m.id, sender: m.sender, body: m.body, createdAt: m.createdAt.toISOString() };
+  return { id: m.id, sender: m.sender, body: unseal(m.body), createdAt: m.createdAt.toISOString() };
 }
 

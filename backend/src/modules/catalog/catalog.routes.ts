@@ -70,7 +70,13 @@ export async function catalogRoutes(app: FastifyInstance, c: Container) {
       // Older app versions read this: regular cleaning of apartments.
       regularRates: pricing().rates.regular?.apartment ?? {},
       materialsIncluded: true,
-      payments: { tamaraFeePercent: pricing().tamaraFeePercent, tamaraInstalments: c.env.TAMARA_INSTALMENTS },
+      payments: {
+        tamaraFeePercent: pricing().tamaraFeePercent,
+        tamaraInstalments: c.env.TAMARA_INSTALMENTS,
+        cardFeePercent: pricing().cardFeePercent,
+        serviceFeeAed: pricing().serviceFeeAed,
+      },
+      frequencyDiscountPercent: pricing().frequencyDiscountPercent,
     };
   });
 
@@ -85,6 +91,7 @@ export async function catalogRoutes(app: FastifyInstance, c: Container) {
           propertyType: z.enum(["apartment", "villa", "office", "restaurant"]),
           propertySize: z.string(),
           plan: z.enum(["one_off", "amc"]).default("one_off"),
+          frequency: z.enum(["one_time", "weekly", "biweekly"]).default("one_time"),
         }),
       },
     },
