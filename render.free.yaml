@@ -38,6 +38,11 @@ services:
       - { key: STRIPE_SECRET_KEY, sync: false }
       - { key: STRIPE_PUBLISHABLE_KEY, sync: false }
       - { key: STRIPE_WEBHOOK_SECRET, sync: false }
+      - key: NGENIUS_API_URL
+        value: https://api-gateway.sandbox.ngenius-payments.com # switch to https://api-gateway.ngenius-payments.com when live
+      - { key: NGENIUS_API_KEY, sync: false }
+      - { key: NGENIUS_OUTLET_REF, sync: false }
+      - { key: NGENIUS_WEBHOOK_SECRET, sync: false }
       - key: TAMARA_API_URL
         value: https://api-sandbox.tamara.co
       - key: PUSH_ENABLED

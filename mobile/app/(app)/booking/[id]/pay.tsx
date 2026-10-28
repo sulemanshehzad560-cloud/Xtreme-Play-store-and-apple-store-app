@@ -19,6 +19,8 @@ interface Options {
 }
 interface CardStart {
   paymentId: string;
+  /** Network International: the card is entered on N-Genius's secure page. */
+  hosted?: { url: string; returnUrlPrefix: string };
   stripe?: {
     publishableKey: string;
     paymentIntentClientSecret: string;
@@ -98,6 +100,10 @@ export default function Pay() {
 
   async function payByCard() {
     const start = await api<CardStart>(`/bookings/${id}/payments`, { body: { method: "card" } });
+    if (!DEMO && start.hosted) {
+      await WebBrowser.openAuthSessionAsync(start.hosted.url, start.hosted.returnUrlPrefix);
+      return finish(start.paymentId);
+    }
     if (DEMO || !start.stripe) return finish(start.paymentId);
     const s = start.stripe;
     await initStripe({ publishableKey: s.publishableKey, merchantIdentifier: "merchant.ae.xtremefm.app", urlScheme: "xtreme" });

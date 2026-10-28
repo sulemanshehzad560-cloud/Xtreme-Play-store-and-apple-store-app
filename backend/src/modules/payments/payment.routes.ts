@@ -71,6 +71,29 @@ export async function paymentRoutes(app: FastifyInstance, c: Container) {
     },
   );
 
+  // N-Genius sends the customer's browser here after paying (or cancelling); we re-read the order and hand back to the app.
+  r.get(
+    "/payments/ngenius/return",
+    {
+      schema: {
+        tags,
+        summary: "N-Genius redirect target; forwards to the app",
+        querystring: z.object({ paymentId: z.uuid(), result: z.enum(["done", "cancel"]), ref: z.string().optional() }),
+      },
+    },
+    async (req, reply) => {
+      const { paymentId, result } = req.query;
+      let outcome = result === "cancel" ? "cancel" : "failure";
+      const [p] = await c.db.query.payments.findMany({ where: (t, { eq }) => eq(t.id, paymentId), limit: 1 });
+      if (p) {
+        const synced = await c.payments.reconcile(p).catch((err) => (req.log.warn({ err }, "ngenius return sync failed"), p));
+        if (["captured", "partially_refunded", "refunded"].includes(synced.status)) outcome = "success";
+        else if (synced.status === "pending" && result !== "cancel") outcome = "pending";
+      }
+      return reply.redirect(`${c.env.APP_SCHEME}://payments/${paymentId}?result=${outcome}`, 302);
+    },
+  );
+
   // Webhooks need the exact bytes for signature checks, so they get their own JSON parser.
   await app.register(async (hooks) => {
     hooks.removeContentTypeParser("application/json");
@@ -80,6 +103,18 @@ export async function paymentRoutes(app: FastifyInstance, c: Container) {
       const signature = req.headers["stripe-signature"];
       if (typeof signature !== "string" || !Buffer.isBuffer(req.body)) throw badRequest("bad_webhook", "Missing signature");
       await c.payments.handleStripeWebhook(req.body, signature);
+      return reply.send({ received: true });
+    });
+
+    hooks.post("/webhooks/ngenius", { schema: { tags, summary: "N-Genius webhook", hide: true } }, async (req, reply) => {
+      const secret = req.headers["x-webhook-secret"];
+      let body: { eventId?: string; eventName?: string; order?: { reference?: string } } = {};
+      try {
+        body = JSON.parse((req.body as Buffer).toString("utf8"));
+      } catch {
+        throw badRequest("bad_webhook", "Invalid JSON");
+      }
+      await c.payments.handleNGeniusWebhook(typeof secret === "string" ? secret : null, body);
       return reply.send({ received: true });
     });
 

@@ -15,7 +15,8 @@ import { TokenService } from "./modules/auth/tokens.js";
 import { BookingService, DEFAULT_RULES, type BookingRules } from "./modules/bookings/booking.service.js";
 import { NotificationService } from "./modules/notifications/notification.service.js";
 import { ExpoPush, NoopPush, type PushSender } from "./modules/notifications/push.js";
-import type { BnplGateway, CardGateway } from "./modules/payments/gateways.js";
+import type { BnplGateway, CardGateway, HostedCardGateway } from "./modules/payments/gateways.js";
+import { NGeniusGateway } from "./modules/payments/ngenius.gateway.js";
 import { PaymentService } from "./modules/payments/payment.service.js";
 import { StripeGateway } from "./modules/payments/stripe.gateway.js";
 import { TamaraGateway } from "./modules/payments/tamara.gateway.js";
@@ -46,6 +47,7 @@ export interface Container {
   prices: PricingService;
   users: UserService;
   card: CardGateway;
+  hosted: HostedCardGateway;
   bnpl: BnplGateway;
   payments: PaymentService;
   admin: AdminService;
@@ -62,6 +64,7 @@ export interface ContainerOverrides {
   verifiers?: Partial<Record<SocialProvider, SocialVerifier>>;
   bookingRules?: Partial<BookingRules>;
   card?: CardGateway;
+  hosted?: HostedCardGateway;
   bnpl?: BnplGateway;
   mailer?: Mailer;
 }
@@ -101,12 +104,14 @@ export function createContainer(env: Env, log: FastifyBaseLogger, overrides: Con
   });
   const users = new UserService(db, tokens, bookings);
   const card = overrides.card ?? new StripeGateway(env.STRIPE_SECRET_KEY, env.STRIPE_PUBLISHABLE_KEY, env.STRIPE_WEBHOOK_SECRET);
+  const hosted = overrides.hosted ?? new NGeniusGateway(env.NGENIUS_API_URL, env.NGENIUS_API_KEY, env.NGENIUS_OUTLET_REF, env.NGENIUS_WEBHOOK_SECRET);
   const bnpl = overrides.bnpl ?? new TamaraGateway(env.TAMARA_API_URL, env.TAMARA_API_TOKEN, env.TAMARA_NOTIFICATION_TOKEN);
   const payments = new PaymentService(
     db,
     bookings,
     notifications,
     card,
+    hosted,
     bnpl,
     {
       vatRate: env.VAT_RATE,
@@ -140,5 +145,5 @@ export function createContainer(env: Env, log: FastifyBaseLogger, overrides: Con
   payments.onPaid((bookingId) => subscriptions.onBookingPaid(bookingId));
   payments.onPaid((bookingId) => bookings.confirmPaid(bookingId));
   payments.onPaid((bookingId) => invoices.sendIfDue(bookingId));
-  return { env, db, pool, hub, sms, push, verifiers, tokens, otp, auth, notifications, bookings, staff, users, card, bnpl, payments, admin, mailer, invoices, subscriptions, promotions, support, prices };
+  return { env, db, pool, hub, sms, push, verifiers, tokens, otp, auth, notifications, bookings, staff, users, card, hosted, bnpl, payments, admin, mailer, invoices, subscriptions, promotions, support, prices };
 }

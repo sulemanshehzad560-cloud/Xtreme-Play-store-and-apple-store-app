@@ -78,3 +78,30 @@ export interface BnplGateway {
   /** Checks the webhook's signed token. Throws if it is missing or invalid. */
   verifyNotification(token: string | null): Promise<void>;
 }
+
+/** A card payment taken on the acquirer's own secure page (e.g. Network International N-Genius). */
+export interface HostedCardOrder {
+  orderRef: string;
+  status: "pending" | "captured" | "failed" | "cancelled";
+  refundedMinor: number;
+  failureReason: string | null;
+}
+
+export interface HostedCardGateway {
+  readonly configured: boolean;
+  readonly name: string;
+  createOrder(input: {
+    paymentId: string;
+    reference: string;
+    amountMinor: number;
+    currency: string;
+    email: string | null;
+    redirectUrl: string;
+    cancelUrl: string;
+    language: "en" | "ar";
+  }): Promise<{ orderRef: string; paymentUrl: string }>;
+  getOrder(orderRef: string): Promise<HostedCardOrder>;
+  refund(orderRef: string, amountMinor: number, currency: string): Promise<void>;
+  /** Checks the shared secret header on a webhook. Throws if it is wrong. */
+  verifyWebhook(headerValue: string | null): void;
+}

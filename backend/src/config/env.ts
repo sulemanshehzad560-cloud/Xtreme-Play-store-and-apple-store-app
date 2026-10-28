@@ -63,6 +63,13 @@ const EnvSchema = z.object({
   STRIPE_PUBLISHABLE_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
   STRIPE_MERCHANT_NAME: z.string().default("Xtreme Facilities Management"),
+  // Network International N-Genius (card, Apple Pay, Google Pay). When the API key and outlet
+  // are set, card payments go through N-Genius instead of Stripe.
+  NGENIUS_API_URL: z.string().url().default("https://api-gateway.sandbox.ngenius-payments.com"),
+  NGENIUS_API_KEY: z.string().optional(),
+  NGENIUS_OUTLET_REF: z.string().optional(),
+  /** Value of the custom header set on the N-Genius webhook (header name: X-Webhook-Secret). */
+  NGENIUS_WEBHOOK_SECRET: z.string().optional(),
   TAMARA_API_URL: z.string().url().default("https://api-sandbox.tamara.co"),
   TAMARA_API_TOKEN: z.string().optional(),
   TAMARA_NOTIFICATION_TOKEN: z.string().optional(),

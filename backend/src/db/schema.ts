@@ -41,7 +41,7 @@ export const subscriptionInterval = pgEnum("subscription_interval", ["monthly", 
 /** pending_payment → active (paid period) → expired (period over, not renewed) / cancelled. */
 export const subscriptionStatus = pgEnum("subscription_status", ["pending_payment", "active", "expired", "cancelled"]);
 export const promotionKind = pgEnum("promotion_kind", ["percent", "fixed"]);
-export const paymentProvider = pgEnum("payment_provider", ["stripe", "tamara"]);
+export const paymentProvider = pgEnum("payment_provider", ["stripe", "tamara", "ngenius"]);
 export const paymentStatus = pgEnum("payment_status", [
   "pending", // created, customer has not finished paying
   "authorised", // money reserved (Tamara approved), not captured yet

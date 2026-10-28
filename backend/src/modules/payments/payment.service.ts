@@ -7,7 +7,7 @@ import { badRequest, conflict, notFound } from "../../lib/errors.js";
 import type { Actor, BookingService } from "../bookings/booking.service.js";
 import { serviceName } from "../catalog/catalog.js";
 import type { NotificationService } from "../notifications/notification.service.js";
-import type { BnplGateway, CardGateway } from "./gateways.js";
+import type { BnplGateway, CardGateway, HostedCardGateway } from "./gateways.js";
 
 export interface PaymentConfig {
   vatRate: number;
@@ -38,6 +38,7 @@ export class PaymentService {
     private readonly bookingsSvc: BookingService,
     private readonly notifications: NotificationService,
     private readonly card: CardGateway,
+    private readonly hosted: HostedCardGateway,
     private readonly bnpl: BnplGateway,
     private readonly config: PaymentConfig,
     private readonly log: FastifyBaseLogger,
@@ -71,7 +72,7 @@ export class PaymentService {
       },
       promoCode: booking.promoCode,
       methods: [
-        { method: "card", available: this.card.configured, label: "Credit / debit card, Apple Pay or Google Pay", feeAed: 0, totalAed: amountMinor / 100 },
+        { method: "card", available: this.cardAvailable, label: "Credit / debit card, Apple Pay or Google Pay", feeAed: 0, totalAed: amountMinor / 100 },
         {
           method: "tamara",
           available: tamara.eligible,
@@ -88,7 +89,7 @@ export class PaymentService {
   /** Starts (or restarts) paying for a booking with card or Tamara. */
   async start(bookingId: string, customer: Actor, method: PayMethod, opts: { locale?: "en" | "ar" | undefined } = {}) {
     const booking = await this.payable(bookingId, customer);
-    if (method === "card" && !this.card.configured) throw badRequest("method_unavailable", "Card payments are not available right now");
+    if (method === "card" && !this.cardAvailable) throw badRequest("method_unavailable", "Card payments are not available right now");
     if (method === "tamara" && !this.bnpl.configured) throw badRequest("method_unavailable", "Tamara is not available right now");
     const [user] = await this.db.select().from(users).where(eq(users.id, customer.id)).limit(1);
     if (!user) throw notFound("Account");
@@ -102,7 +103,7 @@ export class PaymentService {
       .values({
         bookingId: booking.id,
         customerId: customer.id,
-        provider: method === "card" ? "stripe" : "tamara",
+        provider: method === "tamara" ? "tamara" : this.hosted.configured ? "ngenius" : "stripe",
         amountMinor,
         feeMinor,
         currency: CURRENCY,
@@ -113,6 +114,32 @@ export class PaymentService {
     const description = `${itemName} · ${booking.reference}`;
 
     try {
+      // Network International: the customer pays on N-Genius's secure page, then returns to the app.
+      if (method === "card" && this.hosted.configured) {
+        const ret = (result: string) => `${this.config.publicUrl}/v1/payments/ngenius/return?paymentId=${payment!.id}&result=${result}`;
+        const order = await this.hosted.createOrder({
+          paymentId: payment!.id,
+          reference: booking.reference,
+          amountMinor,
+          currency: CURRENCY,
+          email: user.email,
+          redirectUrl: ret("done"),
+          cancelUrl: ret("cancel"),
+          language: opts.locale === "ar" ? "ar" : "en",
+        });
+        await this.db
+          .update(payments)
+          .set({ providerRef: order.orderRef, checkoutUrl: order.paymentUrl, updatedAt: new Date() })
+          .where(eq(payments.id, payment!.id));
+        await this.markBookingPending(booking, "card");
+        return {
+          paymentId: payment!.id,
+          provider: "ngenius" as const,
+          status: "pending" as const,
+          hosted: { url: order.paymentUrl, returnUrlPrefix: `${this.config.appScheme}://payments/` },
+        };
+      }
+
       if (method === "card") {
         const customerId = await this.card.ensureCustomer({
           id: user.id,
@@ -298,6 +325,21 @@ export class PaymentService {
     await this.remember("tamara", eventId, body.event_type ?? "update");
   }
 
+  async handleNGeniusWebhook(secret: string | null, body: { eventId?: string; eventName?: string; order?: { reference?: string } }) {
+    this.hosted.verifyWebhook(secret);
+    const orderRef = body.order?.reference;
+    if (!orderRef) return;
+    const eventId = body.eventId ?? `${orderRef}:${body.eventName ?? "update"}`;
+    if (await this.seen("ngenius", eventId)) return;
+    const [payment] = await this.db
+      .select()
+      .from(payments)
+      .where(and(eq(payments.provider, "ngenius"), eq(payments.providerRef, orderRef)))
+      .limit(1);
+    if (payment) await this.reconcile(payment);
+    await this.remember("ngenius", eventId, body.eventName ?? "update");
+  }
+
   // ------------------------------------------------------------ admin
 
   async listForAdmin(filter: { status?: PaymentStatus[] | undefined; limit: number }) {
@@ -322,6 +364,7 @@ export class PaymentService {
     if (amount <= 0 || amount > remaining) throw badRequest("invalid_amount", `You can refund up to ${CURRENCY} ${remaining / 100}`);
 
     if (payment.provider === "stripe") await this.card.refund(payment.providerRef!, amount, input.reason);
+    else if (payment.provider === "ngenius") await this.hosted.refund(payment.providerRef!, amount, payment.currency);
     else await this.bnpl.refund(payment.providerRef!, amount, payment.currency, input.reason);
 
     const refunded = payment.refundedMinor + amount;
@@ -357,7 +400,14 @@ export class PaymentService {
     if (!payment.providerRef) return payment;
     let next: { status: PaymentStatus; refundedMinor: number; failureReason?: string | null };
 
-    if (payment.provider === "stripe") {
+    if (payment.provider === "ngenius") {
+      const order = await this.hosted.getOrder(payment.providerRef);
+      const refunded = Math.max(payment.refundedMinor, order.refundedMinor);
+      next =
+        order.status === "captured"
+          ? { status: refundStatus(refunded, payment.amountMinor), refundedMinor: refunded }
+          : { status: order.status, refundedMinor: refunded, failureReason: order.failureReason };
+    } else if (payment.provider === "stripe") {
       const intent = await this.card.getIntent(payment.providerRef);
       const refunded = Math.max(payment.refundedMinor, intent.amountRefundedMinor);
       next =
@@ -424,7 +474,7 @@ export class PaymentService {
     });
     void this.notifications.notifyAdmins({
       title: `Paid: ${booking?.reference}`,
-      body: `${amount} via ${payment.provider === "stripe" ? "card" : "Tamara"}`,
+      body: `${amount} via ${payment.provider === "tamara" ? "Tamara" : "card"}`,
       data: { type: "booking", bookingId: payment.bookingId },
     });
     // A booking cancelled while the customer was still paying gets its money back.
@@ -437,8 +487,9 @@ export class PaymentService {
     const rows = await this.db.select().from(payments).where(eq(payments.bookingId, booking.id));
     for (const p of rows) {
       try {
-        if (p.status === "pending" && p.providerRef && p.provider === "stripe") {
-          await this.card.cancelIntent(p.providerRef);
+        if (p.status === "pending" && p.providerRef && (p.provider === "stripe" || p.provider === "ngenius")) {
+          // An unfinished N-Genius page simply expires; Stripe intents are cancelled.
+          if (p.provider === "stripe") await this.card.cancelIntent(p.providerRef);
           await this.db.update(payments).set({ status: "cancelled", updatedAt: new Date() }).where(eq(payments.id, p.id));
         } else if (p.status === "authorised" && p.providerRef && p.provider === "tamara") {
           await this.bnpl.cancel(p.providerRef, p.amountMinor, p.currency);
@@ -497,7 +548,7 @@ export class PaymentService {
       .update(bookings)
       .set({
         paymentStatus: status,
-        ...(method ? { paymentMethod: method === "stripe" ? "card" : "tamara" } : {}),
+        ...(method ? { paymentMethod: method === "tamara" ? "tamara" : "card" } : {}),
         updatedAt: new Date(),
       })
       .where(eq(bookings.id, bookingId));
@@ -530,7 +581,11 @@ export class PaymentService {
     return p;
   }
 
-  private async seen(provider: "stripe" | "tamara", eventId: string) {
+  private get cardAvailable() {
+    return this.hosted.configured || this.card.configured;
+  }
+
+  private async seen(provider: "stripe" | "tamara" | "ngenius", eventId: string) {
     const [row] = await this.db
       .select({ id: paymentWebhookEvents.eventId })
       .from(paymentWebhookEvents)
@@ -539,7 +594,7 @@ export class PaymentService {
     return Boolean(row);
   }
 
-  private async remember(provider: "stripe" | "tamara", eventId: string, type: string) {
+  private async remember(provider: "stripe" | "tamara" | "ngenius", eventId: string, type: string) {
     await this.db.insert(paymentWebhookEvents).values({ provider, eventId, type }).onConflictDoNothing();
   }
 
@@ -556,7 +611,7 @@ export class PaymentService {
     return {
       id: p.id,
       bookingId: p.bookingId,
-      method: p.provider === "stripe" ? "card" : "tamara",
+      method: p.provider === "tamara" ? "tamara" : "card",
       status: p.status,
       amountAed: p.amountMinor / 100,
       refundedAed: p.refundedMinor / 100,
