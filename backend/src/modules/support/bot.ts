@@ -75,7 +75,7 @@ const RULES: Rule[] = [
   {
     topic: "greeting",
     match: /^\s*(hi|hello|hey|salam|salaam|good (morning|afternoon|evening)|مرحبا|السلام)\b/i,
-    answer: () => "Hello and welcome to Xtreme-Home Partner! Ask me about prices, booking, payment or our areas, or type your question for our team.",
+    answer: () => "Hello and welcome to Xtreme-Cleaning Partner! Ask me about prices, booking, payment or our areas, or type your question for our team.",
   },
 ];
 

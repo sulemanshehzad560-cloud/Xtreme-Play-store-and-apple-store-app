@@ -95,4 +95,4 @@ jobs:
           NOTES="Background location demo video for Google Play (from commit ${GITHUB_SHA::7}). Upload it to YouTube as Unlisted and paste the link into Play Console."
           gh release view location-video >/dev/null 2>&1 || gh release create location-video --target "$GITHUB_SHA" --prerelease --title "Play Console location video" --notes "$NOTES"
           gh release edit location-video --target "$GITHUB_SHA" --notes "$NOTES"
-          gh release upload location-video video/Xtreme-Home-Partner-background-location.mp4 --clobber
+          gh release upload location-video video/Xtreme-Cleaning-Partner-background-location.mp4 --clobber

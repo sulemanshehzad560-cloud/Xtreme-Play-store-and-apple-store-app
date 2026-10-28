@@ -39,6 +39,6 @@ fi
 
 cd "$OUT"
 ls part*.mp4 | sed "s/.*/file '&'/" > list.txt
-ffmpeg -y -loglevel error -f concat -safe 0 -i list.txt -vf "fps=30,scale=720:-2" -c:v libx264 -pix_fmt yuv420p -movflags +faststart Xtreme-Home-Partner-background-location.mp4
+ffmpeg -y -loglevel error -f concat -safe 0 -i list.txt -vf "fps=30,scale=720:-2" -c:v libx264 -pix_fmt yuv420p -movflags +faststart Xtreme-Cleaning-Partner-background-location.mp4
 ls -la
 exit $status

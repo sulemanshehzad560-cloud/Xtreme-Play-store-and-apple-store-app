@@ -3,7 +3,7 @@
 export const COMPANY = {
   name: "Xtreme Facilities Management",
   shortName: "Xtreme",
-  appName: "Xtreme-Home Partner",
+  appName: "Xtreme-Cleaning Partner",
   tagline: "Trusted cleaning & facilities services across Abu Dhabi",
   phone: "+971503641714",
   phoneDisplay: "+971 50 364 1714",

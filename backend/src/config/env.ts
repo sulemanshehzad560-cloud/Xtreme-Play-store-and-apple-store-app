@@ -73,7 +73,7 @@ const EnvSchema = z.object({
   // Invoice emails. Zoho Mail SMTP for an organisation mailbox on your own domain:
   // smtppro.zoho.com, port 465, the mailbox address and an app-specific password.
   MAIL_PROVIDER: z.enum(["console", "smtp"]).default("console"),
-  MAIL_FROM: z.string().default("Xtreme-Home Partner <sales@xtreme-fmgroup.com>"),
+  MAIL_FROM: z.string().default("Xtreme-Cleaning Partner <sales@xtreme-fmgroup.com>"),
   MAIL_REPLY_TO: z.string().optional(),
   MAIL_BCC: z.string().optional(),
   SMTP_HOST: z.string().default("smtppro.zoho.com"),

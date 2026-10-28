@@ -1,4 +1,4 @@
-# Render Blueprint: production setup for the Xtreme-Home Partner API (paid, about $13/month:
+# Render Blueprint: production setup for the Xtreme-Cleaning Partner API (paid, about $13/month:
 # Starter web service $7 + Basic-256mb PostgreSQL $6). Render asks for a card for these plans.
 # Render dashboard → New → Blueprint → pick this repository. It creates the API (Docker) and
 # a PostgreSQL database, and asks for the secrets marked sync: false.

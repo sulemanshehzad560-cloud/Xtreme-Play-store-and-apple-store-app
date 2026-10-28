@@ -24,7 +24,7 @@ function googleServicesFile(value: string | undefined): string | undefined {
 const APPLE_PAY = env.APPLE_PAY_ENABLED === "true";
 
 const config: ExpoConfig = {
-  name: "Xtreme-Home Partner",
+  name: "Xtreme-Cleaning Partner",
   slug: "xtreme-home-partner",
   owner: env.EXPO_OWNER ?? EXPO_OWNER,
   platforms: ["ios", "android"],
@@ -40,11 +40,11 @@ const config: ExpoConfig = {
     usesAppleSignIn: true,
     config: { googleMapsApiKey: env.GOOGLE_MAPS_IOS_KEY },
     infoPlist: {
-      NSLocationWhenInUseUsageDescription: "Xtreme-Home Partner uses your location to set the service address and to show your team arriving.",
+      NSLocationWhenInUseUsageDescription: "Xtreme-Cleaning Partner uses your location to set the service address and to show your team arriving.",
       NSLocationAlwaysAndWhenInUseUsageDescription:
-        "Staff only: Xtreme-Home Partner shares your location with the customer while you are on duty and travelling to a job.",
+        "Staff only: Xtreme-Cleaning Partner shares your location with the customer while you are on duty and travelling to a job.",
       // Stripe's payment form can scan a card with the camera; Apple requires a reason for it.
-      NSCameraUsageDescription: "Xtreme-Home Partner uses the camera only if you choose to scan your payment card.",
+      NSCameraUsageDescription: "Xtreme-Cleaning Partner uses the camera only if you choose to scan your payment card.",
       UIBackgroundModes: ["location", "remote-notification"],
       ITSAppUsesNonExemptEncryption: false,
     },
@@ -83,7 +83,7 @@ const config: ExpoConfig = {
       {
         appID: env.FACEBOOK_APP_ID ?? "000000000000000",
         clientToken: env.FACEBOOK_CLIENT_TOKEN ?? "placeholder",
-        displayName: "Xtreme-Home Partner",
+        displayName: "Xtreme-Cleaning Partner",
         scheme: `fb${env.FACEBOOK_APP_ID ?? "000000000000000"}`,
         // Without a real app id (e.g. demo builds) the SDK must not start on launch.
         isAutoInitEnabled: Boolean(env.FACEBOOK_APP_ID),

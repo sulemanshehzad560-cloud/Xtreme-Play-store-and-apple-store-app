@@ -25,7 +25,7 @@ TaskManager.defineTask<{ locations: Location.LocationObject[] }>(LOCATION_TASK, 
  * background location use in our own words before the system permission prompts.
  */
 export const LOCATION_DISCLOSURE =
-  "Xtreme-Home Partner collects your location data to show customers and the Xtreme office where you are and when you will arrive, " +
+  "Xtreme-Cleaning Partner collects your location data to show customers and the Xtreme office where you are and when you will arrive, " +
   "even when the app is closed or not in use. This happens only while you are on duty and stops when you go off duty. " +
   "Your location is not used for advertising.";
 
@@ -55,7 +55,7 @@ export async function startSharingLocation(): Promise<boolean> {
     activityType: Location.ActivityType.AutomotiveNavigation,
     showsBackgroundLocationIndicator: true,
     foregroundService: {
-      notificationTitle: "Xtreme-Home Partner: on duty",
+      notificationTitle: "Xtreme-Cleaning Partner: on duty",
       notificationBody: "Sharing your location with customers while you are on duty.",
       notificationColor: "#E2C170",
     },

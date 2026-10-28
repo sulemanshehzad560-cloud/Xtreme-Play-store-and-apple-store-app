@@ -55,17 +55,17 @@ jobs:
       - name: Name the APK
         run: |
           mkdir -p ../dist
-          cp android/app/build/outputs/apk/release/app-release.apk ../dist/Xtreme-Home-Partner-test.apk
+          cp android/app/build/outputs/apk/release/app-release.apk ../dist/Xtreme-Cleaning-Partner-test.apk
           ls -la ../dist
       - uses: actions/upload-artifact@v4
         with:
-          name: Xtreme-Home-Partner-test-apk
-          path: dist/Xtreme-Home-Partner-test.apk
+          name: Xtreme-Cleaning-Partner-test-apk
+          path: dist/Xtreme-Cleaning-Partner-test.apk
       - name: Publish to the "android-test" release
         working-directory: .
         env: { GH_TOKEN: "${{ github.token }}" }
         run: |
-          NOTES="Test build of Xtreme-Home Partner from commit ${GITHUB_SHA::7} ($(date -u '+%Y-%m-%d %H:%M UTC')). Demo mode: ${EXPO_PUBLIC_DEMO}. Install on Android: download the APK on the phone, open it and allow installing from this source."
+          NOTES="Test build of Xtreme-Cleaning Partner from commit ${GITHUB_SHA::7} ($(date -u '+%Y-%m-%d %H:%M UTC')). Demo mode: ${EXPO_PUBLIC_DEMO}. Install on Android: download the APK on the phone, open it and allow installing from this source."
           gh release view android-test >/dev/null 2>&1 || gh release create android-test --target "$GITHUB_SHA" --prerelease --title "Android test build" --notes "$NOTES"
           gh release edit android-test --target "$GITHUB_SHA" --notes "$NOTES"
-          gh release upload android-test dist/Xtreme-Home-Partner-test.apk --clobber
+          gh release upload android-test dist/Xtreme-Cleaning-Partner-test.apk --clobber

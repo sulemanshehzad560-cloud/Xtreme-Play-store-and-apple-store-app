@@ -1,4 +1,4 @@
-# Render Blueprint: FREE test server for the Xtreme-Home Partner API. Not for real customers.
+# Render Blueprint: FREE test server for the Xtreme-Cleaning Partner API. Not for real customers.
 # Render dashboard → New → Blueprint → pick this repository → set "Blueprint Path" to render.free.yaml.
 # Free plan limits (Render):
 #   - The API sleeps after 15 minutes without traffic; the first request after that takes about a minute.

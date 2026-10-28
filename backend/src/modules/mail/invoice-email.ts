@@ -73,9 +73,9 @@ export function invoiceEmail(inv: InvoiceData, opts: { logoUrl: string }): Omit<
   }
   <tr><td style="padding:22px 28px 26px;color:#6F685C;font-size:12.5px;line-height:19px">
     Questions about this invoice? Reply to this email or WhatsApp us on ${esc(inv.seller.phone)}.<br/>
-    No gateway fees or hidden charges. You can also find this invoice in the Xtreme-Home Partner app under the booking.
+    No gateway fees or hidden charges. You can also find this invoice in the Xtreme-Cleaning Partner app under the booking.
   </td></tr>
-  <tr><td style="background:#16130E;padding:16px 28px;color:#A79E8D;font-size:12px" align="center"><span style="color:#E2C170;font-weight:700">Xtreme</span>-Home Partner · ${esc(inv.seller.name)}</td></tr>
+  <tr><td style="background:#16130E;padding:16px 28px;color:#A79E8D;font-size:12px" align="center"><span style="color:#E2C170;font-weight:700">Xtreme</span>-Cleaning Partner · ${esc(inv.seller.name)}</td></tr>
 </table></td></tr></table></body></html>`;
 
   const text = [

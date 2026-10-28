@@ -1,4 +1,4 @@
-// Xtreme Dispatch: office dashboard for the Xtreme-Home Partner API.
+// Xtreme Dispatch: office dashboard for the Xtreme-Cleaning Partner API.
 // Plain ES modules, no build step. Every action goes through the admin API, which
 // enforces the admin role on the server.
 
@@ -364,7 +364,7 @@ async function staffForm(s) {
   $("#modal").classList.add("wide");
   modal(
     `<h2>${s ? `Edit ${esc(s.displayName)}` : "Add staff member"}</h2>
-     ${s ? "" : '<p class="muted">They sign in to the Xtreme-Home Partner app under <b>Staff sign in</b> with their Staff ID (the employee code) and the password you set here.</p>'}
+     ${s ? "" : '<p class="muted">They sign in to the Xtreme-Cleaning Partner app under <b>Staff sign in</b> with their Staff ID (the employee code) and the password you set here.</p>'}
      ${
        s
          ? `<div class="signin-box">

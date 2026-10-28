@@ -1,4 +1,4 @@
-// Xtreme-Home Partner design tokens: a light, familiar service-app look with the
+// Xtreme-Cleaning Partner design tokens: a light, familiar service-app look with the
 // Xtreme black-and-gold brand used for the header, primary actions and highlights.
 export const colors = {
   bg: "#F6F4EF",

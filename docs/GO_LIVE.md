@@ -1,4 +1,4 @@
-# Going live: Xtreme-Home Partner
+# Going live: Xtreme-Cleaning Partner
 
 Everything in the code is production-ready. Going live is these steps, in order. Items marked **(you)** need the business's own accounts (see `SETUP_CHECKLIST.md` for how to open each one).
 

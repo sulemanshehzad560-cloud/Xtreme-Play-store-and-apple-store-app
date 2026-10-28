@@ -55,20 +55,20 @@ jobs:
       - name: Build APK locally with the EAS signing key
         run: |
           mkdir -p ../dist
-          eas build --platform android --profile "${{ github.event.inputs.profile || 'preview' }}" --local --non-interactive --output ../dist/Xtreme-Home-Partner-test.apk
+          eas build --platform android --profile "${{ github.event.inputs.profile || 'preview' }}" --local --non-interactive --output ../dist/Xtreme-Cleaning-Partner-test.apk
           ls -la ../dist
       - uses: actions/upload-artifact@v4
         with:
-          name: Xtreme-Home-Partner-test-apk-eas
-          path: dist/Xtreme-Home-Partner-test.apk
+          name: Xtreme-Cleaning-Partner-test-apk-eas
+          path: dist/Xtreme-Cleaning-Partner-test.apk
       - name: Publish to the "android-test" release
         working-directory: .
         env: { GH_TOKEN: "${{ github.token }}" }
         run: |
-          NOTES="Test build of Xtreme-Home Partner from commit ${GITHUB_SHA::7} ($(date -u '+%Y-%m-%d %H:%M UTC')), signed with the app's EAS key. Install on Android: download the APK on the phone, open it and allow installing from this source."
+          NOTES="Test build of Xtreme-Cleaning Partner from commit ${GITHUB_SHA::7} ($(date -u '+%Y-%m-%d %H:%M UTC')), signed with the app's EAS key. Install on Android: download the APK on the phone, open it and allow installing from this source."
           gh release view android-test >/dev/null 2>&1 || gh release create android-test --target "$GITHUB_SHA" --prerelease --title "Android test build" --notes "$NOTES"
           gh release edit android-test --target "$GITHUB_SHA" --notes "$NOTES"
-          gh release upload android-test dist/Xtreme-Home-Partner-test.apk --clobber
+          gh release upload android-test dist/Xtreme-Cleaning-Partner-test.apk --clobber
       - name: Copy to the apk-download branch
         working-directory: dist
         run: |
@@ -76,6 +76,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           echo "Built from ${GITHUB_SHA::7} with the EAS signing key ($(date -u '+%Y-%m-%d %H:%M UTC'))" > BUILD.txt
-          git add Xtreme-Home-Partner-test.apk BUILD.txt
+          git add Xtreme-Cleaning-Partner-test.apk BUILD.txt
           git commit -qm "Android test APK (EAS-signed)"
           git push -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" apk-download

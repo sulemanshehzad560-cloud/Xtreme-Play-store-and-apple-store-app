@@ -52,7 +52,7 @@ export function BrandIntro({ onDone }: { onDone: () => void }) {
   const rise = (v: Animated.Value, by = 10) => ({ opacity: v, transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [by, 0] }) }] });
 
   return (
-    <View style={{ flex: 1, backgroundColor: BG }} accessible accessibilityLabel="Xtreme Home Partner, powered by Xtreme Facilities Management">
+    <View style={{ flex: 1, backgroundColor: BG }} accessible accessibilityLabel="Xtreme Cleaning Partner, powered by Xtreme Facilities Management">
       <Animated.View style={{ flex: 1, alignItems: "center", justifyContent: "center", opacity: out }}>
         <Animated.Image
           source={require("../../assets/logo-mark.png")}

@@ -1,13 +1,13 @@
-# Google Play store listing: Xtreme-Home Partner
+# Google Play store listing: Xtreme-Cleaning Partner
 
 ## App name (max 30)
-Xtreme-Home Partner
+Xtreme-Cleaning Partner
 
 ## Short description (max 80)
 Book home cleaning in Abu Dhabi. Track your team live. No hidden charges.
 
 ## Full description (max 4000)
-Xtreme-Home Partner is the official app of Xtreme Facilities Management, Abu Dhabi. Book professional home and office services in a few taps, see when your team is on the way, and pay the way you like.
+Xtreme-Cleaning Partner is the official app of Xtreme Facilities Management, Abu Dhabi. Book professional home and office services in a few taps, see when your team is on the way, and pay the way you like.
 
 BOOK IN SECONDS
 • Choose a service, your property type and size, and a date and time that suit you

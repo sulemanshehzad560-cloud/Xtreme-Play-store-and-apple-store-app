@@ -38,7 +38,7 @@ export async function createTestApp(extra: Record<string, string> = {}): Promise
   const push = new NoopPush();
   const card = new FakeCard();
   const tamara = new FakeTamara();
-  const mail = new ConsoleMailer("Xtreme-Home Partner <sales@xtreme-fmgroup.com>");
+  const mail = new ConsoleMailer("Xtreme-Cleaning Partner <sales@xtreme-fmgroup.com>");
   const app = await buildApp(testEnv(extra), {
     mailer: mail,
     sms,

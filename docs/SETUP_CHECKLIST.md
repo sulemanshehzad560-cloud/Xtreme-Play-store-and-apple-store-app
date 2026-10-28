@@ -1,6 +1,6 @@
 # Launch checklist: what the Xtreme team needs to set up
 
-App name in both stores: **Xtreme-Home Partner**.
+App name in both stores: **Xtreme-Cleaning Partner**.
 
 The code is ready. These are the accounts and keys that only the business can create, because they need company documents, payment details or legal agreements. Each item says what to send back to the developer, as **environment variables** (keep them secret: never put them in chat or email in plain text; use a password manager or the hosting provider's secret settings).
 
@@ -49,13 +49,13 @@ Android signing fingerprints (public, safe to share):
   (Facebook key hash: `iANfQ1B/Zsb1pmIwWQyXI06igmg=`). Register it in Google Cloud (second Android OAuth client), the Android Maps key and Facebook.
 
 In Google Cloud Console (one project for Xtreme):
-- **OAuth consent screen** named *Xtreme-Home Partner*, with the logo.
+- **OAuth consent screen** named *Xtreme-Cleaning Partner*, with the logo.
 - OAuth client IDs: **iOS** (bundle `ae.xtremefm.app`), **Android** (package `ae.xtremefm.app` + the SHA-1 from Play Console → App integrity), **Web** (used by the Android library). Send all three as `GOOGLE_CLIENT_IDS` (backend), plus `GOOGLE_WEB_CLIENT_ID`, `GOOGLE_IOS_CLIENT_ID` and `GOOGLE_IOS_URL_SCHEME` (mobile build).
 - Enable **Maps SDK for iOS** and **Maps SDK for Android**; create two restricted API keys: `GOOGLE_MAPS_IOS_KEY`, `GOOGLE_MAPS_ANDROID_KEY`.
 
 ## 6. Facebook sign-in
 
-At developers.facebook.com create an app (type *Consumer*, display name *Xtreme-Home Partner*), add *Facebook Login* for iOS and Android with the bundle/package above, and complete *Business verification*. Send `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET` (backend) and `FACEBOOK_CLIENT_TOKEN` (mobile).
+At developers.facebook.com create an app (type *Consumer*, display name *Xtreme-Cleaning Partner*), add *Facebook Login* for iOS and Android with the bundle/package above, and complete *Business verification*. Send `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET` (backend) and `FACEBOOK_CLIENT_TOKEN` (mobile).
 
 ## 7. Sign in with Apple
 

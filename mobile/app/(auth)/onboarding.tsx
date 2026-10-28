@@ -33,7 +33,7 @@ export default function Onboarding() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: space(5), paddingTop: space(2) }}>
         <RNText style={{ color: colors.gold, fontFamily: fonts.extrabold, fontSize: 17 }}>
-          Xtreme<RNText style={{ color: colors.ink }}>-Home Partner</RNText>
+          Xtreme<RNText style={{ color: colors.ink }}>-Cleaning Partner</RNText>
         </RNText>
         <Pressable onPress={finish} accessibilityRole="button" hitSlop={12}>
           <RNText style={{ color: colors.muted, fontFamily: fonts.semibold, fontSize: 15 }}>Skip</RNText>

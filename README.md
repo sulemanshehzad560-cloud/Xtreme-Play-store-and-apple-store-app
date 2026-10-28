@@ -1,6 +1,6 @@
-# Xtreme-Home Partner
+# Xtreme-Cleaning Partner
 
-**Xtreme-Home Partner** is the Xtreme Facilities Management app for iPhone and Android. Customers book any Xtreme service in a few taps, pay by card, Apple Pay, Google Pay or Tamara, and watch their team arrive live on a map. Staff use the same app to go on duty, receive jobs and update each job's status.
+**Xtreme-Cleaning Partner** is the Xtreme Facilities Management app for iPhone and Android. Customers book any Xtreme service in a few taps, pay by card, Apple Pay, Google Pay or Tamara, and watch their team arrive live on a map. Staff use the same app to go on duty, receive jobs and update each job's status.
 
 <img src="docs/design-preview.png" alt="App screens" />
 
@@ -55,7 +55,7 @@ With `SMS_PROVIDER=console` the sign-in codes are printed in the API log.
 
 ## Android test APK
 
-Every push that changes `mobile/` builds an installable APK on GitHub Actions (`.github/workflows/android-apk.yml`) and publishes it on the **Releases** page as **"Android test build"** (`Xtreme-Home-Partner-test.apk`). To install: open that page on an Android phone, download the APK, open it and allow installing from your browser.
+Every push that changes `mobile/` builds an installable APK on GitHub Actions (`.github/workflows/android-apk.yml`) and publishes it on the **Releases** page as **"Android test build"** (`Xtreme-Cleaning-Partner-test.apk`). To install: open that page on an Android phone, download the APK, open it and allow installing from your browser.
 
 The test APK runs in **demo mode** with built-in sample data, so it needs no server:
 - any mobile number and any 6-digit code sign you in (`050 000 0002` opens the staff app);

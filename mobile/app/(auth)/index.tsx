@@ -45,13 +45,13 @@ export default function Welcome() {
           <Image source={require("../../assets/logo.png")} style={{ width: 52, height: 52, borderRadius: 14 }} accessibilityLabel="Xtreme logo" />
           <View>
             <RNText style={{ color: colors.goldBright, fontFamily: fonts.extrabold, fontSize: 20 }}>
-              Xtreme<RNText style={{ color: "#fff" }}>-Home Partner</RNText>
+              Xtreme<RNText style={{ color: "#fff" }}>-Cleaning Partner</RNText>
             </RNText>
             <RNText style={{ color: "#A79E8D", fontFamily: fonts.medium, fontSize: 12 }}>by Xtreme Facilities Management</RNText>
           </View>
         </View>
         <RNText style={{ color: "#fff", fontFamily: fonts.extrabold, fontSize: 30, lineHeight: 38, letterSpacing: -0.5 }}>
-          Home services you can trust, <RNText style={{ color: colors.goldBright }}>booked in a minute.</RNText>
+          Cleaning services you can trust, <RNText style={{ color: colors.goldBright }}>booked in a minute.</RNText>
         </RNText>
         <View style={{ gap: space(2.5) }}>
           {PERKS.map(([icon, text]) => (
