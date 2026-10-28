@@ -8,7 +8,7 @@ import { startSharingLocation } from "@/lib/staff-location";
 import { aed, SIZE_LABEL, when } from "@/lib/format";
 import { LineIcon } from "@/components/LineIcon";
 import { colors, fonts, space } from "@/lib/theme";
-import type { Booking, BookingStatus } from "@/lib/types";
+import type { Booking, BookingStatus, StaffStatus } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 
 /** The lead can quote on site once the team is on the way. */
@@ -27,6 +27,7 @@ export default function Job() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: job, setData } = useApi<Booking>(`/bookings/${id}`);
   const { user } = useAuth();
+  const me = useApi<{ status: StaffStatus }>("/staff/me");
   const [busy, setBusy] = useState(false);
   const [price, setPrice] = useState("");
   const [note, setNote] = useState("");
@@ -42,10 +43,45 @@ export default function Job() {
 
   const next = NEXT[job.status];
   const { lat, lng } = job.address;
-  const navigate = () =>
+  const openMaps = () =>
     Linking.openURL(Platform.OS === "ios" ? `maps://?daddr=${lat},${lng}` : `google.navigation:q=${lat},${lng}`).catch(() =>
       Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`),
     );
+
+  const active = !["completed", "cancelled"].includes(job.status);
+  const offDuty = me.data?.status === "off_duty" && active;
+
+  /** Puts the staff member on duty and starts location sharing, so the customer can follow them. */
+  async function goOnDuty(): Promise<boolean> {
+    if (!(await startSharingLocation())) {
+      Alert.alert("Location needed", "Allow location 'Always' so the customer can see you arriving. You can change this in Settings.");
+      return false;
+    }
+    try {
+      me.setData(await api<{ status: StaffStatus }>("/staff/me/status", { method: "PUT", body: { status: "available" } }));
+      return true;
+    } catch (e) {
+      Alert.alert("Could not go on duty", e instanceof Error ? e.message : "");
+      return false;
+    }
+  }
+
+  // Navigating without starting the trip leaves the customer with no map, so starting the trip comes first.
+  function navigate() {
+    if (job!.status === "assigned") {
+      return Alert.alert("Start the trip first", "The customer is told you're on the way and can follow you live on the map.", [
+        { text: "Cancel", style: "cancel" },
+        { text: "Start trip & navigate", onPress: async () => (await advance()) && openMaps() },
+      ]);
+    }
+    if (offDuty) {
+      return Alert.alert("You're off duty", "Go on duty so the customer can see you on the map.", [
+        { text: "Cancel", style: "cancel" },
+        { text: "Go on duty & navigate", onPress: async () => (await goOnDuty()) && openMaps() },
+      ]);
+    }
+    openMaps();
+  }
 
   const isLead = job.team.some((m) => m.id === user?.id && m.isLead);
   const unpaid = job.paymentStatus === "unpaid" || job.paymentStatus === "pending";
@@ -69,18 +105,21 @@ export default function Job() {
     }
   }
 
-  async function advance() {
-    if (!next) return;
+  async function advance(): Promise<boolean> {
+    if (!next) return false;
     setBusy(true);
     try {
       // The customer follows the team on the map, so setting off starts location sharing (and puts you on duty).
       if (next.to === "en_route" && !(await startSharingLocation())) {
         Alert.alert("Location needed", "Allow location 'Always' so the customer can see you arriving. You can change this in Settings.");
-        return;
+        return false;
       }
       setData(await api<Booking>(`/staff/jobs/${job!.id}/status`, { body: { status: next.to } }));
+      if (next.to === "en_route") void me.reload();
+      return true;
     } catch (e) {
       Alert.alert("Could not update", e instanceof Error ? e.message : "");
+      return false;
     } finally {
       setBusy(false);
     }
@@ -97,6 +136,13 @@ export default function Job() {
         ) : undefined
       }
     >
+      {offDuty ? (
+        <Card tone="gold">
+          <Text variant="label">YOU'RE OFF DUTY</Text>
+          <Text variant="small">The customer can't see you on the map. Go on duty before you set off so they can follow you arriving.</Text>
+          <Button title="Go on duty" onPress={goOnDuty} />
+        </Card>
+      ) : null}
       <Card tone="ink">
         <Row style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
           <View style={{ flex: 1, gap: 2 }}>

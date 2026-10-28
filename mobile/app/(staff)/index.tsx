@@ -69,7 +69,14 @@ export default function StaffHome() {
             </View>
           </Row>
           {status === "off_duty" ? (
-            <Button title="Go on duty" variant="gold" onPress={() => setDuty("available")} loading={busy} />
+            <View style={{ gap: space(2) }}>
+              {today.length ? (
+                <RNText style={{ color: colors.goldBright, fontFamily: fonts.semibold, fontSize: 13 }}>
+                  ⚠️ You have {today.length === 1 ? "a job" : `${today.length} jobs`} today. Go on duty before you set off so your customer can follow you on the map.
+                </RNText>
+              ) : null}
+              <Button title="Go on duty" variant="gold" onPress={() => setDuty("available")} loading={busy} />
+            </View>
           ) : (
             <Row style={{ gap: space(2) }}>
               {status === "on_break" ? (
