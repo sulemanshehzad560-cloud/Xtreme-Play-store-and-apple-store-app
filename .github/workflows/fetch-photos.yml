@@ -1,5 +1,5 @@
 name: fetch-photos
-# One-off helper: downloads public-domain / CC0 photo
+# One-off helper: downloads free-licence photo (Pexels, or CC0 / public-domain Commons)
 # candidates for each service to the "photo-candidates" branch, so the best ones can be chosen.
 on:
   workflow_dispatch:
@@ -10,35 +10,53 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download candidates
+        env:
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
         run: |
           mkdir -p out && cd out
           python3 - <<'PY'
-          import json, urllib.request, urllib.parse
-          # Openverse (by WordPress): open-licence images. Only CC0 / public domain, so they are
-          # free for commercial use with no credit required.
+          import json, os, urllib.request, urllib.parse
+          # Pexels (free API key in the PEXELS_API_KEY secret; Pexels licence: free commercial use)
+          # when available, otherwise Wikimedia Commons restricted to CC0 / public-domain files.
           Q = {
-            "regular": "house cleaning", "deep": "cleaning kitchen", "sofa": "sofa", "mattress": "mattress",
-            "carpet": "vacuum carpet", "glass": "window cleaning", "kitchen": "clean kitchen", "bathroom": "bathroom",
-            "balcony": "balcony", "wardrobe": "wardrobe closet", "restaurant": "restaurant kitchen", "cupboard": "kitchen cabinets",
+            "regular": "house cleaning", "deep": "deep cleaning kitchen", "sofa": "sofa living room", "mattress": "mattress bed",
+            "carpet": "vacuum carpet", "glass": "window cleaning", "kitchen": "kitchen cleaning", "bathroom": "bathroom cleaning",
+            "balcony": "apartment balcony", "wardrobe": "wardrobe closet", "restaurant": "restaurant kitchen", "cupboard": "kitchen cabinets",
           }
           UA = {"User-Agent": "XtremeCleaningPartner-photo-picker/1.0 (sales@xtreme-fmgroup.com)"}
+          key_px = os.environ.get("PEXELS_API_KEY")
           credits = {}
+          def get(url, headers=UA):
+              return urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=40).read()
           for key, q in Q.items():
-              url = "https://api.openverse.org/v1/images/?" + urllib.parse.urlencode({"q": q, "license": "cc0,pdm", "page_size": 20, "aspect_ratio": "wide", "size": "large", "mature": "false"})
+              found = []
               try:
-                  data = json.load(urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=40))
+                  if key_px:
+                      data = json.loads(get("https://api.pexels.com/v1/search?" + urllib.parse.urlencode({"query": q, "per_page": 12, "orientation": "landscape"}), {**UA, "Authorization": key_px}))
+                      found = [(p["src"]["large"], {"by": p["photographer"], "source": p["url"], "license": "Pexels"}) for p in data.get("photos", [])]
+                  else:
+                      api = "https://commons.wikimedia.org/w/api.php?" + urllib.parse.urlencode({
+                          "action": "query", "format": "json", "generator": "search", "gsrnamespace": 6, "gsrlimit": 40,
+                          "gsrsearch": q + " filetype:bitmap", "prop": "imageinfo", "iiprop": "url|extmetadata|size", "iiurlwidth": 900})
+                      pages = json.loads(get(api)).get("query", {}).get("pages", {}).values()
+                      for pg in pages:
+                          ii = pg["imageinfo"][0]
+                          lic = ii.get("extmetadata", {}).get("LicenseShortName", {}).get("value", "")
+                          if not any(x in lic.lower() for x in ["cc0", "public domain", "pd"]): continue
+                          if ii.get("width", 0) < 900 or ii.get("width", 0) < ii.get("height", 0): continue
+                          found.append((ii["thumburl"], {"source": ii["descriptionurl"], "license": lic}))
               except Exception as e:
-                  print("search failed", key, e); continue
+                  print("search failed", key, e)
               n = 0
-              for r in data.get("results", []):
+              for url, meta in found:
                   name = f"{key}_{n}.jpg"
                   try:
-                      body = urllib.request.urlopen(urllib.request.Request(r["url"], headers=UA), timeout=40).read()
+                      body = get(url)
                   except Exception as e:
                       print("download failed", name, e); continue
-                  if len(body) < 20000: continue
+                  if len(body) < 15000: continue
                   open(name, "wb").write(body)
-                  credits[name] = {"title": r.get("title"), "by": r.get("creator"), "license": r.get("license"), "source": r.get("foreign_landing_url")}
+                  credits[name] = meta
                   n += 1
                   if n >= 8: break
               print(key, n)
