@@ -1,9 +1,10 @@
 import Svg, { Circle, Ellipse, G, Line, Path, Rect } from "react-native-svg";
+import { colors } from "../../lib/theme";
 
 // Xtreme service illustrations: one consistent duotone style (ink outline, gold and
 // cream fills) drawn in code, so they stay sharp at any size and weigh nothing.
 
-const INK = "#16130E";
+
 const GOLD = "#E2C170";
 const CREAM = "#FFF6DF";
 const SW = 2.2;
@@ -14,7 +15,7 @@ export const sparkle = (x: number, y: number, r: number) =>
 
 const drop = (x: number, y: number, s = 1) => `M${x} ${y - 6 * s} Q${x + 5 * s} ${y + 1 * s} ${x} ${y + 4 * s} Q${x - 5 * s} ${y + 1 * s} ${x} ${y - 6 * s} Z`;
 
-const common = { stroke: INK, strokeWidth: SW, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+const common = { stroke: colors.text, strokeWidth: SW, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
 
 function Glyph({ name }: { name: string }) {
   switch (name) {
@@ -35,9 +36,9 @@ function Glyph({ name }: { name: string }) {
           <Rect x={13} y={21} width={17} height={22} rx={4} fill={GOLD} />
           <Rect x={17} y={15} width={9} height={6} fill={CREAM} />
           <Path d="M14 15 V10 H31 L33 13" fill={CREAM} />
-          <Circle cx={38} cy={8} r={1.6} fill={INK} stroke="none" />
-          <Circle cx={41} cy={13} r={1.6} fill={INK} stroke="none" />
-          <Circle cx={38} cy={18} r={1.6} fill={INK} stroke="none" />
+          <Circle cx={38} cy={8} r={1.6} fill={colors.text} stroke="none" />
+          <Circle cx={41} cy={13} r={1.6} fill={colors.text} stroke="none" />
+          <Circle cx={38} cy={18} r={1.6} fill={colors.text} stroke="none" />
           <Line x1={17} y1={29} x2={26} y2={29} stroke={CREAM} />
           <Circle cx={40} cy={34} r={3.5} fill={CREAM} strokeWidth={1.6} />
         </G>
@@ -157,8 +158,8 @@ function Glyph({ name }: { name: string }) {
         <G {...common}>
           <Rect x={9} y={5} width={30} height={38} rx={5} fill={CREAM} />
           <Line x1={9} y1={13} x2={39} y2={13} />
-          <Circle cx={15} cy={9} r={1.4} fill={INK} stroke="none" />
-          <Circle cx={20} cy={9} r={1.4} fill={INK} stroke="none" />
+          <Circle cx={15} cy={9} r={1.4} fill={colors.text} stroke="none" />
+          <Circle cx={20} cy={9} r={1.4} fill={colors.text} stroke="none" />
           <Circle cx={24} cy={28} r={10} fill={GOLD} />
           <Path d="M17 29 q3.5 -3 7 0 t7 0" fill="none" stroke={CREAM} />
         </G>
@@ -303,7 +304,7 @@ function Glyph({ name }: { name: string }) {
 export function ServiceIcon({ name, size = 48, tile = true }: { name: string; size?: number; tile?: boolean }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 48 48">
-      {tile ? <Circle cx={24} cy={24} r={24} fill="#FBF1DA" /> : null}
+      {tile ? <Circle cx={24} cy={24} r={24} fill={colors.goldSoft} /> : null}
       <G transform={tile ? "translate(6 6) scale(0.75)" : undefined}>
         <Glyph name={name} />
       </G>

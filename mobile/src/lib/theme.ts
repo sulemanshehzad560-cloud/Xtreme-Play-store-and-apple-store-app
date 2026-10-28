@@ -1,6 +1,6 @@
 // Xtreme-Cleaning Partner design tokens: a light, familiar service-app look with the
 // Xtreme black-and-gold brand used for the header, primary actions and highlights.
-export const colors = {
+const LIGHT = {
   bg: "#F6F4EF",
   surface: "#FFFFFF",
   surfaceAlt: "#FBF7EC",
@@ -25,7 +25,51 @@ export const colors = {
   info: "#2F6FDE",
   infoSoft: "#E8F0FD",
   star: "#F5A524",
+  successLine: "#BFE5CC",
+  successText: "#2E7A50",
+  skeleton: "#E9E3D7",
 };
+
+// Dark mode keeps the black-and-gold brand: warm charcoal surfaces, gold accents, light text.
+const DARK: typeof LIGHT = {
+  bg: "#0F0E0C",
+  surface: "#1A1814",
+  surfaceAlt: "#221F19",
+  border: "#2E2A22",
+  divider: "#26221C",
+  ink: "#2B261D",
+  inkSoft: "#332D23",
+  text: "#F3EFE6",
+  muted: "#B3AA99",
+  faint: "#7D7566",
+  gold: "#E2C170",
+  goldBright: "#E2C170",
+  goldSoft: "#2E2616",
+  goldLine: "#5A4A26",
+  onInk: "#FFFFFF",
+  success: "#3DCB7F",
+  successSoft: "#12291C",
+  warning: "#F0A43A",
+  warningSoft: "#2E2212",
+  danger: "#F06A6A",
+  dangerSoft: "#2E1616",
+  info: "#6C9CF0",
+  infoSoft: "#14203A",
+  star: "#F5A524",
+  successLine: "#245A3A",
+  successText: "#9FDDB9",
+  skeleton: "#2A261F",
+};
+
+/**
+ * The current palette. Screens read it at render time, so switching theme swaps the values
+ * in place and the app re-renders (see ThemeProvider).
+ */
+export const colors = { ...LIGHT };
+
+export function applyPalette(dark: boolean) {
+  Object.assign(colors, dark ? DARK : LIGHT);
+}
 
 export const fonts = {
   regular: "PlusJakartaSans_400Regular",

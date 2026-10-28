@@ -18,6 +18,7 @@ import { DEMO } from "@/lib/demo";
 import { colors, fonts, radius, shadow, space } from "@/lib/theme";
 import type { Booking, Company } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
+import { useThemeMode, type ThemeMode } from "@/lib/themeMode";
 
 const METHOD_LABEL: Record<string, string> = { phone: "Mobile", google: "Google", facebook: "Facebook", apple: "Apple" };
 
@@ -163,6 +164,8 @@ export default function Account() {
 
       <PlanPromo />
 
+      <Appearance />
+
       <Section title="Help & support">
         <Item icon="chat" title="Chat with us" subtitle="Instant answers, or reply from our team" onPress={() => router.push("/chat")} />
         <Item icon="chat" title="WhatsApp" subtitle={company.data?.phoneDisplay} onPress={() => company.data && open(company.data.whatsapp)} />
@@ -192,6 +195,43 @@ export default function Account() {
   );
 }
 
+const THEMES: [ThemeMode, string, string][] = [
+  ["light", "☀️", "Light"],
+  ["dark", "🌙", "Dark"],
+  ["system", "📱", "Auto"],
+];
+
+function Appearance() {
+  const { mode, setMode } = useThemeMode();
+  function choose(m: ThemeMode) {
+    if (m === mode) return;
+    setMode(m);
+    // The app redraws in the new theme from the home screen; come back here.
+    setTimeout(() => router.navigate("/account"), 80);
+  }
+  return (
+    <Section title="Appearance">
+      <View style={{ flexDirection: "row", gap: space(2), padding: space(3) }}>
+        {THEMES.map(([m, icon, label]) => {
+          const on = m === mode;
+          return (
+            <Pressable
+              key={m}
+              onPress={() => choose(m)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: on }}
+              style={{ flex: 1, alignItems: "center", gap: 4, paddingVertical: space(3), borderRadius: radius.md, borderWidth: 1.5, borderColor: on ? colors.gold : colors.border, backgroundColor: on ? colors.goldSoft : colors.surface }}
+            >
+              <RNText style={{ fontSize: 20 }}>{icon}</RNText>
+              <RNText style={{ color: on ? colors.gold : colors.text, fontFamily: fonts.bold, fontSize: 13 }}>{label}</RNText>
+            </Pressable>
+          );
+        })}
+      </View>
+    </Section>
+  );
+}
+
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <View style={{ gap: space(2) }}>
@@ -204,7 +244,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 }
 
 function Item({ icon, title, subtitle, onPress, danger, last }: { icon: LineIconName; title: string; subtitle?: string; onPress?: () => void; danger?: boolean; last?: boolean }) {
-  const tint = danger ? colors.danger : colors.ink;
+  const tint = danger ? colors.danger : colors.text;
   return (
     <Pressable onPress={onPress} accessibilityRole="button" style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: space(3), paddingHorizontal: space(4), paddingVertical: space(3.5), backgroundColor: pressed ? colors.surfaceAlt : "transparent", borderBottomWidth: last ? 0 : 1, borderBottomColor: colors.divider })}>
       <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: danger ? colors.dangerSoft : colors.goldSoft, alignItems: "center", justifyContent: "center" }}>

@@ -1,4 +1,5 @@
 import Svg, { Circle, Path, Rect } from "react-native-svg";
+import { colors } from "../lib/theme";
 
 // Simple, consistent line icons for settings and info rows (1.8px strokes on a 24px grid).
 export type LineIconName =
@@ -20,7 +21,7 @@ export type LineIconName =
   | "edit"
   | "share";
 
-export function LineIcon({ name, size = 22, color = "#16130E" }: { name: LineIconName; size?: number; color?: string }) {
+export function LineIcon({ name, size = 22, color = colors.text }: { name: LineIconName; size?: number; color?: string }) {
   const p = { stroke: color, strokeWidth: 1.8, fill: "none", strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">

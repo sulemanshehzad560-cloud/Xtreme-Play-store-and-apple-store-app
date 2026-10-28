@@ -359,7 +359,8 @@ export function InlineLoader({ label }: { label?: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () =>
+  StyleSheet.create({
   text: { color: colors.text, fontSize: 16, fontFamily: fonts.regular, lineHeight: 23 },
   display: { fontFamily: fonts.extrabold, fontSize: 28, lineHeight: 35, letterSpacing: -0.4 },
   title: { fontFamily: fonts.extrabold, fontSize: 24, lineHeight: 31, letterSpacing: -0.3 },
@@ -401,4 +402,10 @@ const styles = StyleSheet.create({
   radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: colors.faint, alignItems: "center", justifyContent: "center" },
   radioDot: { width: 11, height: 11, borderRadius: 6, backgroundColor: colors.gold },
   pill: { flexDirection: "row", alignItems: "center", gap: 6, borderRadius: radius.pill, paddingHorizontal: space(2.5), paddingVertical: space(1), alignSelf: "flex-start" },
-});
+  });
+let styles = makeStyles();
+
+/** Rebuilds the shared styles after the palette changes (light/dark). */
+export function rebuildStyles() {
+  styles = makeStyles();
+}

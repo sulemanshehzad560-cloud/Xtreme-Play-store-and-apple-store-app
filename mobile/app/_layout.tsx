@@ -20,12 +20,14 @@ import { DEMO } from "@/lib/demo";
 import { registerPush } from "@/lib/push";
 import { closeSocket } from "@/lib/realtime";
 import { colors } from "@/lib/theme";
+import { ThemeProvider, useThemeMode } from "@/lib/themeMode";
 import "@/lib/staff-location"; // registers the background task at startup
 
 // Hand over from the static native splash to the animated brand intro as soon as JS is up.
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 function Gate() {
   const { ready, user } = useAuth();
+  const { dark } = useThemeMode();
   const [introDone, setIntroDone] = useState(false);
 
   useEffect(() => {
@@ -55,8 +57,9 @@ function Gate() {
   const isStaff = user?.role === "staff";
   // Phone sign-ins start without a name: ask for name and date of birth before anything else.
   const needsProfile = !!user && !isStaff && !user.fullName?.trim();
+  // Screens read the palette when they render, so a theme change remounts the navigator.
   return (
-    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
+    <Stack key={dark ? "dark" : "light"} screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
       <Stack.Protected guard={!user}>
         <Stack.Screen name="(auth)" />
       </Stack.Protected>
@@ -84,6 +87,10 @@ function Payments({ children }: { children: React.ReactElement }) {
   );
 }
 
+function ThemedStatusBar() {
+  return <StatusBar style={useThemeMode().dark ? "light" : "dark"} />;
+}
+
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     PlusJakartaSans_400Regular,
@@ -98,8 +105,10 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <Payments>
         <AuthProvider>
-          <StatusBar style="dark" />
-          <Gate />
+          <ThemeProvider>
+            <ThemedStatusBar />
+            <Gate />
+          </ThemeProvider>
         </AuthProvider>
       </Payments>
     </SafeAreaProvider>

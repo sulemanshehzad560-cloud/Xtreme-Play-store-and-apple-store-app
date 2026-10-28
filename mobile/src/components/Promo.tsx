@@ -17,19 +17,19 @@ export function FreeMaterials({ compact = false }: { compact?: boolean }) {
         gap: space(3),
         backgroundColor: colors.successSoft,
         borderWidth: 1,
-        borderColor: "#BFE5CC",
+        borderColor: colors.successLine,
         borderRadius: radius.lg,
         paddingHorizontal: space(3.5),
         paddingVertical: compact ? space(2.5) : space(3),
       }}
     >
-      <View style={{ width: compact ? 34 : 42, height: compact ? 34 : 42, borderRadius: 21, backgroundColor: "#fff", alignItems: "center", justifyContent: "center" }}>
+      <View style={{ width: compact ? 34 : 42, height: compact ? 34 : 42, borderRadius: 21, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
         <RNText style={{ fontSize: compact ? 17 : 21 }}>🧴</RNText>
       </View>
       <View style={{ flex: 1 }}>
         <RNText style={{ color: colors.success, fontFamily: fonts.extrabold, fontSize: compact ? 14 : 15.5 }}>Cleaning materials are FREE</RNText>
         {compact ? null : (
-          <RNText style={{ color: "#2E7A50", fontFamily: fonts.medium, fontSize: 12.5, lineHeight: 17 }}>
+          <RNText style={{ color: colors.successText, fontFamily: fonts.medium, fontSize: 12.5, lineHeight: 17 }}>
             All materials and equipment are included in every booking. They don't cost you anything extra.
           </RNText>
         )}

@@ -303,7 +303,7 @@ export default function Home() {
               .map((s) => (
                 <Pressable key={s.key} onPress={() => open(s.key)} style={{ width: 170, backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, overflow: "hidden", ...shadow.card }}>
                   <View style={{ height: 104, backgroundColor: colors.goldSoft, alignItems: "center", justifyContent: "center" }}>
-                    <View style={{ position: "absolute", width: 90, height: 90, borderRadius: 45, backgroundColor: "#F6E3B5", opacity: 0.6 }} />
+                    <View style={{ position: "absolute", width: 90, height: 90, borderRadius: 45, backgroundColor: colors.goldSoft, opacity: 0.6 }} />
                     <ServiceIcon name={s.key} size={72} tile={false} />
                     {s.rating ? (
                       <View style={{ position: "absolute", top: space(2), left: space(2), backgroundColor: colors.surface, borderRadius: radius.pill, paddingHorizontal: space(2), paddingVertical: 2 }}>
@@ -326,22 +326,7 @@ export default function Home() {
 
           <FreeMaterials />
 
-          <Card>
-            <Text variant="heading">Why customers choose Xtreme</Text>
-            {[
-              ["deep", "Vetted & trained professionals", "Background-checked, uniformed and insured teams."],
-              ["regular", "Satisfaction guarantee", "Not happy? We'll come back and make it right."],
-              ["sofa", "Secure payments", "Card, Apple Pay, Google Pay or Tamara. No gateway fees or hidden charges."],
-            ].map(([icon, t, d]) => (
-              <Row key={t} style={{ alignItems: "flex-start", marginTop: space(1) }}>
-                <ServiceIcon name={icon!} size={40} />
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontFamily: fonts.bold, fontSize: 15 }}>{t}</Text>
-                  <Text variant="small">{d}</Text>
-                </View>
-              </Row>
-            ))}
-          </Card>
+          <WhyXtreme />
 
           <Card tone="ink" onPress={() => router.push("/chat")}>
             <Row>
@@ -362,6 +347,54 @@ export default function Home() {
           </Card>
         </View>
       </ScrollView>
+    </View>
+  );
+}
+
+type Tone = { bg: string; fg: string; sub: string; blob: string };
+
+/** "Why customers choose Xtreme" as a grid of bold, colourful blocks. */
+function WhyXtreme() {
+  const tones: Record<string, Tone> = {
+    ink: { bg: colors.ink, fg: "#fff", sub: "#CFC8BA", blob: "#3A3227" },
+    gold: { bg: colors.goldBright, fg: "#16130E", sub: "#4A3D22", blob: "#EDD293" },
+    green: { bg: colors.successSoft, fg: colors.success, sub: colors.successText, blob: colors.successLine },
+    blue: { bg: colors.infoSoft, fg: colors.info, sub: colors.muted, blob: colors.surface },
+  };
+  const blocks: [string, string, string, Tone][] = [
+    ["🛡️", "Vetted pros", "Background-checked, uniformed and insured teams", tones.ink],
+    ["💯", "Satisfaction guarantee", "Not happy? We come back and make it right", tones.gold],
+    ["🧴", "Materials free", "All materials and equipment included, every time", tones.green],
+    ["🔒", "Secure payments", "Card, Apple Pay, Google Pay or Tamara. No hidden fees", tones.blue],
+  ];
+  const tileW = (W - space(4) * 2 - space(3)) / 2;
+  return (
+    <View style={{ gap: space(3) }}>
+      <View style={{ gap: 2 }}>
+        <RNText style={{ color: colors.gold, fontFamily: fonts.extrabold, fontSize: 12, letterSpacing: 1.2 }}>WHY XTREME</RNText>
+        <Text variant="title">Why customers choose us</Text>
+      </View>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space(3) }}>
+        {blocks.map(([icon, title, body, t], i) => (
+          <FadeIn key={title} delay={i * 90} style={{ width: tileW }}>
+            <View style={{ minHeight: 168, borderRadius: radius.xl, padding: space(4), backgroundColor: t.bg, overflow: "hidden", gap: space(2), ...shadow.card }}>
+              <View style={{ position: "absolute", right: -26, top: -26, width: 92, height: 92, borderRadius: 46, backgroundColor: t.blob, opacity: 0.7 }} />
+              <View style={{ width: 46, height: 46, borderRadius: 14, backgroundColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center" }}>
+                <RNText style={{ fontSize: 24 }}>{icon}</RNText>
+              </View>
+              <RNText style={{ color: t.fg, fontFamily: fonts.extrabold, fontSize: 16, lineHeight: 20 }}>{title}</RNText>
+              <RNText style={{ color: t.sub, fontFamily: fonts.medium, fontSize: 12.5, lineHeight: 17 }}>{body}</RNText>
+            </View>
+          </FadeIn>
+        ))}
+      </View>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space(2) }}>
+        {["⚡ Book for today", "📅 Weekly or bi-weekly", "🏠 Free site visits", "💬 Help 7 days a week"].map((c) => (
+          <View key={c} style={{ backgroundColor: colors.surface, borderColor: colors.goldLine, borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: space(3), paddingVertical: space(1.5) }}>
+            <RNText style={{ color: colors.text, fontFamily: fonts.semibold, fontSize: 12.5 }}>{c}</RNText>
+          </View>
+        ))}
+      </View>
     </View>
   );
 }

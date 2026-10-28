@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { AccessibilityInfo, Animated, Easing, View, type StyleProp, type ViewStyle } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
+import { colors } from "../../lib/theme";
 
 const reduceMotion = () => AccessibilityInfo.isReduceMotionEnabled().catch(() => false);
 
@@ -33,13 +34,13 @@ export function Skeleton({ width, height, radius = 10, style }: { width: number 
     loop.start();
     return () => loop.stop();
   }, []);
-  return <Animated.View style={[{ width, height, borderRadius: radius, backgroundColor: "#E9E3D7", opacity: v }, style]} />;
+  return <Animated.View style={[{ width, height, borderRadius: radius, backgroundColor: colors.skeleton, opacity: v }, style]} />;
 }
 
 /** A card-shaped skeleton for lists. */
 export function SkeletonCard() {
   return (
-    <View style={{ backgroundColor: "#fff", borderRadius: 18, padding: 16, gap: 10, borderWidth: 1, borderColor: "#ECE6DA" }}>
+    <View style={{ backgroundColor: colors.surface, borderRadius: 18, padding: 16, gap: 10, borderWidth: 1, borderColor: colors.border }}>
       <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
         <Skeleton width={46} height={46} radius={14} />
         <View style={{ flex: 1, gap: 8 }}>
