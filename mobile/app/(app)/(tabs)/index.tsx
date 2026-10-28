@@ -33,7 +33,8 @@ interface Address {
 const W = Dimensions.get("window").width;
 const SLIDE = W - space(8);
 
-const PROMOS = [
+// Built at render time so the banners follow the light/dark theme.
+const promos = () => [
   { title: "Regular cleaning plans", body: "Weekly visits by the same team, for less. Materials free.", cta: "See plans", service: "plans", bg: colors.ink, fg: "#fff", ctaBg: colors.goldBright, ctaFg: colors.ink, Art: LivingRoomScene },
   { title: "Home cleaning from AED 90", body: "2–3 trained cleaners. All cleaning materials FREE.", cta: "Book a clean", service: "regular", bg: colors.ink, fg: "#fff", ctaBg: colors.goldBright, ctaFg: colors.ink, Art: LivingRoomScene },
   { title: "Deep cleaning, priced on site", body: "Appliances inside and out, every corner. Free site visit and quote.", cta: "Book a visit", service: "deep", bg: colors.ink, fg: "#fff", ctaBg: colors.goldBright, ctaFg: colors.ink, Art: LivingRoomScene },
@@ -78,7 +79,7 @@ export default function Home() {
 
   // Rotate the offers every few seconds.
   useEffect(() => {
-    const t = setInterval(() => setSlide((s) => (s + 1) % PROMOS.length), 5000);
+    const t = setInterval(() => setSlide((s) => (s + 1) % promos().length), 5000);
     return () => clearInterval(t);
   }, []);
   const [carousel, setCarousel] = useState<ScrollView | null>(null);
@@ -253,7 +254,7 @@ export default function Home() {
               onMomentumScrollEnd={(e) => setSlide(Math.round(e.nativeEvent.contentOffset.x / (SLIDE + space(3))))}
               contentContainerStyle={{ gap: space(3) }}
             >
-              {PROMOS.map(({ Art, ...p }) => (
+              {promos().map(({ Art, ...p }) => (
                 <Pressable key={p.title} onPress={() => open(p.service)} style={{ width: SLIDE, height: 176, backgroundColor: p.bg, borderRadius: radius.xl, padding: space(5), overflow: "hidden" }}>
                   {/* Outline art needs a light backdrop on the dark banner. */}
                   {p.bg === colors.ink ? <View style={{ position: "absolute", right: -30, bottom: -40, width: 200, height: 200, borderRadius: 100, backgroundColor: "#F3E3BC" }} /> : null}
@@ -271,7 +272,7 @@ export default function Home() {
               ))}
             </ScrollView>
             <Row style={{ justifyContent: "center", gap: 6, marginTop: space(3) }}>
-              {PROMOS.map((_, i) => (
+              {promos().map((_, i) => (
                 <View key={i} style={{ width: i === slide ? 20 : 6, height: 6, borderRadius: 3, backgroundColor: i === slide ? colors.ink : colors.border }} />
               ))}
             </Row>

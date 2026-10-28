@@ -109,7 +109,7 @@ export default function Pay() {
       ...(Constants.expoConfig?.extra?.applePay ? { applePay: { merchantCountryCode: s.merchantCountryCode } } : {}),
       googlePay: { merchantCountryCode: s.merchantCountryCode, currencyCode: s.currency, testEnv: s.publishableKey.startsWith("pk_test") },
       returnURL: "xtreme://stripe-redirect",
-      appearance: { colors: { primary: colors.ink, background: colors.surface, componentBackground: colors.bg, primaryText: colors.text } },
+      appearance: sheetAppearance(),
     });
     if (init.error) throw new Error(init.error.message);
     const result = await presentPaymentSheet();
@@ -266,4 +266,31 @@ function SummaryLine({ label, value, accent }: { label: string; value: string; a
       <Text style={{ color: accent ? colors.goldBright : colors.onInk, fontFamily: fonts.bold }}>{value}</Text>
     </Row>
   );
+}
+
+/**
+ * Card sheet colours in the app's current theme. Every colour is set, for both the phone's light
+ * and dark modes, so text is never white on a light field (or dark on a dark one).
+ */
+function sheetAppearance() {
+  const palette = {
+    primary: colors.gold,
+    background: colors.surface,
+    componentBackground: colors.bg,
+    componentBorder: colors.border,
+    componentDivider: colors.border,
+    primaryText: colors.text,
+    secondaryText: colors.muted,
+    componentText: colors.text,
+    placeholderText: colors.faint,
+    icon: colors.muted,
+    error: colors.danger,
+  };
+  const button = { background: colors.goldBright, text: "#16130E", border: colors.goldBright };
+  return {
+    font: { scale: 1.0 },
+    shapes: { borderRadius: 14 },
+    colors: { light: palette, dark: palette },
+    primaryButton: { colors: { light: button, dark: button }, shapes: { borderRadius: 14 } },
+  };
 }
