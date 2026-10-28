@@ -1,5 +1,24 @@
 # Launch checklist: what the Xtreme team needs to set up
 
+## 0. Still to do (latest changes)
+
+Secrets go straight into Render (Environment) or Expo; never paste them in chat or email.
+
+| Where | What | Why |
+|---|---|---|
+| Render | **Redeploy** the server once by hand | Brings in prices, fees, Network International, encryption, deploy button, staff sign-out, map tiles, photo fix |
+| Render | `DATA_ENCRYPTION_KEY` = output of `openssl rand -base64 32` | Encrypts chat messages and profile photos. Keep a safe copy; never change it |
+| Render | `RENDER_DEPLOY_HOOK_URL` (service Settings → Deploy Hook) | Turns on Admin & IT → "Deploy latest version" |
+| Render | `NGENIUS_API_KEY`, `NGENIUS_OUTLET_REF`, `NGENIUS_WEBHOOK_SECRET` | Card payments through Network International (Stripe is used until these are set) |
+| N-Genius portal | Webhook to `{PUBLIC_URL}/v1/webhooks/ngenius` with header `X-Webhook-Secret` = `NGENIUS_WEBHOOK_SECRET` | Payment confirmations even if the customer closes the app |
+| Render | `NGENIUS_API_URL=https://api-gateway.ngenius-payments.com` when going live | Leaves sandbox |
+| Expo (credentials) | Upload the APNs key (.p8) for team 26YJBF5LH4 | Push notifications on iPhone |
+| Expo + Render | `FACEBOOK_APP_ID`, `FACEBOOK_CLIENT_TOKEN` (Expo) and `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET` (Render) | Facebook sign-in |
+| Dashboard → Prices | Check prices, service fee, Tamara fee, weekly / bi-weekly discounts | All pricing is managed there now |
+| Tamara | Confirm your merchant agreement allows the instalment fee you set | Compliance |
+| Network International | Ask for their SoftPOS / Tap on Phone SDK if you want Tap to Pay in the staff app | Not available without their SDK |
+
+
 App name in both stores: **Xtreme-Cleaning Partner**.
 
 The code is ready. These are the accounts and keys that only the business can create, because they need company documents, payment details or legal agreements. Each item says what to send back to the developer, as **environment variables** (keep them secret: never put them in chat or email in plain text; use a password manager or the hosting provider's secret settings).
