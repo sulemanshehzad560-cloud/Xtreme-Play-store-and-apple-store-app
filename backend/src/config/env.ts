@@ -63,11 +63,8 @@ const EnvSchema = z.object({
   STRIPE_PUBLISHABLE_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
   STRIPE_MERCHANT_NAME: z.string().default("Xtreme Facilities Management"),
-  /** Encrypts chat messages and profile photos in the database (32 bytes, base64). Never change it once set. */
-  DATA_ENCRYPTION_KEY: z
-    .string()
-    .refine((k) => Buffer.from(k, "base64").length === 32, "DATA_ENCRYPTION_KEY must be 32 random bytes, base64 (openssl rand -base64 32)")
-    .optional(),
+  /** Encrypts chat messages and profile photos in the database. Use Render's "Generate". Never change it once set. */
+  DATA_ENCRYPTION_KEY: z.string().trim().min(32, "DATA_ENCRYPTION_KEY must be a random secret of at least 32 characters (use Render's Generate)").optional(),
   /** Render "Deploy Hook" URL (service Settings > Deploy Hook). Lets admins redeploy from the dashboard. */
   RENDER_DEPLOY_HOOK_URL: z
     .string()
