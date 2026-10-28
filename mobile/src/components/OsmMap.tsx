@@ -1,15 +1,16 @@
 import { useMemo, useRef, useState } from "react";
 import { Image, PanResponder, Pressable, Text as RNText, View, type LayoutChangeEvent } from "react-native";
+import { API_URL } from "../lib/config";
 import { colors, fonts, radius } from "../lib/theme";
 
 /**
  * Map tiles from OpenStreetMap (free, no key). Used on Android, where the native Google map
- * would need a paid-account API key; iPhones use Apple Maps. Tiles follow the OSM tile
- * policy: an identifying User-Agent, the attribution shown on the map, normal caching.
+ * would need a paid-account API key; iPhones use Apple Maps. Tiles come through our own server,
+ * which fetches them once with an identifying User-Agent and caches them (OpenStreetMap blocks
+ * apps that fetch tiles directly).
  */
 const TILE = 256;
-const TILE_URL = (z: number, x: number, y: number) => `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
-const HEADERS = { "User-Agent": "XtremeCleaningPartner/1.0 (+https://www.xtreme-fmgroup.com)" };
+const TILE_URL = (z: number, x: number, y: number) => `${API_URL}/v1/tiles/${z}/${x}/${y}.png`;
 
 export type LatLng = { lat: number; lng: number };
 
@@ -44,7 +45,7 @@ export function OsmTiles({ width, height, center, zoom, anchor }: { width: numbe
   return (
     <View style={{ position: "absolute", left: 0, top: 0, width, height, overflow: "hidden", backgroundColor: "#EEF0EA" }}>
       {tiles.map((t) => (
-        <Image key={t.key} source={{ uri: TILE_URL(zoom, t.x, t.y), headers: HEADERS }} style={{ position: "absolute", left: t.px, top: t.py, width: TILE, height: TILE }} fadeDuration={0} />
+        <Image key={t.key} source={{ uri: TILE_URL(zoom, t.x, t.y) }} style={{ position: "absolute", left: t.px, top: t.py, width: TILE, height: TILE }} fadeDuration={0} />
       ))}
     </View>
   );

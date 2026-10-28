@@ -70,6 +70,12 @@ const EnvSchema = z.object({
   /** Fee added when the customer pays with Tamara, in percent of the amount due (0 = none). */
   TAMARA_FEE_PERCENT: z.coerce.number().min(0).max(20).default(8),
 
+  /**
+   * Map tiles for the Android app, fetched and cached by this server so the app never calls the
+   * tile provider directly. {z}/{x}/{y} are filled in. A provider key, if any, goes here on the server.
+   */
+  MAP_TILE_URL: z.string().default("https://tile.openstreetmap.org/{z}/{x}/{y}.png"),
+
   // Invoice emails. Zoho Mail SMTP for an organisation mailbox on your own domain:
   // smtppro.zoho.com, port 465, the mailbox address and an app-specific password.
   MAIL_PROVIDER: z.enum(["console", "smtp"]).default("console"),
