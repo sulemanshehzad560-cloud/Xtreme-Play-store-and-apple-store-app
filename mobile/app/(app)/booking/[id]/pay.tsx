@@ -11,7 +11,7 @@ import { DEMO } from "@/lib/demo";
 import { aed, when } from "@/lib/format";
 import type { Booking } from "@/lib/types";
 import { colors, fonts, space } from "@/lib/theme";
-import { LineIcon } from "@/components/LineIcon";
+import { LineIcon, iconColor } from "@/components/LineIcon";
 
 interface Options {
   amount: { priceAed: number; discountAed: number; totalAed: number; vatAed: number; serviceFeeAed?: number };
@@ -191,7 +191,7 @@ export default function Pay() {
               <Text style={{ color: "#BDB4A3", fontFamily: fonts.semibold }}>Total to pay</Text>
               <Text style={{ color: colors.onInk, fontFamily: fonts.extrabold, fontSize: 28 }}>{aed(total ?? options.amount.totalAed)}</Text>
             </Row>
-            <Text style={{ color: "#BDB4A3", fontSize: 12.5 }}>{method === "tamara" ? "VAT included · Tamara fee added for paying in instalments" : methodFee > 0 ? "VAT included · card fee shown above" : "VAT included · no card fees or hidden charges"}</Text>
+            <Text style={{ color: "#BDB4A3", fontSize: 12.5 }}>{method === "tamara" ? "VAT included · Tamara fee added for paying in instalments" : "VAT included · no hidden charges"}</Text>
           </Card>
 
           {options.amount.discountAed > 0 ? (
@@ -239,7 +239,7 @@ export default function Pay() {
             onPress={() => setMethod("card")}
             title="Credit or debit card"
             subtitle="Visa, Mastercard, Apple Pay, Google Pay"
-            icon={<LineIcon name="card" size={24} color={colors.gold} />}
+            icon={<LineIcon name="card" size={24} color={iconColor("card")} />}
           />
           <OptionCard
             selected={method === "tamara"}
@@ -255,7 +255,7 @@ export default function Pay() {
           />
 
           <View style={{ flexDirection: "row", alignItems: "center", gap: space(2), justifyContent: "center", marginTop: space(2) }}>
-            <LineIcon name="lock" size={15} color={colors.muted} />
+            <LineIcon name="lock" size={15} color={iconColor("lock")} />
             <Text variant="small" style={{ fontFamily: fonts.medium }}>
               Payments are encrypted and processed securely.
             </Text>

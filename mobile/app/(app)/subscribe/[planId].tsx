@@ -11,7 +11,7 @@ import { aed, SIZE_LABEL } from "@/lib/format";
 import { colors, fonts, space } from "@/lib/theme";
 import type { Interval, Subscription, SubscriptionPlan } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
-import { LineIcon, type LineIconName } from "@/components/LineIcon";
+import { LineIcon, iconColor, type LineIconName } from "@/components/LineIcon";
 
 type PropertyType = "apartment" | "villa" | "office";
 interface Address {
@@ -175,7 +175,7 @@ export default function Subscribe() {
           <Row style={{ gap: space(2) }}>
             {PROPERTY.map(([t, label, icon]) => (
               <View key={t} style={{ flex: 1 }}>
-                <Chip icon={<LineIcon name={icon} size={24} color={type === t ? colors.gold : colors.muted} />} label={label} selected={type === t} onPress={() => setType(t)} />
+                <Chip icon={<LineIcon name={icon} size={24} color={iconColor(icon)} />} label={label} selected={type === t} onPress={() => setType(t)} />
               </View>
             ))}
           </Row>

@@ -17,7 +17,7 @@ export interface PricingConfig {
   rates: RateTable;
   /** Added when the customer pays in instalments with Tamara, in percent. */
   tamaraFeePercent: number;
-  /** Added when the customer pays by card / Apple Pay / Google Pay, in percent (0 = none). */
+  /** Card fee, in percent. Always 0: card payments carry no fee; use the service fee instead. */
   cardFeePercent: number;
   /** Flat service fee added to every payment, in AED (0 = none). */
   serviceFeeAed: number;
@@ -73,7 +73,7 @@ export function validatePricing(input: PricingConfig): PricingConfig {
   return {
     rates,
     tamaraFeePercent: pct(input.tamaraFeePercent, 20, "The Tamara fee (%)"),
-    cardFeePercent: pct(input.cardFeePercent ?? 0, 10, "The card fee (%)"),
+    cardFeePercent: 0, // no card fees: the flat service fee is the only extra charge
     serviceFeeAed: pct(input.serviceFeeAed ?? 0, 1000, "The service fee (AED)"),
     frequencyDiscountPercent: { weekly: pct(freq.weekly ?? 0, 50, "The weekly discount (%)"), biweekly: pct(freq.biweekly ?? 0, 50, "The bi-weekly discount (%)") },
   };

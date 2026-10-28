@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { LineIcon, type LineIconName } from "@/components/LineIcon";
+import { LineIcon, iconColor, type LineIconName } from "@/components/LineIcon";
 import { hasOnboarded } from "@/lib/onboarding";
 import { Alert, Platform, Pressable, Text as RNText, View } from "react-native";
 import { Image } from "expo-image";
@@ -57,7 +57,7 @@ export default function Welcome() {
           {PERKS.map(([icon, text]) => (
             <View key={text} style={{ flexDirection: "row", alignItems: "center", gap: space(3) }}>
               <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: "#2A251D", alignItems: "center", justifyContent: "center" }}>
-                <LineIcon name={icon} size={16} color={colors.goldBright} />
+                <LineIcon name={icon} size={16} color={iconColor(icon)} />
               </View>
               <RNText style={{ color: "#E9E3D6", fontFamily: fonts.medium, fontSize: 15 }}>{text}</RNText>
             </View>

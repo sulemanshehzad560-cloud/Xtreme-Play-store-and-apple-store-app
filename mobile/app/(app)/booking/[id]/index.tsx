@@ -11,7 +11,7 @@ import { useBookingEvents } from "@/lib/realtime";
 import { colors, fonts, radius, space } from "@/lib/theme";
 import type { Booking, BookingStatus, Company } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
-import { LineIcon } from "@/components/LineIcon";
+import { LineIcon, iconColor } from "@/components/LineIcon";
 
 const FLOW: [BookingStatus, string][] = [
   ["requested", "Booking received"],
@@ -166,8 +166,8 @@ export default function BookingDetail() {
           </Row>
           {company.data ? (
             <Row style={{ gap: space(2) }}>
-              <Button title="Call" icon={<LineIcon name="call" size={18} />} variant="secondary" size="sm" style={{ flex: 1 }} onPress={() => Linking.openURL(`tel:${company.data!.phone}`)} />
-              <Button title="WhatsApp" icon={<LineIcon name="chat" size={18} />} variant="secondary" size="sm" style={{ flex: 1 }} onPress={() => Linking.openURL(company.data!.whatsapp)} />
+              <Button title="Call" icon={<LineIcon name="call" size={18} color={iconColor("call")} />} variant="secondary" size="sm" style={{ flex: 1 }} onPress={() => Linking.openURL(`tel:${company.data!.phone}`)} />
+              <Button title="WhatsApp" icon={<LineIcon name="chat" size={18} color={iconColor("chat")} />} variant="secondary" size="sm" style={{ flex: 1 }} onPress={() => Linking.openURL(company.data!.whatsapp)} />
             </Row>
           ) : null}
         </Card>
@@ -230,7 +230,7 @@ export default function BookingDetail() {
       {b.review ? <Text variant="small" style={{ textAlign: "center" }}>You rated this service {"★".repeat(b.review.rating)}</Text> : null}
 
       {b.status === "completed" || b.status === "cancelled" ? <Button title="Book again" onPress={() => router.push(`/service/${b.service.key}`)} /> : null}
-      {b.canReschedule ? <Button title="Reschedule" icon={<LineIcon name="calendar" size={18} />} variant="secondary" onPress={() => setRescheduling(true)} /> : null}
+      {b.canReschedule ? <Button title="Reschedule" icon={<LineIcon name="calendar" size={18} color={iconColor("calendar")} />} variant="secondary" onPress={() => setRescheduling(true)} /> : null}
       {b.canCancel ? <Button title="Cancel booking" variant="danger" onPress={cancel} /> : null}
       <RescheduleSheet
         visible={rescheduling}

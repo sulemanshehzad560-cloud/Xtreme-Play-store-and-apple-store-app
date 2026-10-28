@@ -8,7 +8,7 @@ import { LivingRoomScene, PayInFourScene } from "@/components/art/Scenes";
 import { ServiceIcon } from "@/components/art/ServiceIcon";
 import { BrandMark } from "@/components/BrandMark";
 import { FreeMaterials, PlanPromo } from "@/components/Promo";
-import { LineIcon, type LineIconName } from "@/components/LineIcon";
+import { LineIcon, iconColor, type LineIconName } from "@/components/LineIcon";
 import { Card, Row, SectionHeader, StatusPill, Text } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
@@ -210,7 +210,7 @@ export default function Home() {
                   paddingVertical: space(2.5),
                 }}
               >
-                <LineIcon name={icon as LineIconName} size={20} color={hot ? colors.success : colors.gold} />
+                <LineIcon name={icon as LineIconName} size={20} color={iconColor(icon as LineIconName)} />
                 <View>
                   <RNText style={{ fontFamily: fonts.medium, fontSize: 11.5, color: hot ? colors.success : colors.muted }}>{a}</RNText>
                   <RNText style={{ fontFamily: fonts.extrabold, fontSize: 14, color: hot ? colors.success : colors.text }}>{b}</RNText>
@@ -404,7 +404,7 @@ function WhyXtreme() {
           ] as [LineIconName, string][]
         ).map(([icon, c]) => (
           <View key={c} style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: colors.surface, borderColor: colors.goldLine, borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: space(3), paddingVertical: space(1.5) }}>
-            <LineIcon name={icon} size={15} color={colors.gold} />
+            <LineIcon name={icon} size={15} color={iconColor(icon)} />
             <RNText style={{ color: colors.text, fontFamily: fonts.semibold, fontSize: 12.5 }}>{c}</RNText>
           </View>
         ))}

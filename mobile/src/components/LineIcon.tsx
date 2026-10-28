@@ -41,6 +41,50 @@ export type LineIconName =
   | "briefcase"
   | "search";
 
+// Each icon has its own colour, so lists and highlights are easy to scan.
+const TINT: Partial<Record<LineIconName, string>> = {
+  phone: "#2F6FDE",
+  pin: "#E5484D",
+  bell: "#F5A524",
+  key: "#B98F35",
+  chat: "#1E9E5A",
+  call: "#1E9E5A",
+  mail: "#2F6FDE",
+  globe: "#0090FF",
+  shield: "#2F6FDE",
+  trash: "#E5484D",
+  doc: "#8E4EC6",
+  receipt: "#12A594",
+  star: "#F5A524",
+  calendar: "#8E4EC6",
+  edit: "#B98F35",
+  share: "#2F6FDE",
+  bolt: "#F76B15",
+  lock: "#12A594",
+  sparkle: "#B98F35",
+  home: "#F76B15",
+  villa: "#F76B15",
+  office: "#2F6FDE",
+  briefcase: "#8E4EC6",
+  restaurant: "#E5484D",
+  card: "#2F6FDE",
+  clock: "#F76B15",
+  tag: "#1E9E5A",
+  sun: "#F5A524",
+  moon: "#6E56CF",
+  auto: "#12A594",
+  check: "#1E9E5A",
+  alert: "#F76B15",
+  bottle: "#12A594",
+  user: "#2F6FDE",
+  map: "#1E9E5A",
+};
+
+/** The icon's own colour (for coloured icons on light or dark backgrounds). */
+export const iconColor = (name: LineIconName) => TINT[name] ?? colors.gold;
+/** A soft background in the icon's colour. */
+export const iconSoft = (name: LineIconName) => `${iconColor(name)}22`;
+
 export function LineIcon({ name, size = 22, color = colors.text }: { name: LineIconName; size?: number; color?: string }) {
   const p = { stroke: color, strokeWidth: 1.8, fill: "none", strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   return (

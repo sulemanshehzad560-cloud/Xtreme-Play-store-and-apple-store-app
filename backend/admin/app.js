@@ -128,13 +128,13 @@ function logout() {
 }
 $("#logout").addEventListener("click", logout);
 
-// An unattended dashboard signs itself out after 30 minutes without activity.
+// An unattended dashboard signs itself out after 3 hours without activity (the apps never do).
 let lastActive = Date.now();
 ["click", "keydown", "mousemove", "touchstart"].forEach((ev) => document.addEventListener(ev, () => (lastActive = Date.now()), { passive: true }));
 setInterval(() => {
-  if (session && Date.now() - lastActive > 30 * 60_000) {
+  if (session && Date.now() - lastActive > 3 * 60 * 60_000) {
     logout();
-    toast("Signed out after 30 minutes without activity");
+    toast("Signed out after 3 hours without activity");
   }
 }, 60_000);
 
@@ -960,7 +960,6 @@ let pricingData = null;
 async function loadPricing() {
   pricingData = await api("/admin/pricing");
   $("#tamara-fee").value = pricingData.tamaraFeePercent;
-  $("#card-fee").value = pricingData.cardFeePercent ?? 0;
   $("#service-fee").value = pricingData.serviceFeeAed ?? 0;
   $("#weekly-discount").value = pricingData.frequencyDiscountPercent?.weekly ?? 0;
   $("#biweekly-discount").value = pricingData.frequencyDiscountPercent?.biweekly ?? 0;
@@ -1000,7 +999,6 @@ $("#save-pricing").addEventListener("click", async () => {
   const body = {
     rates,
     tamaraFeePercent: n("#tamara-fee"),
-    cardFeePercent: n("#card-fee"),
     serviceFeeAed: n("#service-fee"),
     frequencyDiscountPercent: { weekly: n("#weekly-discount"), biweekly: n("#biweekly-discount") },
   };

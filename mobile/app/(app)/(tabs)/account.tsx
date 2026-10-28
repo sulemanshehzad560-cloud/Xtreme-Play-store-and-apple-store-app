@@ -10,7 +10,7 @@ import { BirthdayPicker, formatDob } from "@/components/BirthdayPicker";
 import { ProfilePhoto } from "@/components/ProfilePhoto";
 import { BrandMark } from "@/components/BrandMark";
 import { FreeMaterials, PlanPromo } from "@/components/Promo";
-import { LineIcon, type LineIconName } from "@/components/LineIcon";
+import { LineIcon, iconColor, iconSoft, type LineIconName } from "@/components/LineIcon";
 import { API_URL } from "@/lib/config";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -222,7 +222,7 @@ function Appearance() {
               accessibilityState={{ selected: on }}
               style={{ flex: 1, alignItems: "center", gap: 4, paddingVertical: space(3), borderRadius: radius.md, borderWidth: 1.5, borderColor: on ? colors.gold : colors.border, backgroundColor: on ? colors.goldSoft : colors.surface }}
             >
-              <LineIcon name={icon} size={22} color={on ? colors.gold : colors.muted} />
+              <LineIcon name={icon} size={22} color={iconColor(icon)} />
               <RNText style={{ color: on ? colors.gold : colors.text, fontFamily: fonts.bold, fontSize: 13 }}>{label}</RNText>
             </Pressable>
           );
@@ -244,10 +244,10 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 }
 
 function Item({ icon, title, subtitle, onPress, danger, last }: { icon: LineIconName; title: string; subtitle?: string; onPress?: () => void; danger?: boolean; last?: boolean }) {
-  const tint = danger ? colors.danger : colors.text;
+  const tint = danger ? colors.danger : iconColor(icon);
   return (
     <Pressable onPress={onPress} accessibilityRole="button" style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: space(3), paddingHorizontal: space(4), paddingVertical: space(3.5), backgroundColor: pressed ? colors.surfaceAlt : "transparent", borderBottomWidth: last ? 0 : 1, borderBottomColor: colors.divider })}>
-      <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: danger ? colors.dangerSoft : colors.goldSoft, alignItems: "center", justifyContent: "center" }}>
+      <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: danger ? colors.dangerSoft : iconSoft(icon), alignItems: "center", justifyContent: "center" }}>
         <LineIcon name={icon} size={20} color={tint} />
       </View>
       <View style={{ flex: 1 }}>

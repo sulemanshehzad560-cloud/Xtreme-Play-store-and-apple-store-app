@@ -10,7 +10,7 @@ import { useBookingEvents } from "@/lib/realtime";
 import { colors, fonts, radius, shadow, space } from "@/lib/theme";
 import type { BookingStatus, Company, Tracking } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
-import { LineIcon } from "@/components/LineIcon";
+import { LineIcon, iconColor, iconSoft } from "@/components/LineIcon";
 
 const HEADLINE: Partial<Record<BookingStatus, string>> = {
   assigned: "Your team is getting ready",
@@ -109,8 +109,8 @@ function EtaBar({ minutes }: { minutes: number | null }) {
 
 function RoundAction({ glyph, label, onPress }: { glyph: "call" | "chat"; label: string; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: colors.goldSoft, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.goldLine }}>
-      <LineIcon name={glyph} size={22} color={colors.gold} />
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: iconSoft(glyph), alignItems: "center", justifyContent: "center" }}>
+      <LineIcon name={glyph} size={22} color={iconColor(glyph)} />
     </Pressable>
   );
 }

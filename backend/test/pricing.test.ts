@@ -54,7 +54,7 @@ describe("price list", () => {
     expect((await t.app.inject({ method: "PUT", url: "/v1/admin/pricing", headers: admin.auth, payload: wrongType })).statusCode).toBe(400);
   });
 
-  it("applies weekly / bi-weekly discounts and the service and card fees set in the dashboard", async () => {
+  it("applies weekly / bi-weekly discounts and the service fee; card payments never carry a card fee", async () => {
     const admin = await signInAs(t, "admin");
     const me = await signInPhone(t, undefined, "Sara Al Mansoori");
     const next = { ...defaultPricing(8), cardFeePercent: 2, serviceFeeAed: 10, frequencyDiscountPercent: { weekly: 10, biweekly: 5 } };
@@ -68,17 +68,14 @@ describe("price list", () => {
     expect(booking.priceAed).toBe(135);
     const options = (await t.app.inject({ method: "GET", url: `/v1/bookings/${booking.id}/payment-options`, headers: me.auth })).json();
     expect(options.amount).toMatchObject({ totalAed: 135, serviceFeeAed: 10 });
-    expect(options.methods[0]).toMatchObject({ method: "card", feePercent: 2, feeAed: 12.7, totalAed: 147.7 });
+    expect(options.methods[0]).toMatchObject({ method: "card", feePercent: 0, feeAed: 10, totalAed: 145 });
     expect(options.methods[1]).toMatchObject({ method: "tamara", feeAed: 20.8, totalAed: 155.8 });
 
     await pay(t, me.auth, booking.id);
-    expect([...t.card.intents.values()].at(-1)!.amountMinor).toBe(14770);
+    expect([...t.card.intents.values()].at(-1)!.amountMinor).toBe(14500);
     const invoice = (await t.app.inject({ method: "GET", url: `/v1/bookings/${booking.id}/invoice`, headers: me.auth })).json();
-    expect(invoice.totalAed).toBe(147.7);
-    expect(invoice.lines.map((l: { description: string; amountAed: number }) => [l.description, l.amountAed]).slice(1)).toEqual([
-      ["Service fee", 10],
-      ["Card processing fee", 2.7],
-    ]);
+    expect(invoice.totalAed).toBe(145);
+    expect(invoice.lines.map((l: { description: string; amountAed: number }) => [l.description, l.amountAed]).slice(1)).toEqual([["Service fee", 10]]);
   });
 });
 

@@ -14,7 +14,7 @@ import { useApi } from "@/lib/useApi";
 import { TamaraBadge } from "@/components/BrandIcons";
 import { PlanPromo } from "@/components/Promo";
 import { SlotPicker, abuDhabiTime, firstOpenDay, hourLabel, nextDays } from "@/components/SlotPicker";
-import { LineIcon, type LineIconName } from "@/components/LineIcon";
+import { LineIcon, iconColor, type LineIconName } from "@/components/LineIcon";
 
 type PropertyType = "apartment" | "villa" | "office" | "restaurant";
 type Pay = "card" | "tamara";
@@ -92,11 +92,9 @@ export default function BookService() {
   const fixed = q?.pricing === "fixed" && price != null;
   const rates = service ? (catalog.data?.rates ? catalog.data.rates[service.key]?.[type] : service.key === "regular" && type === "apartment" ? catalog.data?.regularRates : undefined) : undefined;
   const feePct = catalog.data?.payments?.tamaraFeePercent ?? 8;
-  const cardPct = catalog.data?.payments?.cardFeePercent ?? 0;
   const serviceFee = catalog.data?.payments?.serviceFeeAed ?? 0;
   const tamaraFee = price != null ? Math.round(price * feePct) / 100 : 0;
-  const cardFee = price != null ? Math.round(price * cardPct) / 100 : 0;
-  const payTotal = price != null ? Math.round((price + serviceFee + (pay === "tamara" ? tamaraFee : cardFee)) * 100) / 100 : null;
+  const payTotal = price != null ? Math.round((price + serviceFee + (pay === "tamara" ? tamaraFee : 0)) * 100) / 100 : null;
   const savePct = (f: Frequency) => (f === "one_time" ? 0 : (catalog.data?.frequencyDiscountPercent?.[f] ?? 0));
 
   useEffect(() => {
@@ -234,7 +232,7 @@ export default function BookService() {
           <Row style={{ gap: space(2) }}>
             {types.map(([t, label, icon]) => (
               <View key={t} style={{ flex: 1 }}>
-                <Chip icon={<LineIcon name={icon} size={24} color={type === t ? colors.gold : colors.muted} />} label={label} selected={type === t} onPress={() => setType(t)} />
+                <Chip icon={<LineIcon name={icon} size={24} color={iconColor(icon)} />} label={label} selected={type === t} onPress={() => setType(t)} />
               </View>
             ))}
           </Row>
@@ -287,7 +285,7 @@ export default function BookService() {
           {q && !fixed ? (
             <Card tone="gold">
               <Row style={{ gap: space(2) }}>
-                <LineIcon name="doc" size={22} color={colors.gold} />
+                <LineIcon name="doc" size={22} color={iconColor("doc")} />
                 <Text style={{ fontFamily: fonts.bold, flex: 1 }}>Priced on a site visit</Text>
               </Row>
               <Text style={{ fontSize: 14, lineHeight: 20 }}>
@@ -348,11 +346,11 @@ export default function BookService() {
               label="Service"
               value={`${service.name}${frequency !== "one_time" && service.key === "regular" ? ` · ${frequency === "weekly" ? "Weekly" : "Bi-weekly"}` : ""}`}
             />
-            {q?.durationMinutes ? <SummaryRow icon={<LineIcon name="clock" size={20} color={colors.gold} />} label="Team & time" value={`${q.cleaners} cleaners · about ${duration(q.durationMinutes)} · materials free`} /> : null}
-            <SummaryRow icon={<LineIcon name="home" size={20} color={colors.gold} />} label="Property" value={`${PROPERTY.find(([t]) => t === type)![1]} · ${SIZE_LABEL[size] ?? size}`} />
-            <SummaryRow icon={<LineIcon name="calendar" size={20} color={colors.gold} />} label={fixed ? "Date & time" : "Site visit"} value={`${day.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} · ${hour != null ? hourLabel(hour) : ""}`} />
+            {q?.durationMinutes ? <SummaryRow icon={<LineIcon name="clock" size={20} color={iconColor("clock")} />} label="Team & time" value={`${q.cleaners} cleaners · about ${duration(q.durationMinutes)} · materials free`} /> : null}
+            <SummaryRow icon={<LineIcon name="home" size={20} color={iconColor("home")} />} label="Property" value={`${PROPERTY.find(([t]) => t === type)![1]} · ${SIZE_LABEL[size] ?? size}`} />
+            <SummaryRow icon={<LineIcon name="calendar" size={20} color={iconColor("calendar")} />} label={fixed ? "Date & time" : "Site visit"} value={`${day.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} · ${hour != null ? hourLabel(hour) : ""}`} />
             <SummaryRow
-              icon={<LineIcon name="pin" size={20} color={colors.gold} />}
+              icon={<LineIcon name="pin" size={20} color={iconColor("pin")} />}
               label="Address"
               value={(adding ? [draft.unit, draft.building, draft.area] : [selectedAddress?.unit, selectedAddress?.building, selectedAddress?.area]).filter(Boolean).join(", ")}
             />
@@ -361,7 +359,7 @@ export default function BookService() {
           <Text variant="heading">Payment method</Text>
           {fixed ? (
             <>
-              <OptionCard selected={pay === "card"} onPress={() => setPay("card")} title="Card, Apple Pay or Google Pay" subtitle="Pay securely now" icon={<LineIcon name="card" size={24} color={colors.gold} />} />
+              <OptionCard selected={pay === "card"} onPress={() => setPay("card")} title="Card, Apple Pay or Google Pay" subtitle="Pay securely now" icon={<LineIcon name="card" size={24} color={iconColor("card")} />} />
               <OptionCard
                 selected={pay === "tamara"}
                 onPress={() => setPay("tamara")}
@@ -384,13 +382,7 @@ export default function BookService() {
               ) : null}
               <PriceRow label="Cleaning materials" value="FREE" muted />
               {serviceFee > 0 ? <PriceRow label="Service fee" value={aed(serviceFee)} muted /> : null}
-              {pay === "tamara" ? (
-                <PriceRow label={`Tamara fee (${feePct}%)`} value={aed(tamaraFee)} muted />
-              ) : cardPct > 0 ? (
-                <PriceRow label={`Card fee (${cardPct}%)`} value={aed(cardFee)} muted />
-              ) : (
-                <PriceRow label="Card fees" value="None" muted />
-              )}
+              {pay === "tamara" ? <PriceRow label={`Tamara fee (${feePct}%)`} value={aed(tamaraFee)} muted /> : null}
               <Divider />
               <PriceRow label={frequency === "one_time" ? "Total" : "Total per visit"} value={aed(payTotal)} bold />
             </Card>
