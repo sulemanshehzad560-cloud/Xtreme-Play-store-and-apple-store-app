@@ -24,10 +24,13 @@ interface Catalog {
   regularRates?: Record<string, { priceAed: number; minutes: number; cleaners: number }>;
   /** Fixed prices set in the dashboard: service → property type → size. */
   rates?: Record<string, Partial<Record<PropertyType, Record<string, { priceAed: number; minutes: number; cleaners: number }>>>>;
-  payments?: { tamaraFeePercent: number; tamaraInstalments: number };
+  payments?: { tamaraFeePercent: number; tamaraInstalments: number; cardFeePercent?: number; serviceFeeAed?: number };
+  frequencyDiscountPercent?: { weekly: number; biweekly: number };
 }
 interface Quote {
   priceAed: number | null;
+  basePriceAed?: number;
+  discountPercent?: number;
   pricing: "fixed" | "inspection";
   durationMinutes: number | null;
   cleaners: number | null;
@@ -88,8 +91,12 @@ export default function BookService() {
   const fixed = q?.pricing === "fixed" && price != null;
   const rates = service ? (catalog.data?.rates ? catalog.data.rates[service.key]?.[type] : service.key === "regular" && type === "apartment" ? catalog.data?.regularRates : undefined) : undefined;
   const feePct = catalog.data?.payments?.tamaraFeePercent ?? 8;
+  const cardPct = catalog.data?.payments?.cardFeePercent ?? 0;
+  const serviceFee = catalog.data?.payments?.serviceFeeAed ?? 0;
   const tamaraFee = price != null ? Math.round(price * feePct) / 100 : 0;
-  const payTotal = price != null ? (pay === "tamara" ? Math.round((price + tamaraFee) * 100) / 100 : price) : null;
+  const cardFee = price != null ? Math.round(price * cardPct) / 100 : 0;
+  const payTotal = price != null ? Math.round((price + serviceFee + (pay === "tamara" ? tamaraFee : cardFee)) * 100) / 100 : null;
+  const savePct = (f: Frequency) => (f === "one_time" ? 0 : (catalog.data?.frequencyDiscountPercent?.[f] ?? 0));
 
   useEffect(() => {
     if (service && !types.some(([t]) => t === type)) setType(types[0]![0]);
@@ -109,10 +116,11 @@ export default function BookService() {
   useEffect(() => {
     if (!service) return;
     if (!sizes.some((s) => s.key === size)) return;
-    api<Quote>(`/catalog/quote?serviceKey=${service.key}&propertyType=${type}&propertySize=${size}`)
+    const freq = service.key === "regular" ? `&frequency=${frequency}` : "";
+    api<Quote>(`/catalog/quote?serviceKey=${service.key}&propertyType=${type}&propertySize=${size}${freq}`)
       .then(setQ)
       .catch(() => setQ(undefined));
-  }, [service?.key, type, size, sizes.length]);
+  }, [service?.key, type, size, sizes.length, frequency]);
 
   const newAddressOk = Boolean(completeAddress(draft));
   const canContinue = [true, hour != null, adding ? newAddressOk : Boolean(addressId), true][step];
@@ -262,7 +270,7 @@ export default function BookService() {
               <Row style={{ gap: space(2) }}>
                 {FREQUENCY.map(([f, label, sub]) => (
                   <View key={f} style={{ flex: 1 }}>
-                    <Chip label={label} sub={sub} selected={frequency === f} onPress={() => setFrequency(f)} />
+                    <Chip label={label} sub={savePct(f) ? `Save ${savePct(f)}% per visit` : sub} selected={frequency === f} onPress={() => setFrequency(f)} />
                   </View>
                 ))}
               </Row>
@@ -357,7 +365,7 @@ export default function BookService() {
                 selected={pay === "tamara"}
                 onPress={() => setPay("tamara")}
                 title="Tamara: pay in 4"
-                subtitle={price ? `4 payments of ${aed(Math.round(((price + tamaraFee) / 4) * 100) / 100)} · includes ${feePct}% Tamara fee` : "Split into 4 payments"}
+                subtitle={price ? `4 payments of ${aed(Math.round(((price + serviceFee + tamaraFee) / 4) * 100) / 100)} · includes ${feePct}% Tamara fee` : "Split into 4 payments"}
                 icon={<TamaraBadge />}
               />
             </>
@@ -369,9 +377,19 @@ export default function BookService() {
 
           {fixed && price != null ? (
             <Card>
-              <PriceRow label={`${service.name} (${SIZE_LABEL[size] ?? size})`} value={aed(price)} />
+              <PriceRow label={`${service.name} (${SIZE_LABEL[size] ?? size})`} value={aed(q?.basePriceAed ?? price)} />
+              {q?.basePriceAed ? (
+                <PriceRow label={`${frequency === "weekly" ? "Weekly" : "Bi-weekly"} saving (${q.discountPercent}%)`} value={`– ${aed(q.basePriceAed - price)}`} muted />
+              ) : null}
               <PriceRow label="Cleaning materials" value="FREE" muted />
-              {pay === "tamara" ? <PriceRow label={`Tamara fee (${feePct}%)`} value={aed(tamaraFee)} muted /> : <PriceRow label="Card fees" value="AED 0" muted />}
+              {serviceFee > 0 ? <PriceRow label="Service fee" value={aed(serviceFee)} muted /> : null}
+              {pay === "tamara" ? (
+                <PriceRow label={`Tamara fee (${feePct}%)`} value={aed(tamaraFee)} muted />
+              ) : cardPct > 0 ? (
+                <PriceRow label={`Card fee (${cardPct}%)`} value={aed(cardFee)} muted />
+              ) : (
+                <PriceRow label="Card fees" value="None" muted />
+              )}
               <Divider />
               <PriceRow label={frequency === "one_time" ? "Total" : "Total per visit"} value={aed(payTotal)} bold />
             </Card>

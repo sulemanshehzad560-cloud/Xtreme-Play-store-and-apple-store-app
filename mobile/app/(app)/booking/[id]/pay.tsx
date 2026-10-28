@@ -13,7 +13,7 @@ import type { Booking } from "@/lib/types";
 import { colors, fonts, space } from "@/lib/theme";
 
 interface Options {
-  amount: { priceAed: number; discountAed: number; totalAed: number; vatAed: number };
+  amount: { priceAed: number; discountAed: number; totalAed: number; vatAed: number; serviceFeeAed?: number };
   promoCode: string | null;
   methods: { method: "card" | "tamara"; available: boolean; label: string; feeAed?: number; feePercent?: number; totalAed?: number; instalments?: number }[];
 }
@@ -148,6 +148,8 @@ export default function Pay() {
   const chosen = options?.methods.find((x) => x.method === method);
   const tamara = options?.methods.find((x) => x.method === "tamara");
   const fee = chosen?.feeAed ?? 0;
+  const serviceFee = options?.amount.serviceFeeAed ?? 0;
+  const methodFee = Math.round((fee - serviceFee) * 100) / 100;
   const total = chosen?.totalAed ?? options?.amount.totalAed;
   const available = (m: string) => options?.methods.find((x) => x.method === m)?.available ?? false;
 
@@ -181,13 +183,14 @@ export default function Pay() {
               <SummaryLine label={options.promoCode ? `Discount (${options.promoCode})` : "Discount"} value={`– ${aed(options.amount.discountAed)}`} accent />
             ) : null}
             <SummaryLine label="Cleaning materials" value="FREE" />
-            {fee > 0 ? <SummaryLine label={`Tamara fee (${chosen?.feePercent ?? 8}%)`} value={aed(fee)} /> : null}
+            {serviceFee > 0 ? <SummaryLine label="Service fee" value={aed(serviceFee)} /> : null}
+            {methodFee > 0 ? <SummaryLine label={`${method === "tamara" ? "Tamara" : "Card"} fee (${chosen?.feePercent ?? 0}%)`} value={aed(methodFee)} /> : null}
             <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.12)" }} />
             <Row style={{ justifyContent: "space-between", alignItems: "flex-end" }}>
               <Text style={{ color: "#BDB4A3", fontFamily: fonts.semibold }}>Total to pay</Text>
               <Text style={{ color: colors.onInk, fontFamily: fonts.extrabold, fontSize: 28 }}>{aed(total ?? options.amount.totalAed)}</Text>
             </Row>
-            <Text style={{ color: "#BDB4A3", fontSize: 12.5 }}>{fee > 0 ? "VAT included · Tamara fee added for paying in instalments" : "VAT included · no card fees or hidden charges"}</Text>
+            <Text style={{ color: "#BDB4A3", fontSize: 12.5 }}>{method === "tamara" ? "VAT included · Tamara fee added for paying in instalments" : methodFee > 0 ? "VAT included · card fee shown above" : "VAT included · no card fees or hidden charges"}</Text>
           </Card>
 
           {options.amount.discountAed > 0 ? (
