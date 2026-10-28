@@ -25,7 +25,16 @@ jobs:
     env:
       NODE_OPTIONS: --max-old-space-size=6144
       GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx6g -XX:MaxMetaspaceSize=1g"
+      # Phones only (no x86 emulator builds): halves native build size and time.
+      ORG_GRADLE_PROJECT_reactNativeArchitectures: arm64-v8a,armeabi-v7a
     steps:
+      - name: Free disk space (the runner's unused toolchains)
+        working-directory: /
+        run: |
+          df -h /
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost /opt/hostedtoolcache/CodeQL /usr/local/share/powershell /usr/share/swift /usr/local/julia* /opt/microsoft || true
+          sudo docker image prune -af >/dev/null 2>&1 || true
+          df -h /
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm, cache-dependency-path: mobile/package-lock.json }
