@@ -1,5 +1,7 @@
 import Svg, { Circle, Ellipse, G, Line, Path, Rect } from "react-native-svg";
+import { Image, View } from "react-native";
 import { colors } from "../../lib/theme";
+import { SERVICE_PHOTOS } from "../../lib/servicePhotos";
 
 // Xtreme service illustrations: one consistent duotone style (ink outline, gold and
 // cream fills) drawn in code, so they stay sharp at any size and weigh nothing.
@@ -302,6 +304,10 @@ function Glyph({ name }: { name: string }) {
 
 /** Service illustration on a soft round tile. */
 export function ServiceIcon({ name, size = 48, tile = true }: { name: string; size?: number; tile?: boolean }) {
+  const photo = SERVICE_PHOTOS[name];
+  if (photo) {
+    return <Image source={photo} style={{ width: size, height: size, borderRadius: size * 0.28 }} resizeMode="cover" accessibilityIgnoresInvertColors />;
+  }
   return (
     <Svg width={size} height={size} viewBox="0 0 48 48">
       {tile ? <Circle cx={24} cy={24} r={24} fill={colors.goldSoft} /> : null}
@@ -309,5 +315,16 @@ export function ServiceIcon({ name, size = 48, tile = true }: { name: string; si
         <Glyph name={name} />
       </G>
     </Svg>
+  );
+}
+
+/** Full-width service picture for cards: the real photo when there is one, else the icon on a soft tile. */
+export function ServiceBanner({ name, height, iconSize = 72 }: { name: string; height: number; iconSize?: number }) {
+  const photo = SERVICE_PHOTOS[name];
+  if (photo) return <Image source={photo} style={{ width: "100%", height }} resizeMode="cover" accessibilityIgnoresInvertColors />;
+  return (
+    <View style={{ height, backgroundColor: colors.goldSoft, alignItems: "center", justifyContent: "center" }}>
+      <ServiceIcon name={name} size={iconSize} tile={false} />
+    </View>
   );
 }

@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as Location from "expo-location";
 import { FadeIn, SkeletonCard } from "@/components/art/Motion";
 import { LivingRoomScene, PayInFourScene } from "@/components/art/Scenes";
-import { ServiceIcon } from "@/components/art/ServiceIcon";
+import { ServiceBanner, ServiceIcon } from "@/components/art/ServiceIcon";
 import { BrandMark } from "@/components/BrandMark";
 import { FreeMaterials, PlanPromo } from "@/components/Promo";
 import { LineIcon, iconColor, type LineIconName } from "@/components/LineIcon";
@@ -308,9 +308,8 @@ export default function Home() {
               .filter((s): s is Service => Boolean(s))
               .map((s) => (
                 <Pressable key={s.key} onPress={() => open(s.key)} style={{ width: 170, backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, overflow: "hidden", ...shadow.card }}>
-                  <View style={{ height: 104, backgroundColor: colors.goldSoft, alignItems: "center", justifyContent: "center" }}>
-                    <View style={{ position: "absolute", width: 90, height: 90, borderRadius: 45, backgroundColor: colors.goldSoft, opacity: 0.6 }} />
-                    <ServiceIcon name={s.key} size={72} tile={false} />
+                  <View style={{ height: 104 }}>
+                    <ServiceBanner name={s.key} height={104} />
                     {s.rating ? (
                       <View style={{ position: "absolute", top: space(2), left: space(2), backgroundColor: colors.surface, borderRadius: radius.pill, paddingHorizontal: space(2), paddingVertical: 2 }}>
                         <RNText style={{ fontFamily: fonts.bold, fontSize: 11, color: colors.text }}>
