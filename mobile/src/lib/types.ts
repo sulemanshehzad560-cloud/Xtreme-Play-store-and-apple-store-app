@@ -10,6 +10,7 @@ export interface User {
   phoneVerified: boolean;
   email: string | null;
   avatarUrl: string | null;
+  dateOfBirth?: string | null;
   locale: string;
   signInMethods: string[];
 }

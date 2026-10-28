@@ -9,6 +9,7 @@ export function toPublicUser(user: User, providers: string[] = []) {
     phoneVerified: Boolean(user.phoneVerifiedAt),
     email: user.email,
     avatarUrl: user.avatarUrl,
+    dateOfBirth: user.dateOfBirth,
     locale: user.locale,
     marketingOptIn: user.marketingOptIn,
     signInMethods: providers,

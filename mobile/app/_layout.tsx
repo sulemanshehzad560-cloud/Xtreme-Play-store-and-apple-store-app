@@ -53,12 +53,17 @@ function Gate() {
   if (!introDone) return <BrandIntro onDone={() => setIntroDone(true)} />;
   if (!ready) return <Loading />;
   const isStaff = user?.role === "staff";
+  // Phone sign-ins start without a name: ask for name and date of birth before anything else.
+  const needsProfile = !!user && !isStaff && !user.fullName?.trim();
   return (
     <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
       <Stack.Protected guard={!user}>
         <Stack.Screen name="(auth)" />
       </Stack.Protected>
-      <Stack.Protected guard={!!user && !isStaff}>
+      <Stack.Protected guard={needsProfile}>
+        <Stack.Screen name="profile-setup" />
+      </Stack.Protected>
+      <Stack.Protected guard={!!user && !isStaff && !needsProfile}>
         <Stack.Screen name="(app)" />
       </Stack.Protected>
       <Stack.Protected guard={isStaff}>

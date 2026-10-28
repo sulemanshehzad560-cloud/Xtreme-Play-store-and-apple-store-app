@@ -75,6 +75,8 @@ export const users = pgTable(
     phoneVerifiedAt: ts("phone_verified_at"),
     email: text("email"),
     avatarUrl: text("avatar_url"),
+    /** YYYY-MM-DD, asked when an account has no name (phone sign-in). */
+    dateOfBirth: date("date_of_birth", { mode: "string" }),
     locale: text("locale").notNull().default("en"),
     marketingOptIn: boolean("marketing_opt_in").notNull().default(false),
     stripeCustomerId: text("stripe_customer_id"),
@@ -542,6 +544,16 @@ export const notifications = pgTable(
   },
   (t) => [index("notifications_user_created_idx").on(t.userId, t.createdAt)],
 );
+
+/** Profile photos uploaded in the app (small JPEG/PNG/WebP, base64). Served only to signed-in users. */
+export const userAvatars = pgTable("user_avatars", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  contentType: text("content_type").notNull(),
+  data: text("data").notNull(),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+});
 
 /** "Chat with us": one thread per customer, with instant automated answers and replies from the office. */
 export const supportMessages = pgTable(

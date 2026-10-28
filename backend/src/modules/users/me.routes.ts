@@ -23,6 +23,7 @@ export async function meRoutes(app: FastifyInstance, c: Container) {
         body: z.object({
           fullName: z.string().trim().min(2).max(80).optional(),
           email: z.email().max(160).nullish(),
+          dateOfBirth: z.iso.date().nullish(),
           locale: z.enum(["en", "ar"]).optional(),
           marketingOptIn: z.boolean().optional(),
         }),
@@ -33,6 +34,31 @@ export async function meRoutes(app: FastifyInstance, c: Container) {
       return c.auth.publicUser(req.user.id);
     },
   );
+
+  r.put(
+    "/me/avatar",
+    {
+      bodyLimit: 2_500_000,
+      config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
+      schema: { tags, summary: "Upload my profile photo (base64 JPEG/PNG/WebP, up to 1.5 MB)", body: z.object({ image: z.string().min(100).max(2_100_000) }) },
+    },
+    async (req) => {
+      await c.users.setAvatar(req.user.id, req.body.image, c.env.PUBLIC_URL);
+      return c.auth.publicUser(req.user.id);
+    },
+  );
+
+  r.delete("/me/avatar", { schema: { tags, summary: "Remove my profile photo" } }, async (req) => {
+    await c.users.removeAvatar(req.user.id);
+    return c.auth.publicUser(req.user.id);
+  });
+
+  // Customers see their own photo; staff and the office see anyone's (e.g. on a job).
+  r.get("/users/:id/avatar", { schema: { tags, summary: "A profile photo", params: uuidParam } }, async (req, reply) => {
+    if (req.user.role === "customer" && req.user.id !== req.params.id) return reply.status(404).send({ error: { code: "not_found", message: "Photo not found" } });
+    const a = await c.users.avatar(req.params.id);
+    return reply.type(a.contentType).header("cache-control", "private, max-age=86400").send(a.bytes);
+  });
 
   r.delete("/me", { schema: { tags, summary: "Delete my account and personal data" } }, async (req, reply) => {
     await c.users.deleteAccount(req.user.id);

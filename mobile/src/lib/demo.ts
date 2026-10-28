@@ -358,8 +358,15 @@ export async function demoApi(path: string, method: string, body: Json | undefin
 
   // me
   if (route === "/me" && method === "GET") return user;
+  if (route === "/me/avatar" && method === "DELETE") return (user = { ...user, avatarUrl: null });
   if (route === "/me" && method === "PATCH") {
-    user = { ...user, ...(body?.fullName ? { fullName: body.fullName } : {}), ...(body && "email" in body ? { email: body.email } : {}) };
+    user = {
+      ...user,
+      ...(body?.fullName ? { fullName: body.fullName } : {}),
+      ...(body && "email" in body ? { email: body.email } : {}),
+      ...(body?.dateOfBirth ? { dateOfBirth: body.dateOfBirth } : {}),
+      ...(body && "avatarUrl" in body ? { avatarUrl: body.avatarUrl } : {}),
+    };
     return user;
   }
   if (route === "/me" && method === "DELETE") {

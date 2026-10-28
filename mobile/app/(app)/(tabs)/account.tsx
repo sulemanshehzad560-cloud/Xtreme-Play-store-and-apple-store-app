@@ -5,7 +5,9 @@ import * as AppleAuthentication from "expo-apple-authentication";
 import * as Crypto from "expo-crypto";
 import { GoogleSignin, isSuccessResponse } from "@react-native-google-signin/google-signin";
 import { AccessToken, LoginManager } from "react-native-fbsdk-next";
-import { Avatar, Button, Card, ErrorText, Input, Row, Screen, Text } from "@/components/ui";
+import { Button, Card, ErrorText, Input, Row, Screen, Text } from "@/components/ui";
+import { BirthdayPicker, formatDob } from "@/components/BirthdayPicker";
+import { ProfilePhoto } from "@/components/ProfilePhoto";
 import { BrandMark } from "@/components/BrandMark";
 import { FreeMaterials, PlanPromo } from "@/components/Promo";
 import { LineIcon, type LineIconName } from "@/components/LineIcon";
@@ -27,6 +29,7 @@ export default function Account() {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(user?.fullName ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
+  const [dob, setDob] = useState<string | null>(user?.dateOfBirth ?? null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   if (!user) return null;
@@ -35,7 +38,7 @@ export default function Account() {
     setSaving(true);
     setError(null);
     try {
-      await api("/me", { method: "PATCH", body: { fullName: name.trim() || undefined, email: email.trim() || null } });
+      await api("/me", { method: "PATCH", body: { fullName: name.trim() || undefined, email: email.trim() || null, ...(dob ? { dateOfBirth: dob } : {}) } });
       await refreshUser();
       setEditing(false);
     } catch (e) {
@@ -105,7 +108,7 @@ export default function Account() {
         </Row>
         <Row>
           <View style={{ padding: 3, borderRadius: 40, borderWidth: 2, borderColor: colors.goldBright }}>
-            <Avatar name={user.fullName ?? user.phone ?? "You"} size={64} />
+            <ProfilePhoto size={64} />
           </View>
           <View style={{ flex: 1, gap: 2 }}>
             <RNText style={{ color: "#fff", fontFamily: fonts.extrabold, fontSize: 21 }} numberOfLines={1}>
@@ -113,6 +116,7 @@ export default function Account() {
             </RNText>
             <RNText style={{ color: "#BDB4A3", fontFamily: fonts.medium, fontSize: 13 }}>{user.phone ?? "No mobile number yet"}</RNText>
             {user.email ? <RNText style={{ color: "#BDB4A3", fontFamily: fonts.medium, fontSize: 13 }} numberOfLines={1}>{user.email}</RNText> : null}
+            {user.dateOfBirth ? <RNText style={{ color: "#BDB4A3", fontFamily: fonts.medium, fontSize: 13 }}>🎂 {formatDob(user.dateOfBirth)}</RNText> : null}
           </View>
         </Row>
         <View style={{ flexDirection: "row", backgroundColor: "#211D17", borderRadius: radius.lg, borderWidth: 1, borderColor: "#3A3328" }}>
@@ -135,6 +139,7 @@ export default function Account() {
         <Card>
           <Input label="Full name" value={name} onChangeText={setName} textContentType="name" />
           <Input label="Email (for invoices and Tamara)" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+          <BirthdayPicker value={dob} onChange={setDob} />
           <ErrorText error={error} />
           <Button title="Save changes" onPress={save} loading={saving} />
         </Card>

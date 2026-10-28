@@ -43,8 +43,9 @@ const config: ExpoConfig = {
       NSLocationWhenInUseUsageDescription: "Xtreme-Cleaning Partner uses your location to set the service address and to show your team arriving.",
       NSLocationAlwaysAndWhenInUseUsageDescription:
         "Staff only: Xtreme-Cleaning Partner shares your location with the customer while you are on duty and travelling to a job.",
-      // Stripe's payment form can scan a card with the camera; Apple requires a reason for it.
-      NSCameraUsageDescription: "Xtreme-Cleaning Partner uses the camera only if you choose to scan your payment card.",
+      // Camera: a profile photo, or scanning a card in Stripe's payment form. Apple requires the reasons.
+      NSCameraUsageDescription: "Xtreme-Cleaning Partner uses the camera only when you choose to take a profile photo or scan your payment card.",
+      NSPhotoLibraryUsageDescription: "Xtreme-Cleaning Partner lets you choose a profile photo from your library.",
       UIBackgroundModes: ["location", "remote-notification"],
       ITSAppUsesNonExemptEncryption: false,
     },
@@ -69,6 +70,14 @@ const config: ExpoConfig = {
     "expo-secure-store",
     "expo-apple-authentication",
     "expo-web-browser",
+    [
+      "expo-image-picker",
+      {
+        photosPermission: "Xtreme-Cleaning Partner lets you choose a profile photo from your library.",
+        cameraPermission: "Xtreme-Cleaning Partner uses the camera only when you choose to take a profile photo or scan your payment card.",
+        microphonePermission: false,
+      },
+    ],
     [
       "expo-location",
       {

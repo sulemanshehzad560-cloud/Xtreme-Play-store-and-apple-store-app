@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -18,6 +19,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import * as Haptics from "expo-haptics";
 import { FadeIn } from "./art/Motion";
 import { MopLoader } from "./MopLoader";
+import { getSession } from "../lib/api";
 import { colors, fonts, radius, shadow, space } from "../lib/theme";
 import { STATUS_LABEL } from "../lib/format";
 import type { BookingStatus } from "../lib/types";
@@ -121,14 +123,30 @@ export function IconBadge({ glyph, size = 44, tone = "gold" }: { glyph: string; 
   );
 }
 
-export function Avatar({ name, size = 44 }: { name: string | null | undefined; size?: number }) {
-  const initials = (name ?? "?")
-    .split(" ")
-    .map((p) => p[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
+/** Profile photo, or initials when there is none (or it cannot be loaded). */
+export function Avatar({ name, size = 44, uri }: { name: string | null | undefined; size?: number; uri?: string | null }) {
+  const [failed, setFailed] = useState(false);
+  const initials =
+    (name ?? "")
+      .split(" ")
+      .map((p) => p[0])
+      .filter(Boolean)
+      .slice(0, 2)
+      .join("")
+      .toUpperCase() || "👤";
+  if (uri && !failed) {
+    // Our own photo URLs need the signed-in user's token; others (e.g. Google) are public.
+    const token = getSession()?.accessToken;
+    const own = uri.includes("/v1/users/");
+    return (
+      <Image
+        source={{ uri, ...(own && token ? { headers: { Authorization: `Bearer ${token}` } } : {}) }}
+        onError={() => setFailed(true)}
+        style={{ width: size, height: size, borderRadius: size / 2, borderWidth: 2, borderColor: colors.goldLine, backgroundColor: colors.ink }}
+        accessibilityLabel={name ? `${name}'s photo` : "Profile photo"}
+      />
+    );
+  }
   return (
     <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: colors.goldLine }}>
       <RNText style={{ color: colors.goldBright, fontFamily: fonts.bold, fontSize: size * 0.36 }}>{initials}</RNText>
