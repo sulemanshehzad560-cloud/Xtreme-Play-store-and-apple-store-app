@@ -23,8 +23,10 @@ jobs:
     timeout-minutes: 75
     defaults: { run: { working-directory: mobile } }
     env:
-      NODE_OPTIONS: --max-old-space-size=6144
-      GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx6g -XX:MaxMetaspaceSize=1g"
+      NODE_OPTIONS: --max-old-space-size=4096
+      # Keep Gradle's memory and parallel native compiles within the runner's 16 GB.
+      GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g" -Dorg.gradle.workers.max=2 -Dorg.gradle.parallel=false
+      CMAKE_BUILD_PARALLEL_LEVEL: "2"
       # Phones only (no x86 emulator builds): halves native build size and time.
       ORG_GRADLE_PROJECT_reactNativeArchitectures: arm64-v8a,armeabi-v7a
     steps:
@@ -34,7 +36,10 @@ jobs:
           df -h /
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost /opt/hostedtoolcache/CodeQL /usr/local/share/powershell /usr/share/swift /usr/local/julia* /opt/microsoft || true
           sudo docker image prune -af >/dev/null 2>&1 || true
-          df -h /
+          # Extra swap so a memory spike slows the build down instead of killing the runner.
+          sudo swapoff -a || true
+          sudo fallocate -l 10G /swapfile2 && sudo chmod 600 /swapfile2 && sudo mkswap /swapfile2 >/dev/null && sudo swapon /swapfile2
+          free -h; df -h /
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm, cache-dependency-path: mobile/package-lock.json }
