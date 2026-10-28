@@ -1,10 +1,11 @@
-import Svg, { Circle, Ellipse, G, Line, Path, Rect } from "react-native-svg";
+import Svg, { Circle, ClipPath, Defs, Ellipse, G, Line, Path, Rect } from "react-native-svg";
 import { Image, View } from "react-native";
 import { colors } from "../../lib/theme";
 import { SERVICE_PHOTOS } from "../../lib/servicePhotos";
+import { ArtTile, ServiceArt, hasServiceArt } from "./ServiceArt";
 
-// Xtreme service illustrations: one consistent duotone style (ink outline, gold and
-// cream fills) drawn in code, so they stay sharp at any size and weigh nothing.
+// Service pictures: the lifelike illustrations in ServiceArt for current services; the older
+// duotone glyphs below remain for retired services shown on past bookings.
 
 
 const GOLD = "#E2C170";
@@ -307,6 +308,25 @@ export function ServiceIcon({ name, size = 48, tile = true }: { name: string; si
   const photo = SERVICE_PHOTOS[name];
   if (photo) {
     return <Image source={photo} style={{ width: size, height: size, borderRadius: size * 0.28 }} resizeMode="cover" accessibilityIgnoresInvertColors />;
+  }
+  if (hasServiceArt(name)) {
+    return (
+      <Svg width={size} height={size} viewBox="0 0 64 64">
+        {tile ? <ArtTile light={colors.surfaceAlt} dark={colors.goldSoft} /> : null}
+        {tile ? (
+          <Defs>
+            <ClipPath id="art-clip">
+              <Circle cx={32} cy={32} r={30} />
+            </ClipPath>
+          </Defs>
+        ) : null}
+        <G clipPath={tile ? "url(#art-clip)" : undefined}>
+          <G transform={tile ? "translate(7 7) scale(0.78)" : undefined}>
+            <ServiceArt name={name} />
+          </G>
+        </G>
+      </Svg>
+    );
   }
   return (
     <Svg width={size} height={size} viewBox="0 0 48 48">
