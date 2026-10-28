@@ -3,6 +3,7 @@ import { View } from "react-native";
 import { router } from "expo-router";
 import { ServiceIcon } from "@/components/art/ServiceIcon";
 import { Button, Card, Chip, InlineLoader, Row, Screen, Text } from "@/components/ui";
+import { FreeMaterials } from "@/components/Promo";
 import { aed } from "@/lib/format";
 import { colors, fonts, radius, space } from "@/lib/theme";
 import type { Interval, SubscriptionPlan } from "@/lib/types";
@@ -17,10 +18,13 @@ export default function Plans() {
   return (
     <Screen edges={["left", "right"]}>
       <Card tone="ink">
-        <Text variant="label" style={{ color: colors.goldBright }}>XTREME CARE PLANS</Text>
+        <Text variant="label" style={{ color: colors.goldBright }}>REGULAR CLEANING PLANS</Text>
         <Text style={{ color: colors.onInk, fontFamily: fonts.extrabold, fontSize: 22, lineHeight: 28 }}>A spotless home, on schedule</Text>
-        <Text style={{ color: "#CFC8BA", fontSize: 14 }}>The same trusted team on a regular plan. Pay once per month or year, book included visits any time in the app.</Text>
+        <Text style={{ color: "#CFC8BA", fontSize: 14 }}>
+          Regular cleaning by the same trusted team, for less than booking visit by visit. Pay once per month or year and plan all your visits on a calendar.
+        </Text>
       </Card>
+      <FreeMaterials compact />
 
       <Row style={{ gap: space(2) }}>
         <View style={{ flex: 1 }}>
@@ -71,7 +75,7 @@ export default function Plans() {
       })}
 
       <Text variant="small" style={{ textAlign: "center" }}>
-        Prices include VAT. No gateway fees or hidden charges. Pay securely by card or Tamara.
+        Prices include VAT and all cleaning materials. Pay securely by card or Tamara.
       </Text>
     </Screen>
   );

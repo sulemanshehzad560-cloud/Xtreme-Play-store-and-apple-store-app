@@ -70,16 +70,4 @@ describe("promotions", () => {
     // Customers cannot manage promotions.
     expect((await post("/v1/admin/promotions", customer.auth, FIRST)).statusCode).toBe(403);
   });
-
-  it("releases unpaid bookings after the hold and keeps paid ones", async () => {
-    const customer = await signInPhone(t);
-    const unpaid = await book(t, customer.auth);
-    const paid = await bookPaid(t, customer.auth, { scheduledAt: slot(3) });
-    const survey = await book(t, customer.auth, { serviceKey: "sofa", scheduledAt: slot(4) });
-    expect(await t.c.bookings.expireUnpaid(new Date(Date.now() + 61 * 60_000))).toBe(1);
-    const status = async (id: string) => (await get(`/v1/bookings/${id}`, customer.auth)).json().status;
-    expect(await status(unpaid.id)).toBe("cancelled");
-    expect(await status(paid.id)).toBe("confirmed");
-    expect(await status(survey.id)).toBe("requested");
-  });
 });

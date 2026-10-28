@@ -5,6 +5,7 @@ import { EmptyCalendarScene } from "@/components/art/Scenes";
 import { ServiceIcon } from "@/components/art/ServiceIcon";
 import { router } from "expo-router";
 import { Button, Card, Row, Screen, StatusPill, Text } from "@/components/ui";
+import { FreeMaterials, PlanPromo } from "@/components/Promo";
 import { aed, when } from "@/lib/format";
 import { colors, fonts, radius, space } from "@/lib/theme";
 import type { Booking } from "@/lib/types";
@@ -28,6 +29,7 @@ export default function Bookings() {
       }
     >
       <Text variant="title">My bookings</Text>
+      <FreeMaterials compact />
       <View style={{ flexDirection: "row", backgroundColor: colors.divider, borderRadius: radius.md, padding: 4 }}>
         {(["active", "past"] as const).map((s) => (
           <Pressable
@@ -87,6 +89,7 @@ export default function Bookings() {
         </Card>
         </FadeIn>
       ))}
+      {!loading ? <PlanPromo /> : null}
     </Screen>
   );
 }

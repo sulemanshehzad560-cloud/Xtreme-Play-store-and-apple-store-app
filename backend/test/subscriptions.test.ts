@@ -49,6 +49,8 @@ describe("subscriptions", () => {
     const customer = await signInPhone(t);
     const plan = await homePlan(admin);
     expect((await post("/v1/admin/subscription-plans", admin.auth, { name: "Bad", serviceKey: "regular", visitsPerMonth: 2 })).json().error.code).toBe("price_required");
+    // Plans are sold for regular cleaning only.
+    expect((await post("/v1/admin/subscription-plans", admin.auth, { name: "Sofa care", serviceKey: "sofa", visitsPerMonth: 1, priceMonthlyAed: 300 })).json().error.code).toBe("regular_only");
     expect((await post("/v1/admin/subscription-plans", customer.auth, { name: "Sneaky", serviceKey: "regular", visitsPerMonth: 1, priceMonthlyAed: 1 })).statusCode).toBe(403);
 
     expect((await get("/v1/subscription-plans")).json()).toHaveLength(1);

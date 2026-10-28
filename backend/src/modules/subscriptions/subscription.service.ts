@@ -39,6 +39,9 @@ const PLAN_WINDOW_DAYS = 31;
 
 const MONTHS: Record<Interval, number> = { monthly: 1, yearly: 12 };
 
+/** The only service sold as a plan. */
+export const PLAN_SERVICE = "regular";
+
 /**
  * Cleaning contracts sold as monthly or yearly subscriptions at prices the office sets.
  *
@@ -60,7 +63,7 @@ export class SubscriptionService {
     const rows = await this.db
       .select()
       .from(subscriptionPlans)
-      .where(opts.includeInactive ? undefined : eq(subscriptionPlans.active, true))
+      .where(opts.includeInactive ? undefined : and(eq(subscriptionPlans.active, true), eq(subscriptionPlans.serviceKey, PLAN_SERVICE)))
       .orderBy(asc(subscriptionPlans.sortOrder), asc(subscriptionPlans.createdAt));
     return rows.map(planView);
   }
@@ -98,6 +101,8 @@ export class SubscriptionService {
 
   private validatePlan(p: { serviceKey: string; priceMonthlyAed?: number | null | undefined; priceYearlyAed?: number | null | undefined }) {
     if (!findService(p.serviceKey)) throw badRequest("unknown_service", "Choose one of the app's services");
+    // Monthly and yearly plans are sold for regular cleaning only; everything else is booked per visit.
+    if (p.serviceKey !== PLAN_SERVICE) throw badRequest("regular_only", "Plans are for regular cleaning only");
     if (p.priceMonthlyAed == null && p.priceYearlyAed == null) throw badRequest("price_required", "Set a monthly price, a yearly price or both");
   }
 
@@ -105,7 +110,7 @@ export class SubscriptionService {
 
   async subscribe(customer: Actor, input: SubscribeInput) {
     const [plan] = await this.db.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, input.planId)).limit(1);
-    if (!plan || !plan.active) throw notFound("Plan");
+    if (!plan || !plan.active || plan.serviceKey !== PLAN_SERVICE) throw notFound("Plan");
     const priceAed = input.interval === "monthly" ? plan.priceMonthlyAed : plan.priceYearlyAed;
     if (priceAed == null) throw badRequest("interval_unavailable", `This plan is not offered ${input.interval}`);
     const sized = quote({ serviceKey: plan.serviceKey, propertyType: input.propertyType, propertySize: input.propertySize });

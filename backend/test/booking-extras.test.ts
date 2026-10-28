@@ -58,8 +58,6 @@ describe("repeating regular cleaning", () => {
     expect(next).toMatchObject({ frequency: "weekly", awaitingPayment: true });
     expect(new Date(next!.scheduledAt).getTime() - new Date(slot()).getTime()).toBe(7 * 86_400_000);
 
-    // Created days ahead, it is not released after the usual one-hour hold.
-    expect(await t.c.bookings.expireUnpaid(new Date(Date.now() + 2 * 3_600_000))).toBe(0);
     await pay(t, customer.auth, next!.id);
     expect((await get(`/v1/bookings/${next!.id}`, customer.auth)).json().status).toBe("confirmed");
   });

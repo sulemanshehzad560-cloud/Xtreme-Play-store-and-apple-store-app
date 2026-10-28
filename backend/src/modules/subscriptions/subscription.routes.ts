@@ -12,7 +12,7 @@ const aed = z.number().int().min(1).max(1_000_000);
 const planFields = z.object({
   name: z.string().trim().min(2).max(80),
   description: z.string().trim().max(500).nullish(),
-  serviceKey: z.string().min(1).max(40),
+  serviceKey: z.string().min(1).max(40).default("regular"),
   visitsPerMonth: z.number().int().min(1).max(31),
   priceMonthlyAed: aed.nullish(),
   priceYearlyAed: aed.nullish(),

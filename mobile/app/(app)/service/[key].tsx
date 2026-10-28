@@ -12,6 +12,7 @@ import { colors, fonts, radius, space } from "@/lib/theme";
 import type { Booking, Service } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { TamaraBadge } from "@/components/BrandIcons";
+import { PlanPromo } from "@/components/Promo";
 import { SlotPicker, abuDhabiTime, firstOpenDay, hourLabel, nextDays } from "@/components/SlotPicker";
 
 type PropertyType = "apartment" | "villa" | "office" | "restaurant";
@@ -269,6 +270,7 @@ export default function BookService() {
                   After each visit we set up the next one {frequency === "weekly" ? "a week" : "two weeks"} later at the same time. You pay each visit in the app, and can skip or stop any time.
                 </Text>
               ) : null}
+              <PlanPromo />
             </>
           ) : null}
 

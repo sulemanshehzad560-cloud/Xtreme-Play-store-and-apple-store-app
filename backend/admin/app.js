@@ -196,7 +196,7 @@ function card(b) {
     <div class="row"><span class="meta">${esc(b.property.type)} · ${esc(b.property.size)}</span><b>${b.discountAed ? `<s class="muted">${aed(b.priceAed)}</s> ${aed(b.amountDueAed)}` : aed(b.priceAed)}</b></div>
     ${b.frequency && b.frequency !== "one_time" ? `<div class="meta">↻ Repeats ${b.frequency === "weekly" ? "weekly" : "every 2 weeks"}${b.repeatOfId ? " · next visit in series" : ""}</div>` : ""}
     ${b.discountAed ? `<div class="meta">🏷️ Discount ${aed(b.discountAed)}${b.promoCode ? ` · code ${esc(b.promoCode)}` : ""}</div>` : ""}
-    ${b.awaitingPayment ? `<div class="meta warn">⏳ Waiting for the customer to pay. Unpaid bookings are released after 1 hour.</div>` : ""}
+    ${b.awaitingPayment ? `<div class="meta warn">⏳ Waiting for the customer to pay. It is confirmed automatically once paid.</div>` : ""}
     <div class="row"><span class="pill ${b.paymentStatus}">${esc(b.paymentStatus.replace("_", " "))} · ${esc(b.paymentMethod.replace("_", " "))}</span></div>
     ${team ? `<div class="meta">🧑‍🔧 ${team}</div>` : ""}
     ${b.notes ? `<div class="meta">📝 ${esc(b.notes)}</div>` : ""}
@@ -615,11 +615,11 @@ function planForm(plan) {
   const services = subState.services.map((s) => `<option value="${esc(s.key)}" ${plan?.service.key === s.key ? "selected" : ""}>${esc(s.name)}</option>`).join("");
   modal(
     `<h2>${plan ? "Edit plan" : "New subscription plan"}</h2>
-     <p class="muted">Leave a price empty if the plan is not sold that way. Prices include VAT.</p>
+     <p class="muted">Plans are for regular cleaning. Leave a price empty if the plan is not sold that way. Prices include VAT.</p>
      <div class="form-grid">
        <label class="full">Plan name<input name="name" required minlength="2" maxlength="80" value="${esc(plan?.name ?? "")}" placeholder="e.g. Home care weekly" /></label>
        <label class="full">Description (shown to customers)<input name="description" maxlength="500" value="${esc(plan?.description ?? "")}" placeholder="e.g. A regular clean every week by the same team" /></label>
-       <label>Service<select name="serviceKey">${services}</select></label>
+       <label>Service<input value="Regular cleaning" disabled /><input type="hidden" name="serviceKey" value="regular" /></label>
        <label>Visits per month<input name="visitsPerMonth" type="number" min="1" max="31" required value="${plan?.visitsPerMonth ?? 4}" /></label>
        <label>Monthly price (AED)<input name="priceMonthlyAed" type="number" min="1" value="${plan?.priceMonthlyAed ?? ""}" /></label>
        <label>Yearly price (AED)<input name="priceYearlyAed" type="number" min="1" value="${plan?.priceYearlyAed ?? ""}" /></label>

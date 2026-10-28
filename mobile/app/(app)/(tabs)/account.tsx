@@ -7,6 +7,7 @@ import { GoogleSignin, isSuccessResponse } from "@react-native-google-signin/goo
 import { AccessToken, LoginManager } from "react-native-fbsdk-next";
 import { Avatar, Button, Card, ErrorText, Input, Row, Screen, Text } from "@/components/ui";
 import { BrandMark } from "@/components/BrandMark";
+import { FreeMaterials, PlanPromo } from "@/components/Promo";
 import { LineIcon, type LineIconName } from "@/components/LineIcon";
 import { API_URL } from "@/lib/config";
 import { api } from "@/lib/api";
@@ -128,6 +129,8 @@ export default function Account() {
         </View>
       </View>
 
+      <FreeMaterials compact />
+
       {editing ? (
         <Card>
           <Input label="Full name" value={name} onChangeText={setName} textContentType="name" />
@@ -140,7 +143,7 @@ export default function Account() {
       <Section title="Account">
         <Item icon="phone" title="Mobile number" subtitle={user.phone ? `${user.phone} · verified` : "Needed to book a service"} onPress={() => router.push("/phone")} />
         <Item icon="pin" title="Saved addresses" subtitle={addresses.data?.length ? addresses.data.map((a) => a.area).join(", ") : "Add your home or office"} onPress={() => router.push("/addresses")} />
-        <Item icon="calendar" title="My subscriptions" subtitle="Monthly and yearly cleaning plans" onPress={() => router.push("/subscriptions")} />
+        <Item icon="calendar" title="My subscriptions" subtitle="Regular cleaning plans and your visit calendar" onPress={() => router.push("/subscriptions")} />
         <Item icon="receipt" title="Bookings & invoices" subtitle="Past services and tax invoices" onPress={() => router.push("/bookings")} />
         <Item icon="bell" title="Notifications" subtitle="Booking updates and offers" onPress={() => router.push("/notifications")} />
         <Item icon="key" title="Sign-in methods" subtitle={user.signInMethods.map((m) => METHOD_LABEL[m] ?? m).join(", ") || "—"} last={!missing.length} />
@@ -152,6 +155,8 @@ export default function Account() {
           </Row>
         ) : null}
       </Section>
+
+      <PlanPromo />
 
       <Section title="Help & support">
         <Item icon="chat" title="Chat with us" subtitle="Instant answers, or reply from our team" onPress={() => router.push("/chat")} />

@@ -80,9 +80,6 @@ type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0];
 
 export type StatusListener = (booking: Booking, from: BookingStatus, actor: Actor) => Promise<void>;
 
-/** Unpaid fixed-price bookings are cancelled after this long, freeing the slot. */
-export const UNPAID_HOLD_MINUTES = 60;
-
 /** Days between visits of a repeating booking. */
 const REPEAT_DAYS = { weekly: 7, biweekly: 14 } as const;
 
@@ -213,31 +210,6 @@ export class BookingService {
       if ((err as { code?: string }).code !== "booking_changed") throw err;
     });
     void this.alertStaffOfNewOrder(booking, serviceName(booking.serviceKey), booking.address.area);
-  }
-
-  /** Cancels prepaid bookings left unpaid past the hold, so the slot is released. */
-  async expireUnpaid(now = new Date()) {
-    const cutoff = new Date(now.getTime() - UNPAID_HOLD_MINUTES * 60_000);
-    const stale = await this.db
-      .select({ id: bookings.id })
-      .from(bookings)
-      .where(
-        and(
-          eq(bookings.status, "requested"),
-          eq(bookings.pricing, "fixed"),
-          eq(bookings.paymentStatus, "unpaid"),
-          sql`${bookings.priceAed} > 0`,
-          // New bookings hold their slot for an hour. The next visit of a repeating clean is
-          // created days ahead, so it is only released if still unpaid a day before.
-          sql`((${bookings.repeatOfId} is null and (${bookings.createdAt} < ${cutoff} or ${bookings.scheduledAt} < ${now}))
-            or (${bookings.repeatOfId} is not null and ${bookings.scheduledAt} < ${new Date(now.getTime() + 86_400_000)}))`,
-        ),
-      )
-      .limit(200);
-    for (const b of stale) {
-      await this.transition(b.id, SYSTEM_ACTOR, "cancelled", { reason: "Not paid in time" }).catch(() => undefined);
-    }
-    return stale.length;
   }
 
   /** Push "new order" to every active staff member who has new-order alerts switched on. */

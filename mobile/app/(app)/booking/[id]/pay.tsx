@@ -250,7 +250,7 @@ export default function Pay() {
               Payments are encrypted and processed securely.
             </Text>
           </View>
-          <Notice tone="info">Your booking is confirmed as soon as the payment goes through. Unpaid bookings are released after 1 hour.</Notice>
+          <Notice tone="info">Your booking is confirmed as soon as the payment goes through.</Notice>
           {DEMO ? <Notice>Demo build: no real payment is taken. Tapping Pay marks the booking as paid.</Notice> : null}
         </>
       ) : null}

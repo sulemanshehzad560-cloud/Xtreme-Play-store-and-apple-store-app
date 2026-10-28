@@ -39,16 +39,5 @@ export function scheduleMaintenance(c: Container, log: FastifyBaseLogger): () =>
   const run = () => runMaintenance(c, log).catch((err) => log.error({ err }, "maintenance failed"));
   const timer = setInterval(run, 3_600_000);
   timer.unref();
-  // Releases slots held by bookings that were never paid.
-  const sweep = () =>
-    c.bookings
-      .expireUnpaid()
-      .then((n) => n && log.info({ cancelled: n }, "unpaid bookings released"))
-      .catch((err) => log.error({ err }, "unpaid sweep failed"));
-  const sweeper = setInterval(sweep, 5 * 60_000);
-  sweeper.unref();
-  return () => {
-    clearInterval(timer);
-    clearInterval(sweeper);
-  };
+  return () => clearInterval(timer);
 }

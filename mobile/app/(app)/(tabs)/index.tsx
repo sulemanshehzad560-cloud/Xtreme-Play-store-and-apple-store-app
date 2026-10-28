@@ -7,6 +7,7 @@ import { FadeIn, SkeletonCard } from "@/components/art/Motion";
 import { LivingRoomScene, PayInFourScene } from "@/components/art/Scenes";
 import { ServiceIcon } from "@/components/art/ServiceIcon";
 import { BrandMark } from "@/components/BrandMark";
+import { FreeMaterials, PlanPromo } from "@/components/Promo";
 import { LineIcon } from "@/components/LineIcon";
 import { Card, Row, SectionHeader, StatusPill, Text } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
@@ -33,7 +34,7 @@ const W = Dimensions.get("window").width;
 const SLIDE = W - space(8);
 
 const PROMOS = [
-  { title: "Monthly & yearly plans", body: "Regular visits by the same team. Pay once, book visits any time.", cta: "See plans", service: "plans", bg: colors.ink, fg: "#fff", ctaBg: colors.goldBright, ctaFg: colors.ink, Art: LivingRoomScene },
+  { title: "Regular cleaning plans", body: "Weekly visits by the same team, for less. Materials free.", cta: "See plans", service: "plans", bg: colors.ink, fg: "#fff", ctaBg: colors.goldBright, ctaFg: colors.ink, Art: LivingRoomScene },
   { title: "Home cleaning from AED 90", body: "2–3 trained cleaners. All cleaning materials FREE.", cta: "Book a clean", service: "regular", bg: colors.ink, fg: "#fff", ctaBg: colors.goldBright, ctaFg: colors.ink, Art: LivingRoomScene },
   { title: "Deep cleaning, priced on site", body: "Appliances inside and out, every corner. Free site visit and quote.", cta: "Book a visit", service: "deep", bg: colors.ink, fg: "#fff", ctaBg: colors.goldBright, ctaFg: colors.ink, Art: LivingRoomScene },
   { title: "Pay in 4 with Tamara", body: "Split your booking into 4 payments.", cta: "Book now", service: "regular", bg: "#F3E3BC", fg: colors.ink, ctaBg: colors.ink, ctaFg: "#fff", Art: PayInFourScene },
@@ -276,6 +277,8 @@ export default function Home() {
             </Row>
           </View>
 
+          <PlanPromo />
+
           <SectionHeader title="All services" />
           {services.loading ? <SkeletonCard /> : null}
           <View style={{ flexDirection: "row", flexWrap: "wrap", rowGap: space(4) }}>
@@ -320,6 +323,8 @@ export default function Home() {
                 </Pressable>
               ))}
           </ScrollView>
+
+          <FreeMaterials />
 
           <Card>
             <Text variant="heading">Why customers choose Xtreme</Text>

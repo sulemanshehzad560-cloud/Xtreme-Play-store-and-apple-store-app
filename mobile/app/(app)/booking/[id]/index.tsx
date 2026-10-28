@@ -90,7 +90,7 @@ export default function BookingDetail() {
             <Text style={{ color: colors.goldBright, fontFamily: fonts.extrabold, fontSize: 17, flex: 1 }}>Complete payment to confirm</Text>
           </Row>
           <Text style={{ color: "#D9D2C4", lineHeight: 20 }}>
-            Your slot is held for 1 hour. Once you pay, the booking is confirmed and we assign your team.
+            Once you pay, your booking is confirmed and we assign your team.
           </Text>
           {b.discountAed ? (
             <Text style={{ color: colors.goldBright, fontFamily: fonts.bold }}>🎉 {aed(b.discountAed)} discount applied</Text>
