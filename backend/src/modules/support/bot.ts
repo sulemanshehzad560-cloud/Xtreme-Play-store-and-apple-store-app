@@ -1,4 +1,5 @@
-import { REGULAR_RATES, SIZE_LABELS } from "../catalog/catalog.js";
+import { SIZE_LABELS } from "../catalog/catalog.js";
+import { pricing } from "../catalog/pricing.js";
 
 /**
  * Instant answers for "Chat with us". Matches common questions by keyword (English and
@@ -17,7 +18,7 @@ export interface BotContext {
 }
 
 const rates = () =>
-  Object.entries(REGULAR_RATES)
+  Object.entries(pricing().rates.regular?.apartment ?? {})
     .map(([k, r]) => `• ${SIZE_LABELS[k] ?? k}: AED ${r.priceAed} (${r.minutes < 60 ? `${r.minutes} min` : `${r.minutes / 60} hr${r.minutes > 60 ? "s" : ""}`}, ${r.cleaners} cleaners)`)
     .join("\n");
 

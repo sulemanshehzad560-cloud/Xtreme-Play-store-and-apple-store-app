@@ -889,12 +889,62 @@ function placeStaff(id, name, status, lat, lng) {
   else markers.set(key, L.marker([lat, lng], { icon, title: name }).addTo(map).bindPopup(`<b>${esc(name)}</b><br>${STAFF_LABEL[status] ?? status}`));
 }
 
+// ------------------------------------------------------------------ prices
+
+const TYPE_LABEL = { apartment: "Apartment", villa: "Villa", office: "Office", restaurant: "Restaurant" };
+let pricingData = null;
+
+async function loadPricing() {
+  pricingData = await api("/admin/pricing");
+  $("#tamara-fee").value = pricingData.tamaraFeePercent;
+  $("#pricing-services").innerHTML = pricingData.services
+    .map((svc) => {
+      const fixed = Object.values(pricingData.rates[svc.key] ?? {}).reduce((n, bySize) => n + Object.keys(bySize).length, 0);
+      const rows = svc.propertyTypes
+        .flatMap((type) =>
+          (pricingData.sizes[type] ?? []).map((size) => {
+            const r = pricingData.rates[svc.key]?.[type]?.[size.key];
+            const f = (name, val, ph) => `<input type="number" min="0" data-svc="${svc.key}" data-type="${type}" data-size="${size.key}" data-f="${name}" value="${val ?? ""}" placeholder="${ph}" />`;
+            return `<tr><td>${TYPE_LABEL[type] ?? type}</td><td>${esc(size.label)}</td>
+              <td>${f("priceAed", r?.priceAed, "On quote")}</td><td>${f("minutes", r?.minutes, "e.g. 90")}</td><td>${f("cleaners", r?.cleaners, "e.g. 2")}</td></tr>`;
+          }),
+        )
+        .join("");
+      return `<details class="price-svc" ${fixed ? "open" : ""}><summary><b>${esc(svc.name)}</b><span class="muted">${fixed ? `${fixed} fixed price${fixed > 1 ? "s" : ""}` : "All on quote (free site visit)"}</span></summary>
+        <table class="table price-table"><tr><th>Property</th><th>Size</th><th>Price (AED, incl. VAT)</th><th>Time on site (min)</th><th>Cleaners</th></tr>${rows}</table></details>`;
+    })
+    .join("");
+}
+
+$("#save-pricing").addEventListener("click", async () => {
+  const rates = {};
+  const cells = {};
+  document.querySelectorAll("#pricing-services input").forEach((i) => {
+    const k = `${i.dataset.svc}|${i.dataset.type}|${i.dataset.size}`;
+    (cells[k] ??= {})[i.dataset.f] = i.value.trim();
+  });
+  for (const [k, v] of Object.entries(cells)) {
+    if (!v.priceAed) continue; // blank price: quoted on site
+    const [svc, type, size] = k.split("|");
+    if (!v.minutes || !v.cleaners) return toast(`Add the time on site and number of cleaners for every fixed price (${svc}, ${type} ${size})`);
+    ((rates[svc] ??= {})[type] ??= {})[size] = { priceAed: Number(v.priceAed), minutes: Number(v.minutes), cleaners: Number(v.cleaners) };
+  }
+  try {
+    await api("/admin/pricing", { method: "PUT", body: { rates, tamaraFeePercent: Number($("#tamara-fee").value || 0) } });
+    toast("Prices saved. New bookings use them now.");
+    await loadPricing();
+  } catch (e) {
+    toast(e.message);
+  }
+});
+
 // ------------------------------------------------------------------ tabs, realtime, start
 
 const PAGE_SUB = {
   board: "Live jobs, teams and payments",
   map: "Where every team is right now",
   subscriptions: "Monthly and yearly cleaning contracts",
+  pricing: "Fixed prices, site-visit quotes and the Tamara fee",
   promotions: "First-booking offers and promo codes",
   messages: "Customer chats: automatic answers and your replies",
   staff: "Team members, sign-in and alerts",
@@ -912,13 +962,14 @@ document.querySelectorAll(".tab").forEach((t) =>
     $("#kpis").classList.toggle("hidden", t.dataset.tab !== "board");
     if (t.dataset.tab === "customers") loadCustomers().catch((e) => toast(e.message));
     if (t.dataset.tab === "subscriptions") loadSubscriptions().catch((e) => toast(e.message));
+    if (t.dataset.tab === "pricing") loadPricing().catch((e) => toast(e.message));
     if (t.dataset.tab === "promotions") loadPromotions().catch((e) => toast(e.message));
     if (t.dataset.tab === "messages") loadThreads().catch((e) => toast(e.message));
     if (t.dataset.tab === "admin") loadAdminTab().catch((e) => toast(e.message));
     if (t.dataset.tab === "map") {
       if (!map) {
         map = L.map("map").setView([24.4539, 54.3773], 11);
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap contributors" }).addTo(map);
+        L.tileLayer("/v1/tiles/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "© OpenStreetMap contributors" }).addTo(map);
       }
       setTimeout(() => (map.invalidateSize(), renderMap()), 50);
     }

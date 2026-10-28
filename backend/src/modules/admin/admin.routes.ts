@@ -10,6 +10,8 @@ import { normalizePhone } from "../../lib/phone.js";
 import { isoDate, phoneInput, uuidParam } from "../../lib/schemas.js";
 import { requireAuth } from "../../plugins/auth.js";
 import { adminStaffView } from "../staff/staff.service.js";
+import { PROPERTY_SIZES, SERVICES, SIZE_LABELS, propertyTypesFor } from "../catalog/catalog.js";
+import { pricing, type PricingConfig } from "../catalog/pricing.js";
 
 const tags = ["admin"];
 
@@ -331,6 +333,25 @@ export async function adminRoutes(app: FastifyInstance, c: Container) {
     "/admin/settings/company",
     { schema: { tags, summary: "Update company contact details (the app picks them up within minutes)", body: contactFields.partial() } },
     async (req) => c.admin.updateCompany(req.user.id, req.body),
+  );
+
+  // Price list: fixed prices per service, property type and size (blank = quoted on a site visit), and the Tamara fee.
+  r.get("/admin/pricing", { schema: { tags, summary: "Price list and what can be priced" } }, async () => ({
+    ...pricing(),
+    services: SERVICES.map((s) => ({ key: s.key, name: s.name, propertyTypes: propertyTypesFor(s) })),
+    sizes: Object.fromEntries(Object.entries(PROPERTY_SIZES).map(([type, keys]) => [type, keys.map((key) => ({ key, label: SIZE_LABELS[key] ?? key }))])),
+  }));
+  const rate = z.object({ priceAed: z.number().int(), minutes: z.number().int(), cleaners: z.number().int() });
+  r.put(
+    "/admin/pricing",
+    {
+      schema: {
+        tags,
+        summary: "Update the price list (applies to new bookings at once)",
+        body: z.object({ rates: z.record(z.string(), z.record(z.string(), z.record(z.string(), rate))), tamaraFeePercent: z.number() }),
+      },
+    },
+    async (req) => c.prices.update(req.user.id, req.body as PricingConfig),
   );
 
   // IT: connected services, health and the audit trail

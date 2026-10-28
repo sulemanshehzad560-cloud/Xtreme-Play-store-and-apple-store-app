@@ -8,7 +8,8 @@ import { SERVICE_ZONE } from "../../config/service-zone.js";
 import type { Container } from "../../container.js";
 import { badRequest } from "../../lib/errors.js";
 import { lat, lng } from "../../lib/schemas.js";
-import { PROPERTY_SIZES, REGULAR_RATES, SERVICES, SIZE_LABELS, propertyTypesFor, quote, startingFrom } from "./catalog.js";
+import { PROPERTY_SIZES, SERVICES, SIZE_LABELS, pricingKind, propertyTypesFor, quote, startingFrom } from "./catalog.js";
+import { pricing } from "./pricing.js";
 
 const tags = ["catalog"];
 
@@ -37,7 +38,8 @@ export async function catalogRoutes(app: FastifyInstance, c: Container) {
   });
 
   r.get("/catalog/services", { schema: { tags, summary: "Services and price list" } }, async (_req, reply) => {
-    reply.header("Cache-Control", "public, max-age=600");
+    // Short cache: prices edited in the dashboard reach the app within a minute.
+    reply.header("Cache-Control", "public, max-age=60");
     // Real ratings from completed-job reviews; services without reviews show as new.
     const stats = await c.db
       .select({
@@ -54,6 +56,7 @@ export async function catalogRoutes(app: FastifyInstance, c: Container) {
       vatIncluded: true,
       services: SERVICES.map((s) => ({
         ...s,
+        pricing: pricingKind(s),
         propertyTypes: propertyTypesFor(s),
         startingFromAed: startingFrom(s),
         rating: byKey.get(s.key)?.avg ?? null,
@@ -62,10 +65,12 @@ export async function catalogRoutes(app: FastifyInstance, c: Container) {
       propertySizes: Object.fromEntries(
         Object.entries(PROPERTY_SIZES).map(([type, sizes]) => [type, sizes.map((key) => ({ key, label: SIZE_LABELS[key] ?? key }))]),
       ),
-      // Regular cleaning of apartments: price, time on site and team size per size.
-      regularRates: REGULAR_RATES,
+      // Fixed prices by service, property type and size (price, time on site, team size).
+      rates: pricing().rates,
+      // Older app versions read this: regular cleaning of apartments.
+      regularRates: pricing().rates.regular?.apartment ?? {},
       materialsIncluded: true,
-      payments: { tamaraFeePercent: c.env.TAMARA_FEE_PERCENT, tamaraInstalments: c.env.TAMARA_INSTALMENTS },
+      payments: { tamaraFeePercent: pricing().tamaraFeePercent, tamaraInstalments: c.env.TAMARA_INSTALMENTS },
     };
   });
 

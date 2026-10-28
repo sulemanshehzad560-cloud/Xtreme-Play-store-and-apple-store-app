@@ -38,6 +38,7 @@
         <button class="tab" data-tab="map"><span>◎</span>Live map</button>
         <button class="tab" data-tab="subscriptions"><span>↻</span>Subscriptions</button>
         <button class="tab" data-tab="messages"><span>✉</span>Messages <em id="msg-badge" class="badge hidden"></em></button>
+        <button class="tab" data-tab="pricing"><span>¤</span>Prices</button>
         <button class="tab" data-tab="promotions"><span>%</span>Promotions</button>
         <button class="tab" data-tab="staff"><span>☺</span>Staff</button>
         <button class="tab" data-tab="customers"><span>◉</span>Customers</button>
@@ -109,6 +110,14 @@
             <form class="chat-form hidden" id="chat-form"><input id="chat-input" maxlength="2000" placeholder="Write a reply… the customer gets a notification" autocomplete="off" /><button class="btn primary">Send</button></form>
           </section>
         </div>
+      </div>
+      <div id="tab-pricing" class="tab-panel hidden">
+        <section class="panel">
+          <div class="panel-head"><div><h2>Price list</h2><p class="muted">Set a fixed price for any service, property type and size. Leave the price blank and that job is booked as a free site visit, then quoted on site. New prices apply to new bookings straight away (the app refreshes within a minute); bookings already made keep their price.</p></div>
+            <button class="btn primary" id="save-pricing">Save prices</button></div>
+          <div class="pricing-top"><label>Tamara instalment fee (%)<input id="tamara-fee" type="number" min="0" max="20" step="0.5" /></label></div>
+          <div id="pricing-services"></div>
+        </section>
       </div>
       <div id="tab-promotions" class="tab-panel hidden">
         <section class="panel">

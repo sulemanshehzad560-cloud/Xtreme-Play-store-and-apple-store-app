@@ -1,3 +1,4 @@
+import { pricing, rateFor } from "./pricing.js";
 // Service catalog and price list (AED per visit, VAT included), matching the Xtreme price list.
 // Kept in code so prices are versioned and reviewed; the booking stores a price snapshot.
 
@@ -42,7 +43,7 @@ export interface CatalogService {
   name: string;
   nameAr: string;
   category: "cleaning" | "technical" | "staffing" | "facilities";
-  /** "tiered": fixed price for apartments from REGULAR_RATES; "inspection": quoted by our team on a site visit. */
+  /** Default only: the live price list (fixed rates or site-visit quote) is edited in the dashboard; see pricing.ts. */
   pricing: { kind: "tiered" } | { kind: "inspection" };
   durationMinutes: number;
   highlights: string[];
@@ -218,15 +219,20 @@ export function quote(input: { serviceKey: string; propertyType: PropertyType; p
   if (!propertyTypesFor(service).includes(input.propertyType)) return { error: `${service.name} is not offered for this property type` };
   if (!PROPERTY_SIZES[input.propertyType]?.includes(input.propertySize)) return { error: `Size "${input.propertySize}" is not valid for ${input.propertyType}` };
 
-  const rate = service.pricing.kind === "tiered" && input.propertyType === "apartment" ? REGULAR_RATES[input.propertySize] : undefined;
+  const rate = rateFor(service.key, input.propertyType, input.propertySize);
   if (!rate) {
     return { priceAed: null, pricing: "inspection", label: "Our team visits, inspects and quotes on site; pay securely in the app", durationMinutes: null, cleaners: null };
   }
   return { priceAed: rate.priceAed, pricing: "fixed", label: `AED ${rate.priceAed} per visit`, durationMinutes: rate.minutes, cleaners: rate.cleaners };
 }
 
-/** Lowest per-visit price for a fixed-price service, for "from AED …" labels. */
+/** Lowest fixed price for a service, for "from AED …" labels; null when it is always quoted on site. */
 export function startingFrom(service: CatalogService): number | null {
-  if (service.pricing.kind !== "tiered") return null;
-  return Math.min(...Object.values(REGULAR_RATES).map((r) => r.priceAed));
+  const prices = Object.values(pricing().rates[service.key] ?? {}).flatMap((bySize) => Object.values(bySize ?? {}).map((r) => r.priceAed));
+  return prices.length ? Math.min(...prices) : null;
+}
+
+/** "tiered" when the dashboard has set any fixed price for the service, else quoted on site. */
+export function pricingKind(service: CatalogService): CatalogService["pricing"] {
+  return startingFrom(service) != null ? { kind: "tiered" } : { kind: "inspection" };
 }

@@ -22,6 +22,8 @@ interface Catalog {
   services: Service[];
   propertySizes: Record<PropertyType, { key: string; label: string }[]>;
   regularRates?: Record<string, { priceAed: number; minutes: number; cleaners: number }>;
+  /** Fixed prices set in the dashboard: service → property type → size. */
+  rates?: Record<string, Partial<Record<PropertyType, Record<string, { priceAed: number; minutes: number; cleaners: number }>>>>;
   payments?: { tamaraFeePercent: number; tamaraInstalments: number };
 }
 interface Quote {
@@ -82,9 +84,9 @@ export default function BookService() {
 
   const sizes = catalog.data?.propertySizes[type] ?? [];
   const types = PROPERTY.filter(([t]) => (service?.propertyTypes ?? ["apartment", "villa", "office"]).includes(t));
-  // Fixed price only for regular cleaning of apartments; everything else is quoted on a site visit.
+  // Fixed prices come from the office's price list; anything without one is quoted on a site visit.
   const fixed = q?.pricing === "fixed" && price != null;
-  const rates = service?.key === "regular" && type === "apartment" ? catalog.data?.regularRates : undefined;
+  const rates = service ? (catalog.data?.rates ? catalog.data.rates[service.key]?.[type] : service.key === "regular" && type === "apartment" ? catalog.data?.regularRates : undefined) : undefined;
   const feePct = catalog.data?.payments?.tamaraFeePercent ?? 8;
   const tamaraFee = price != null ? Math.round(price * feePct) / 100 : 0;
   const payTotal = price != null ? (pay === "tamara" ? Math.round((price + tamaraFee) * 100) / 100 : price) : null;
@@ -233,7 +235,6 @@ export default function BookService() {
             <View style={{ gap: space(2) }}>
               {sizes.map((s) => {
                 const r = rates[s.key];
-                if (!r) return null;
                 const on = size === s.key;
                 return (
                   <OptionCard
@@ -241,8 +242,8 @@ export default function BookService() {
                     selected={on}
                     onPress={() => setSize(s.key)}
                     title={SIZE_LABEL[s.key] ?? s.label}
-                    subtitle={`${duration(r.minutes)} · ${r.cleaners} cleaners · materials free`}
-                    right={<Text style={{ fontFamily: fonts.extrabold, fontSize: 16, color: on ? colors.gold : colors.text }}>{aed(r.priceAed)}</Text>}
+                    subtitle={r ? `${duration(r.minutes)} · ${r.cleaners} cleaners · materials free` : "Free site visit, priced on site · materials free"}
+                    right={<Text style={{ fontFamily: fonts.extrabold, fontSize: r ? 16 : 13, color: on ? colors.gold : colors.text }}>{r ? aed(r.priceAed) : "On quote"}</Text>}
                   />
                 );
               })}

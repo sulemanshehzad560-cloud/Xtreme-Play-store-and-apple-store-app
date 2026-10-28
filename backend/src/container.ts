@@ -21,6 +21,7 @@ import { StripeGateway } from "./modules/payments/stripe.gateway.js";
 import { TamaraGateway } from "./modules/payments/tamara.gateway.js";
 import { AdminService } from "./modules/admin/admin.service.js";
 import { StaffService } from "./modules/staff/staff.service.js";
+import { PricingService, defaultPricing, pricing } from "./modules/catalog/pricing.js";
 import { PromotionService } from "./modules/promotions/promotion.service.js";
 import { SupportService } from "./modules/support/support.service.js";
 import { SubscriptionService } from "./modules/subscriptions/subscription.service.js";
@@ -42,6 +43,7 @@ export interface Container {
   notifications: NotificationService;
   bookings: BookingService;
   staff: StaffService;
+  prices: PricingService;
   users: UserService;
   card: CardGateway;
   bnpl: BnplGateway;
@@ -113,11 +115,14 @@ export function createContainer(env: Env, log: FastifyBaseLogger, overrides: Con
       appScheme: env.APP_SCHEME,
       merchantName: env.STRIPE_MERCHANT_NAME,
       tamaraInstalments: env.TAMARA_INSTALMENTS,
-      tamaraFeePercent: env.TAMARA_FEE_PERCENT,
+      get tamaraFeePercent() {
+        return pricing().tamaraFeePercent;
+      },
     },
     log,
   );
   const admin = new AdminService(db, tokens, env);
+  const prices = new PricingService(db, defaultPricing(env.TAMARA_FEE_PERCENT));
   const mailer = overrides.mailer ?? createMailer(env, log);
   const invoices = new InvoiceMailer(db, payments, notifications, mailer, { publicUrl: env.PUBLIC_URL }, log);
   bookings.onStatusChange(async (booking) => {
@@ -125,11 +130,15 @@ export function createContainer(env: Env, log: FastifyBaseLogger, overrides: Con
   });
   const subscriptions = new SubscriptionService(db, bookings, notifications);
   const promotions = new PromotionService(db, bookings);
-  const support = new SupportService(db, notifications, hub, admin, { tamaraFeePercent: env.TAMARA_FEE_PERCENT });
+  const support = new SupportService(db, notifications, hub, admin, {
+    get tamaraFeePercent() {
+      return pricing().tamaraFeePercent;
+    },
+  });
   bookings.onPriced((bookingId) => promotions.refresh(bookingId));
   payments.onPaid((bookingId) => promotions.onBookingPaid(bookingId));
   payments.onPaid((bookingId) => subscriptions.onBookingPaid(bookingId));
   payments.onPaid((bookingId) => bookings.confirmPaid(bookingId));
   payments.onPaid((bookingId) => invoices.sendIfDue(bookingId));
-  return { env, db, pool, hub, sms, push, verifiers, tokens, otp, auth, notifications, bookings, staff, users, card, bnpl, payments, admin, mailer, invoices, subscriptions, promotions, support };
+  return { env, db, pool, hub, sms, push, verifiers, tokens, otp, auth, notifications, bookings, staff, users, card, bnpl, payments, admin, mailer, invoices, subscriptions, promotions, support, prices };
 }

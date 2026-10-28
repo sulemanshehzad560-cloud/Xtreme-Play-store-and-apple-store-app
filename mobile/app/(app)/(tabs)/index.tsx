@@ -34,9 +34,9 @@ const W = Dimensions.get("window").width;
 const SLIDE = W - space(8);
 
 // Built at render time so the banners follow the light/dark theme.
-const promos = () => [
+const promos = (homeFrom: number | null = 90) => [
   { title: "Regular cleaning plans", body: "Weekly visits by the same team, for less. Materials free.", cta: "See plans", service: "plans", bg: colors.ink, fg: "#fff", ctaBg: colors.goldBright, ctaFg: colors.ink, Art: LivingRoomScene },
-  { title: "Home cleaning from AED 90", body: "2–3 trained cleaners. All cleaning materials FREE.", cta: "Book a clean", service: "regular", bg: colors.ink, fg: "#fff", ctaBg: colors.goldBright, ctaFg: colors.ink, Art: LivingRoomScene },
+  { title: homeFrom ? `Home cleaning from AED ${homeFrom}` : "Home cleaning by trained teams", body: "2–3 trained cleaners. All cleaning materials FREE.", cta: "Book a clean", service: "regular", bg: colors.ink, fg: "#fff", ctaBg: colors.goldBright, ctaFg: colors.ink, Art: LivingRoomScene },
   { title: "Deep cleaning, priced on site", body: "Appliances inside and out, every corner. Free site visit and quote.", cta: "Book a visit", service: "deep", bg: colors.ink, fg: "#fff", ctaBg: colors.goldBright, ctaFg: colors.ink, Art: LivingRoomScene },
   { title: "Pay in 4 with Tamara", body: "Split your booking into 4 payments.", cta: "Book now", service: "regular", bg: "#F3E3BC", fg: colors.ink, ctaBg: colors.ink, ctaFg: "#fff", Art: PayInFourScene },
   { title: "Fresh sofas & carpets", body: "Deep extraction lifts dust, stains and odours.", cta: "Book sofa cleaning", service: "sofa", bg: "#EFE6D6", fg: colors.ink, ctaBg: colors.ink, ctaFg: "#fff", Art: LivingRoomScene },
@@ -45,6 +45,7 @@ const promos = () => [
 export default function Home() {
   const { user } = useAuth();
   const services = useApi<{ services: Service[] }>("/catalog/services");
+  const homeFrom = services.data?.services.find((s) => s.key === "regular")?.startingFromAed ?? null;
   const active = useApi<Booking[]>("/bookings?scope=active&limit=3");
   const addresses = useApi<Address[]>("/me/addresses");
   const company = useApi<Company>("/company");
@@ -79,7 +80,7 @@ export default function Home() {
 
   // Rotate the offers every few seconds.
   useEffect(() => {
-    const t = setInterval(() => setSlide((s) => (s + 1) % promos().length), 5000);
+    const t = setInterval(() => setSlide((s) => (s + 1) % promos(homeFrom).length), 5000);
     return () => clearInterval(t);
   }, []);
   const [carousel, setCarousel] = useState<ScrollView | null>(null);
@@ -254,7 +255,7 @@ export default function Home() {
               onMomentumScrollEnd={(e) => setSlide(Math.round(e.nativeEvent.contentOffset.x / (SLIDE + space(3))))}
               contentContainerStyle={{ gap: space(3) }}
             >
-              {promos().map(({ Art, ...p }) => (
+              {promos(homeFrom).map(({ Art, ...p }) => (
                 <Pressable key={p.title} onPress={() => open(p.service)} style={{ width: SLIDE, height: 176, backgroundColor: p.bg, borderRadius: radius.xl, padding: space(5), overflow: "hidden" }}>
                   {/* Outline art needs a light backdrop on the dark banner. */}
                   {p.bg === colors.ink ? <View style={{ position: "absolute", right: -30, bottom: -40, width: 200, height: 200, borderRadius: 100, backgroundColor: "#F3E3BC" }} /> : null}
@@ -272,7 +273,7 @@ export default function Home() {
               ))}
             </ScrollView>
             <Row style={{ justifyContent: "center", gap: 6, marginTop: space(3) }}>
-              {promos().map((_, i) => (
+              {promos(homeFrom).map((_, i) => (
                 <View key={i} style={{ width: i === slide ? 20 : 6, height: 6, borderRadius: 3, backgroundColor: i === slide ? colors.ink : colors.border }} />
               ))}
             </Row>
