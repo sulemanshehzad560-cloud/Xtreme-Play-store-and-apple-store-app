@@ -112,13 +112,15 @@ export class TokenService {
     return { userId: row.userId, familyId: row.familyId };
   }
 
-  async revoke(raw: string): Promise<void> {
+  /** Ends the session the token belongs to; returns its user, if the token was known. */
+  async revoke(raw: string): Promise<string | null> {
     const [row] = await this.db
-      .select({ familyId: refreshTokens.familyId })
+      .select({ familyId: refreshTokens.familyId, userId: refreshTokens.userId })
       .from(refreshTokens)
       .where(eq(refreshTokens.tokenHash, sha256(raw)))
       .limit(1);
     if (row) await this.revokeFamily(row.familyId);
+    return row?.userId ?? null;
   }
 
   async revokeFamily(familyId: string): Promise<void> {

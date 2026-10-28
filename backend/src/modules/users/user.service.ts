@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import { and, eq, isNull, ne } from "drizzle-orm";
 import type { Database } from "../../db/client.js";
 import { addresses, authIdentities, pushTokens, userAvatars, users } from "../../db/schema.js";
@@ -56,7 +57,7 @@ export class UserService {
   // ------------------------------------------------------------ profile photo
 
   /** Stores a profile photo (the app sends a small, already-resized image). */
-  async setAvatar(userId: string, base64: string, publicUrl: string) {
+  async setAvatar(userId: string, base64: string, publicUrl: string, secret: string) {
     const bytes = Buffer.from(base64, "base64");
     if (bytes.length < 100 || bytes.length > 1_500_000) throw badRequest("invalid_image", "Please choose a photo under 1.5 MB");
     const contentType = sniffImage(bytes);
@@ -66,10 +67,12 @@ export class UserService {
       .insert(userAvatars)
       .values({ userId, contentType, data: bytes.toString("base64"), updatedAt: now })
       .onConflictDoUpdate({ target: userAvatars.userId, set: { contentType, data: bytes.toString("base64"), updatedAt: now } });
-    // Versioned URL so apps refresh their cached copy when the photo changes.
+    // A signed, versioned link: it works without a sign-in token (the app, the office dashboard,
+    // after a token expires) yet cannot be guessed, and changes when the photo changes.
+    const v = String(now.getTime());
     await this.db
       .update(users)
-      .set({ avatarUrl: `${publicUrl}/v1/users/${userId}/avatar?v=${now.getTime()}`, updatedAt: now })
+      .set({ avatarUrl: `${publicUrl}/v1/avatars/${userId}/${v}/${avatarSignature(secret, userId, v)}`, updatedAt: now })
       .where(eq(users.id, userId));
   }
 
@@ -192,4 +195,8 @@ function sniffImage(b: Buffer): string | null {
   if (b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return "image/png";
   if (b.subarray(0, 4).toString("ascii") === "RIFF" && b.subarray(8, 12).toString("ascii") === "WEBP") return "image/webp";
   return null;
+}
+
+export function avatarSignature(secret: string, userId: string, version: string) {
+  return createHmac("sha256", secret).update(`avatar:${userId}:${version}`).digest("hex").slice(0, 32);
 }

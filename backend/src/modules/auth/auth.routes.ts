@@ -104,7 +104,9 @@ export async function authRoutes(app: FastifyInstance, c: Container) {
     "/auth/logout",
     { schema: { tags, summary: "End this device's session", body: z.object({ refreshToken: z.string().min(20) }) } },
     async (req, reply) => {
-      await c.auth.signOut(req.body.refreshToken);
+      const userId = await c.auth.signOut(req.body.refreshToken);
+      // Staff who sign out go off duty (unless mid-job), so the office never sees a ghost on duty.
+      if (userId) await c.staff.setDutyStatus(userId, "off_duty").catch(() => undefined);
       return reply.status(204).send();
     },
   );

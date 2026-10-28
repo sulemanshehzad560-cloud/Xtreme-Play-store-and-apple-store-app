@@ -46,6 +46,18 @@ export default function StaffHome() {
     }
   }
 
+  // Signing out ends the shift: off duty and no more location sharing.
+  async function signOutStaff() {
+    try {
+      await api("/staff/me/status", { method: "PUT", body: { status: "off_duty" } });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      if (/finish job/i.test(msg)) return void Alert.alert("Job in progress", `${msg}, then sign out.`);
+    }
+    await stopSharingLocation().catch(() => undefined);
+    await signOut();
+  }
+
   const status = me.data?.status ?? "off_duty";
   const all = jobs.data ?? [];
   const isToday = (iso: string) => new Date(iso).toDateString() === new Date().toDateString();
@@ -129,7 +141,7 @@ export default function StaffHome() {
             </Row>
           </Card>
         ))}
-        <Button title="Sign out" variant="ghost" onPress={signOut} />
+        <Button title="Sign out (goes off duty)" variant="ghost" onPress={() => void signOutStaff()} />
       </Screen>
     </View>
   );

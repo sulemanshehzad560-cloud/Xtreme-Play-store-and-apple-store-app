@@ -180,3 +180,6 @@ label.check input { width: 16px; height: 16px; padding: 0; }
 .chat-form { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--border); }
 .chat-form input { flex: 1; }
 @media (max-width: 900px) { .chat-shell { grid-template-columns: 1fr; height: auto; } .chat-pane { min-height: 420px; } }
+
+.cust { display: inline-flex; align-items: center; gap: 10px; }
+.avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; background: #16130e; color: #e2c170; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex: none; }

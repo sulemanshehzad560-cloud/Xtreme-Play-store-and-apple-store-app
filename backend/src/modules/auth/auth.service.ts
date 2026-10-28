@@ -99,8 +99,8 @@ export class AuthService {
     return this.tokens.issue(user, client, familyId);
   }
 
-  async signOut(refreshToken: string): Promise<void> {
-    await this.tokens.revoke(refreshToken);
+  async signOut(refreshToken: string): Promise<string | null> {
+    return this.tokens.revoke(refreshToken);
   }
 
   // ------------------------------------------------------------ linking

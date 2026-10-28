@@ -438,12 +438,20 @@ async function staffForm(s) {
 
 // ------------------------------------------------------------------ customers
 
+/** The customer's photo (signed links load from this server), or their initials. */
+function photo(u) {
+  const at = u.avatarUrl?.indexOf("/v1/avatars/") ?? -1;
+  if (at >= 0) return `<img class="avatar" src="${esc(u.avatarUrl.slice(at))}" alt="" loading="lazy" />`;
+  const initials = (u.fullName ?? "?").split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase();
+  return `<span class="avatar">${esc(initials)}</span>`;
+}
+
 async function loadCustomers() {
   const q = $("#customer-search").value.trim();
   const rows = await api(`/admin/customers?limit=100${q ? `&q=${encodeURIComponent(q)}` : ""}`);
   $("#customers-table").innerHTML = `<tr><th>Name</th><th>Mobile</th><th>Email</th><th>Bookings</th><th>Joined</th><th></th></tr>${rows
     .map(
-      (u) => `<tr><td><b>${esc(u.fullName ?? "—")}</b>${u.blocked ? ' <span class="pill cancelled">suspended</span>' : ""}</td>
+      (u) => `<tr><td><span class="cust">${photo(u)}<b>${esc(u.fullName ?? "—")}</b></span>${u.blocked ? ' <span class="pill cancelled">suspended</span>' : ""}</td>
       <td>${esc(u.phone ?? "—")}</td><td>${esc(u.email ?? "—")}</td><td>${u.bookings}</td><td>${when(u.createdAt)}</td>
       <td><button class="btn ${u.blocked ? "outline" : "danger"} small" data-block="${u.id}" data-blocked="${u.blocked}">${u.blocked ? "Restore" : "Suspend"}</button></td></tr>`,
     )

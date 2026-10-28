@@ -133,4 +133,13 @@ describe("live tracking when staff forget to go on duty", () => {
     expect(track).toMatchObject({ live: true, location: { lat: 24.49, lng: 54.39, stale: false } });
     expect(track.etaMinutes).toBeGreaterThanOrEqual(0);
   });
+
+  it("puts staff off duty when they sign out", async () => {
+    const staff = await signInAs(t, "staff");
+    const on = await t.app.inject({ method: "PUT", url: "/v1/staff/me/status", headers: staff.auth, payload: { status: "available" } });
+    expect(on.json().status).toBe("available");
+    const out = await t.app.inject({ method: "POST", url: "/v1/auth/logout", payload: { refreshToken: staff.refreshToken } });
+    expect(out.statusCode).toBe(204);
+    expect((await t.c.staff.profile(staff.user.id)).status).toBe("off_duty");
+  });
 });

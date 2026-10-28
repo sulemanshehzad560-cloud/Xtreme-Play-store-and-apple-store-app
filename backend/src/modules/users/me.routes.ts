@@ -43,7 +43,7 @@ export async function meRoutes(app: FastifyInstance, c: Container) {
       schema: { tags, summary: "Upload my profile photo (base64 JPEG/PNG/WebP, up to 1.5 MB)", body: z.object({ image: z.string().min(100).max(2_100_000) }) },
     },
     async (req) => {
-      await c.users.setAvatar(req.user.id, req.body.image, c.env.PUBLIC_URL);
+      await c.users.setAvatar(req.user.id, req.body.image, c.env.PUBLIC_URL, c.env.JWT_SECRET);
       return c.auth.publicUser(req.user.id);
     },
   );

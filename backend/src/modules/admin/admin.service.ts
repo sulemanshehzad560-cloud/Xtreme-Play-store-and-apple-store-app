@@ -131,6 +131,8 @@ export class AdminService {
         fullName: users.fullName,
         phone: users.phone,
         email: users.email,
+        avatarUrl: users.avatarUrl,
+        dateOfBirth: users.dateOfBirth,
         createdAt: users.createdAt,
         blockedAt: users.blockedAt,
         bookings: sql<number>`(select count(*)::int from ${bookings} where ${bookings.customerId} = ${users.id})`,

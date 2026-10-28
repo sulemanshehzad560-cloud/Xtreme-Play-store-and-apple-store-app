@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -20,6 +20,7 @@ import * as Haptics from "expo-haptics";
 import { FadeIn } from "./art/Motion";
 import { MopLoader } from "./MopLoader";
 import { getSession } from "../lib/api";
+import { API_URL } from "../lib/config";
 import { colors, fonts, radius, shadow, space } from "../lib/theme";
 import { STATUS_LABEL } from "../lib/format";
 import type { BookingStatus } from "../lib/types";
@@ -126,6 +127,7 @@ export function IconBadge({ glyph, size = 44, tone = "gold" }: { glyph: string; 
 /** Profile photo, or initials when there is none (or it cannot be loaded). */
 export function Avatar({ name, size = 44, uri }: { name: string | null | undefined; size?: number; uri?: string | null }) {
   const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [uri]);
   const initials =
     (name ?? "")
       .split(" ")
@@ -135,12 +137,14 @@ export function Avatar({ name, size = 44, uri }: { name: string | null | undefin
       .join("")
       .toUpperCase() || "👤";
   if (uri && !failed) {
-    // Our own photo URLs need the signed-in user's token; others (e.g. Google) are public.
+    // Our own photos load from the server the app talks to; old-style links also need the sign-in token.
     const token = getSession()?.accessToken;
-    const own = uri.includes("/v1/users/");
+    const at = uri.indexOf("/v1/");
+    const own = at >= 0 && (uri.includes("/v1/avatars/") || uri.includes("/v1/users/"));
+    const src = own ? `${API_URL}${uri.slice(at)}` : uri;
     return (
       <Image
-        source={{ uri, ...(own && token ? { headers: { Authorization: `Bearer ${token}` } } : {}) }}
+        source={{ uri: src, ...(own && uri.includes("/v1/users/") && token ? { headers: { Authorization: `Bearer ${token}` } } : {}) }}
         onError={() => setFailed(true)}
         style={{ width: size, height: size, borderRadius: size / 2, borderWidth: 2, borderColor: colors.goldLine, backgroundColor: colors.ink }}
         accessibilityLabel={name ? `${name}'s photo` : "Profile photo"}
