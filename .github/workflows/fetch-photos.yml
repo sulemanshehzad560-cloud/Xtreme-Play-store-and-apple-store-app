@@ -1,5 +1,5 @@
 name: fetch-photos
-# One-off helper: downloads free-licence (Unsplash licence, commercial use allowed) photo
+# One-off helper: downloads public-domain / CC0 photo
 # candidates for each service to the "photo-candidates" branch, so the best ones can be chosen.
 on:
   workflow_dispatch:
@@ -14,33 +14,33 @@ jobs:
           mkdir -p out && cd out
           python3 - <<'PY'
           import json, urllib.request, urllib.parse
+          # Openverse (by WordPress): open-licence images. Only CC0 / public domain, so they are
+          # free for commercial use with no credit required.
           Q = {
-            "regular": "home cleaning service", "deep": "professional deep cleaning", "sofa": "sofa cleaning",
-            "mattress": "mattress bed clean", "carpet": "carpet cleaning", "glass": "window cleaning",
-            "kitchen": "kitchen cleaning", "bathroom": "bathroom cleaning", "balcony": "apartment balcony",
-            "wardrobe": "wardrobe closet", "restaurant": "restaurant kitchen", "cupboard": "kitchen cabinets",
+            "regular": "house cleaning", "deep": "cleaning kitchen", "sofa": "sofa", "mattress": "mattress",
+            "carpet": "vacuum carpet", "glass": "window cleaning", "kitchen": "clean kitchen", "bathroom": "bathroom",
+            "balcony": "balcony", "wardrobe": "wardrobe closet", "restaurant": "restaurant kitchen", "cupboard": "kitchen cabinets",
           }
-          UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36", "Accept": "application/json"}
+          UA = {"User-Agent": "XtremeCleaningPartner-photo-picker/1.0 (sales@xtreme-fmgroup.com)"}
           credits = {}
           for key, q in Q.items():
-              url = "https://unsplash.com/napi/search/photos?" + urllib.parse.urlencode({"query": q, "per_page": 20})
+              url = "https://api.openverse.org/v1/images/?" + urllib.parse.urlencode({"q": q, "license": "cc0,pdm", "page_size": 20, "aspect_ratio": "wide", "size": "large", "mature": "false"})
               try:
-                  data = json.load(urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=30))
+                  data = json.load(urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=40))
               except Exception as e:
                   print("search failed", key, e); continue
               n = 0
               for r in data.get("results", []):
-                  if r.get("premium") or r.get("plus"): continue
-                  if "images.unsplash.com/photo-" not in r["urls"]["raw"]: continue
-                  img = r["urls"]["raw"] + "&w=900&q=72&fm=jpg&fit=crop&ar=16:10"
                   name = f"{key}_{n}.jpg"
                   try:
-                      open(name, "wb").write(urllib.request.urlopen(urllib.request.Request(img, headers={"User-Agent": UA["User-Agent"]}), timeout=30).read())
+                      body = urllib.request.urlopen(urllib.request.Request(r["url"], headers=UA), timeout=40).read()
                   except Exception as e:
                       print("download failed", name, e); continue
-                  credits[name] = {"id": r["id"], "by": r["user"]["name"], "page": r["links"]["html"], "alt": r.get("alt_description")}
+                  if len(body) < 20000: continue
+                  open(name, "wb").write(body)
+                  credits[name] = {"title": r.get("title"), "by": r.get("creator"), "license": r.get("license"), "source": r.get("foreign_landing_url")}
                   n += 1
-                  if n >= 6: break
+                  if n >= 8: break
               print(key, n)
           json.dump(credits, open("credits.json", "w"), indent=1)
           PY
