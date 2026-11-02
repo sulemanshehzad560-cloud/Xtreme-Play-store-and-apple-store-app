@@ -91,7 +91,7 @@ const config: ExpoConfig = {
       "react-native-fbsdk-next",
       {
         appID: env.FACEBOOK_APP_ID ?? "2305248043660220",
-        clientToken: env.FACEBOOK_CLIENT_TOKEN ?? "placeholder",
+        clientToken: env.FACEBOOK_CLIENT_TOKEN ?? "09b9400741882cee37ede5f7289ae84d",
         displayName: "Xtreme-Cleaning Partner",
         scheme: `fb${env.FACEBOOK_APP_ID ?? "2305248043660220"}`,
         isAutoInitEnabled: true,
