@@ -4,7 +4,8 @@ import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Location from "expo-location";
 import { FadeIn, SkeletonCard } from "@/components/art/Motion";
-import { LivingRoomScene, PayInFourScene } from "@/components/art/Scenes";
+import { PayInFourScene } from "@/components/art/Scenes";
+import { PromoBanner, type Promo } from "@/components/PromoBanner";
 import { ServiceBanner, ServiceIcon } from "@/components/art/ServiceIcon";
 import { BrandMark } from "@/components/BrandMark";
 import { FreeMaterials, PlanPromo } from "@/components/Promo";
@@ -33,19 +34,83 @@ interface Address {
 const W = Dimensions.get("window").width;
 const SLIDE = W - space(8);
 
-// Built at render time so the banners follow the light/dark theme.
-const promos = (homeFrom: number | null = 90) => [
-  { title: "Regular cleaning plans", body: "Weekly visits by the same team, for less. Materials free.", cta: "See plans", service: "plans", bg: colors.ink, fg: "#fff", ctaBg: colors.goldBright, ctaFg: colors.ink, Art: LivingRoomScene },
-  { title: homeFrom ? `Home cleaning from AED ${homeFrom}` : "Home cleaning by trained teams", body: "2–3 trained cleaners. All cleaning materials FREE.", cta: "Book a clean", service: "regular", bg: colors.ink, fg: "#fff", ctaBg: colors.goldBright, ctaFg: colors.ink, Art: LivingRoomScene },
-  { title: "Deep cleaning, priced on site", body: "Appliances inside and out, every corner. Free site visit and quote.", cta: "Book a visit", service: "deep", bg: colors.ink, fg: "#fff", ctaBg: colors.goldBright, ctaFg: colors.ink, Art: LivingRoomScene },
-  { title: "Pay in 4 with Tamara", body: "Split your booking into 4 payments.", cta: "Book now", service: "regular", bg: "#F3E3BC", fg: colors.ink, ctaBg: colors.ink, ctaFg: "#fff", Art: PayInFourScene },
-  { title: "Fresh sofas & carpets", body: "Deep extraction lifts dust, stains and odours.", cta: "Book sofa cleaning", service: "sofa", bg: "#EFE6D6", fg: colors.ink, ctaBg: colors.ink, ctaFg: "#fff", Art: LivingRoomScene },
+// Home offers. Prices and savings come from the dashboard's price list.
+const promos = (homeFrom: number | null, weeklySave: number): Promo[] => [
+  {
+    key: "regular",
+    tag: "MATERIALS FREE",
+    title: homeFrom ? `Home cleaning from AED ${homeFrom}` : "Home cleaning by trained teams",
+    body: "Vetted, uniformed cleaners. Book for today, pay in the app.",
+    cta: "Book a clean",
+    service: "regular",
+    photo: require("../../../assets/promos/team-apartment.jpg"),
+    colors: ["#14110B", "#14110B"],
+    accent: "#E2C170",
+  },
+  {
+    key: "plans",
+    tag: weeklySave > 0 ? `SAVE ${weeklySave}% WEEKLY` : "SAME TEAM EVERY VISIT",
+    title: "Your home cleaned every week, for less",
+    body: "Monthly or yearly plans. Plan all your visits on a calendar.",
+    cta: "See plans",
+    service: "plans",
+    photo: require("../../../assets/promos/bed-making.jpg"),
+    colors: ["#14213D", "#14213D"],
+    accent: "#8FC1FF",
+  },
+  {
+    key: "glass",
+    tag: "STREAK-FREE",
+    title: "Sparkling windows & glass",
+    body: "Balcony doors, glass walls and windows, inside and out.",
+    cta: "Book glass cleaning",
+    service: "glass",
+    photo: require("../../../assets/promos/glass-cleaning.jpg"),
+    align: "right",
+    colors: ["#0B2A4A", "#0B2A4A"],
+    accent: "#7BE3D1",
+  },
+  {
+    key: "deep",
+    tag: "FREE SITE VISIT",
+    title: "Deep cleaning, every corner",
+    body: "Homes and offices, move-in ready. Priced on a free visit.",
+    cta: "Book a visit",
+    service: "deep",
+    photo: require("../../../assets/promos/office-clean.jpg"),
+    colors: ["#0B3B37", "#0B3B37"],
+    accent: "#7BE3D1",
+  },
+  {
+    key: "sofa",
+    tag: "STAINS & ODOURS OUT",
+    title: "Fresh sofas, carpets & mattresses",
+    body: "Deep extraction lifts dust and allergens. Dry in hours.",
+    cta: "Book sofa cleaning",
+    service: "sofa",
+    art: "carpet",
+    colors: ["#3A1730", "#7A2E5B"],
+    accent: "#F7A8D0",
+  },
+  {
+    key: "tamara",
+    tag: "PAY IN 4",
+    title: "Split any booking into 4 with Tamara",
+    body: "Interest-free instalments. Choose Tamara at checkout.",
+    cta: "Book now",
+    service: "regular",
+    art: <PayInFourScene width={140} height={120} />,
+    colors: ["#FFE9EF", "#F8C9D7"],
+    light: true,
+    accent: "#F3A6BE",
+  },
 ];
 
 export default function Home() {
   const { user } = useAuth();
-  const services = useApi<{ services: Service[] }>("/catalog/services");
+  const services = useApi<{ services: Service[]; frequencyDiscountPercent?: { weekly: number; biweekly: number } }>("/catalog/services");
   const homeFrom = services.data?.services.find((s) => s.key === "regular")?.startingFromAed ?? null;
+  const weeklySave = services.data?.frequencyDiscountPercent?.weekly ?? 0;
   const active = useApi<Booking[]>("/bookings?scope=active&limit=3");
   const addresses = useApi<Address[]>("/me/addresses");
   const company = useApi<Company>("/company");
@@ -80,7 +145,7 @@ export default function Home() {
 
   // Rotate the offers every few seconds.
   useEffect(() => {
-    const t = setInterval(() => setSlide((s) => (s + 1) % promos(homeFrom).length), 5000);
+    const t = setInterval(() => setSlide((s) => (s + 1) % promos(homeFrom, weeklySave).length), 5000);
     return () => clearInterval(t);
   }, []);
   const [carousel, setCarousel] = useState<ScrollView | null>(null);
@@ -259,25 +324,12 @@ export default function Home() {
               onMomentumScrollEnd={(e) => setSlide(Math.round(e.nativeEvent.contentOffset.x / (SLIDE + space(3))))}
               contentContainerStyle={{ gap: space(3) }}
             >
-              {promos(homeFrom).map(({ Art, ...p }) => (
-                <Pressable key={p.title} onPress={() => open(p.service)} style={{ width: SLIDE, height: 176, backgroundColor: p.bg, borderRadius: radius.xl, padding: space(5), overflow: "hidden" }}>
-                  {/* Outline art needs a light backdrop on the dark banner. */}
-                  {p.bg === colors.ink ? <View style={{ position: "absolute", right: -30, bottom: -40, width: 200, height: 200, borderRadius: 100, backgroundColor: "#F3E3BC" }} /> : null}
-                  <View style={{ position: "absolute", right: -8, bottom: -6 }}>
-                    <Art width={150} height={128} />
-                  </View>
-                  <View style={{ width: "58%", gap: space(1.5) }}>
-                    <RNText style={{ color: p.fg, fontFamily: fonts.extrabold, fontSize: 19, lineHeight: 24 }}>{p.title}</RNText>
-                    <RNText style={{ color: p.fg, opacity: 0.75, fontFamily: fonts.medium, fontSize: 12.5, lineHeight: 17 }}>{p.body}</RNText>
-                  </View>
-                  <View style={{ position: "absolute", left: space(5), bottom: space(5), backgroundColor: p.ctaBg, borderRadius: radius.pill, paddingHorizontal: space(4), paddingVertical: space(2) }}>
-                    <RNText style={{ color: p.ctaFg, fontFamily: fonts.bold, fontSize: 13 }}>{p.cta} →</RNText>
-                  </View>
-                </Pressable>
+              {promos(homeFrom, weeklySave).map((p) => (
+                <PromoBanner key={p.key} promo={p} width={SLIDE} onPress={() => open(p.service)} />
               ))}
             </ScrollView>
             <Row style={{ justifyContent: "center", gap: 6, marginTop: space(3) }}>
-              {promos(homeFrom).map((_, i) => (
+              {promos(homeFrom, weeklySave).map((_, i) => (
                 <View key={i} style={{ width: i === slide ? 20 : 6, height: 6, borderRadius: 3, backgroundColor: i === slide ? colors.ink : colors.border }} />
               ))}
             </Row>
