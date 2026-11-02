@@ -90,12 +90,12 @@ const config: ExpoConfig = {
     [
       "react-native-fbsdk-next",
       {
-        appID: env.FACEBOOK_APP_ID ?? "000000000000000",
+        appID: env.FACEBOOK_APP_ID ?? "2305248043660220",
         clientToken: env.FACEBOOK_CLIENT_TOKEN ?? "placeholder",
         displayName: "Xtreme-Cleaning Partner",
-        scheme: `fb${env.FACEBOOK_APP_ID ?? "000000000000000"}`,
+        scheme: `fb${env.FACEBOOK_APP_ID ?? "2305248043660220"}`,
         // Without a real app id (e.g. demo builds) the SDK must not start on launch.
-        isAutoInitEnabled: Boolean(env.FACEBOOK_APP_ID),
+        isAutoInitEnabled: true,
         advertiserIDCollectionEnabled: false,
         autoLogAppEventsEnabled: false,
       },
