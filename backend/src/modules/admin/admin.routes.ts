@@ -353,6 +353,7 @@ export async function adminRoutes(app: FastifyInstance, c: Container) {
           tamaraFeePercent: z.number(),
           cardFeePercent: z.number().default(0),
           serviceFeeAed: z.number().default(0),
+          serviceFeePercent: z.number().default(0),
           frequencyDiscountPercent: z.object({ weekly: z.number(), biweekly: z.number() }).default({ weekly: 0, biweekly: 0 }),
           referral: z.object({ friendAed: z.number(), rewardAed: z.number() }).default({ friendAed: 20, rewardAed: 20 }),
         }),

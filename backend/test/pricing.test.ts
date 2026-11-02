@@ -57,7 +57,7 @@ describe("price list", () => {
   it("applies weekly / bi-weekly discounts and the service fee; card payments never carry a card fee", async () => {
     const admin = await signInAs(t, "admin");
     const me = await signInPhone(t, undefined, "Sara Al Mansoori");
-    const next = { ...defaultPricing(8), cardFeePercent: 2, serviceFeeAed: 10, frequencyDiscountPercent: { weekly: 10, biweekly: 5 } };
+    const next = { ...defaultPricing(8), cardFeePercent: 2, serviceFeeAed: 10, serviceFeePercent: 0, frequencyDiscountPercent: { weekly: 10, biweekly: 5 } };
     expect((await t.app.inject({ method: "PUT", url: "/v1/admin/pricing", headers: admin.auth, payload: next })).statusCode).toBe(200);
 
     expect(await quote("serviceKey=regular&propertyType=apartment&propertySize=2bhk&frequency=weekly")).toMatchObject({ priceAed: 135, basePriceAed: 150, discountPercent: 10 });
@@ -76,6 +76,25 @@ describe("price list", () => {
     const invoice = (await t.app.inject({ method: "GET", url: `/v1/bookings/${booking.id}/invoice`, headers: me.auth })).json();
     expect(invoice.totalAed).toBe(145);
     expect(invoice.lines.map((l: { description: string; amountAed: number }) => [l.description, l.amountAed]).slice(1)).toEqual([["Service fee", 10]]);
+  });
+
+  it("adds the 2% service charge to every payment method", async () => {
+    const admin = await signInAs(t, "admin");
+    const me = await signInPhone(t, undefined, "Sara Al Mansoori");
+    const next = { ...defaultPricing(8), serviceFeeAed: 0, serviceFeePercent: 2 };
+    expect((await t.app.inject({ method: "PUT", url: "/v1/admin/pricing", headers: admin.auth, payload: next })).statusCode).toBe(200);
+    expect((await t.app.inject({ method: "GET", url: "/v1/catalog/services" })).json().payments).toMatchObject({ serviceFeePercent: 2 });
+
+    const booking = await book(t, me.auth);
+    const options = (await t.app.inject({ method: "GET", url: `/v1/bookings/${booking.id}/payment-options`, headers: me.auth })).json();
+    expect(options.amount).toMatchObject({ totalAed: 150, serviceFeeAed: 3, serviceFeePercent: 2 });
+    expect(options.methods[0]).toMatchObject({ method: "card", feeAed: 3, totalAed: 153 });
+    expect(options.methods[1]).toMatchObject({ method: "tamara", totalAed: 165 });
+
+    await pay(t, me.auth, booking.id);
+    expect([...t.card.intents.values()].at(-1)!.amountMinor).toBe(15300);
+    const invoice = (await t.app.inject({ method: "GET", url: `/v1/bookings/${booking.id}/invoice`, headers: me.auth })).json();
+    expect(invoice.totalAed).toBe(153);
   });
 });
 

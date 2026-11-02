@@ -12,6 +12,7 @@ import { colors, fonts, radius, space } from "@/lib/theme";
 import type { Booking, BookingStatus, Company } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { LineIcon, iconColor } from "@/components/LineIcon";
+import { Celebration } from "@/components/Celebration";
 import * as StoreReview from "expo-store-review";
 
 const FLOW: [BookingStatus, string][] = [
@@ -39,6 +40,8 @@ export default function BookingDetail() {
   const company = useApi<Company>("/company");
   const [rating, setRating] = useState(0);
   const [rescheduling, setRescheduling] = useState(false);
+  // Celebrate once when we arrive here straight after a successful payment.
+  const [celebrate, setCelebrate] = useState(!!paid);
   useBookingEvents(id, { "booking:status": () => void reload() });
 
   if (!b) {
@@ -71,6 +74,12 @@ export default function BookingDetail() {
 
   return (
     <Screen edges={["left", "right"]}>
+      <Celebration
+        visible={celebrate}
+        title="Your clean is booked!"
+        message={`${b.service.name} · ${when(b.scheduledAt)}\nPayment received and your booking is confirmed. We'll notify you at every step.`}
+        onClose={() => setCelebrate(false)}
+      />
       {paid || (isNew && !b.awaitingPayment) ? (
         <Card tone="gold" style={{ alignItems: "center", paddingVertical: space(5) }}>
           <SuccessBurst size={120} />
@@ -204,7 +213,7 @@ export default function BookingDetail() {
         ) : null}
         {b.canPay && !b.awaitingPayment ? <Button title={`Pay ${aed(b.amountDueAed ?? b.priceAed)} now`} variant="gold" onPress={() => router.push(`/booking/${b.id}/pay`)} /> : null}
         {["paid", "partially_refunded", "refunded"].includes(b.paymentStatus) ? (
-          <Button title="View tax invoice" variant="secondary" onPress={() => router.push(`/booking/${b.id}/invoice`)} />
+          <Button title="View receipt" variant="secondary" onPress={() => router.push(`/booking/${b.id}/invoice`)} />
         ) : null}
       </Card>
 

@@ -94,7 +94,7 @@ describe("tipping the team", () => {
 
     const invoice = (await inject("GET", `/v1/bookings/${booking.id}/invoice`, me.auth)).json();
     expect(invoice).toMatchObject({ totalAed: 160, vatAed: 7.14, subtotalAed: 142.86 });
-    expect(invoice.lines.at(-1)).toMatchObject({ description: "Tip for your team (passed on in full, no VAT)", amountAed: 10 });
+    expect(invoice.lines.at(-1)).toMatchObject({ description: "Tip for your team (passed on in full)", amountAed: 10 });
     // The team hears about it when the job is done.
     await inject("POST", `/v1/admin/bookings/${booking.id}/assign`, admin.auth, { staffIds: [staff.user.id] });
     for (const status of ["en_route", "arrived", "in_progress", "completed"]) await inject("POST", `/v1/staff/jobs/${booking.id}/status`, staff.auth, { status });

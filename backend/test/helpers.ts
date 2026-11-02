@@ -30,6 +30,7 @@ export const testEnv = (extra: Record<string, string> = {}) =>
     PUBLIC_URL: "https://api.xtreme.test",
     LOCATION_HISTORY_MIN_INTERVAL_SECONDS: "0",
     OTP_RESEND_COOLDOWN_SECONDS: "0",
+    SERVICE_FEE_PERCENT: "0",
     ...extra,
   });
 

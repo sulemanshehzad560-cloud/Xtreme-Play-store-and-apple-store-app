@@ -85,6 +85,8 @@ const EnvSchema = z.object({
   TAMARA_INSTALMENTS: z.coerce.number().int().min(2).max(12).default(4),
   /** Fee added when the customer pays with Tamara, in percent of the amount due (0 = none). */
   TAMARA_FEE_PERCENT: z.coerce.number().min(0).max(20).default(8),
+  /** Default service charge on every payment, in percent (editable later in the dashboard). */
+  SERVICE_FEE_PERCENT: z.coerce.number().min(0).max(20).default(2),
 
   /**
    * Map tiles for the Android app, fetched and cached by this server so the app never calls the

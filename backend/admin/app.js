@@ -961,6 +961,7 @@ async function loadPricing() {
   pricingData = await api("/admin/pricing");
   $("#tamara-fee").value = pricingData.tamaraFeePercent;
   $("#service-fee").value = pricingData.serviceFeeAed ?? 0;
+  $("#service-fee-pct").value = pricingData.serviceFeePercent ?? 0;
   $("#weekly-discount").value = pricingData.frequencyDiscountPercent?.weekly ?? 0;
   $("#biweekly-discount").value = pricingData.frequencyDiscountPercent?.biweekly ?? 0;
   $("#ref-friend").value = pricingData.referral?.friendAed ?? 20;
@@ -1002,6 +1003,7 @@ $("#save-pricing").addEventListener("click", async () => {
     rates,
     tamaraFeePercent: n("#tamara-fee"),
     serviceFeeAed: n("#service-fee"),
+    serviceFeePercent: n("#service-fee-pct"),
     frequencyDiscountPercent: { weekly: n("#weekly-discount"), biweekly: n("#biweekly-discount") },
     referral: { friendAed: n("#ref-friend"), rewardAed: n("#ref-reward") },
   };

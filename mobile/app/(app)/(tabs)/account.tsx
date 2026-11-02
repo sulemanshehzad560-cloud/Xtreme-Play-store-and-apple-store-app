@@ -150,7 +150,7 @@ export default function Account() {
         <Item icon="phone" title="Mobile number" subtitle={user.phone ? `${user.phone} · verified` : "Needed to book a service"} onPress={() => router.push("/phone")} />
         <Item icon="pin" title="Saved addresses" subtitle={addresses.data?.length ? addresses.data.map((a) => a.area).join(", ") : "Add your home or office"} onPress={() => router.push("/addresses")} />
         <Item icon="calendar" title="My subscriptions" subtitle="Regular cleaning plans and your visit calendar" onPress={() => router.push("/subscriptions")} />
-        <Item icon="receipt" title="Bookings & invoices" subtitle="Past services and tax invoices" onPress={() => router.push("/bookings")} />
+        <Item icon="receipt" title="Bookings & invoices" subtitle="Past services and receipts" onPress={() => router.push("/bookings")} />
         <Item icon="bell" title="Notifications" subtitle="Booking updates and offers" onPress={() => router.push("/notifications")} />
         <Item icon="key" title="Sign-in methods" subtitle={user.signInMethods.map((m) => METHOD_LABEL[m] ?? m).join(", ") || "—"} last={!missing.length} />
         {missing.length ? (

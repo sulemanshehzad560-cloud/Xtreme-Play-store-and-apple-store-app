@@ -21,6 +21,8 @@ export interface PricingConfig {
   cardFeePercent: number;
   /** Flat service fee added to every payment, in AED (0 = none). */
   serviceFeeAed: number;
+  /** Service charge added to every payment, in percent of the amount due (0 = none). */
+  serviceFeePercent: number;
   /** Discount on repeat regular cleaning, in percent of the one-time price. */
   frequencyDiscountPercent: { weekly: number; biweekly: number };
   /** Refer a friend: the friend's first-booking discount and the inviter's reward, in AED (0 = off). */
@@ -29,12 +31,13 @@ export interface PricingConfig {
 
 const KEY = "pricing";
 
-export function defaultPricing(tamaraFeePercent: number): PricingConfig {
+export function defaultPricing(tamaraFeePercent: number, serviceFeePercent = 2): PricingConfig {
   return {
     rates: { regular: { apartment: structuredClone(REGULAR_RATES) } },
     tamaraFeePercent,
     cardFeePercent: 0,
     serviceFeeAed: 0,
+    serviceFeePercent,
     frequencyDiscountPercent: { weekly: 0, biweekly: 0 },
     referral: { friendAed: 20, rewardAed: 20 },
   };
@@ -79,6 +82,7 @@ export function validatePricing(input: PricingConfig): PricingConfig {
     tamaraFeePercent: pct(input.tamaraFeePercent, 20, "The Tamara fee (%)"),
     cardFeePercent: 0, // no card fees: the flat service fee is the only extra charge
     serviceFeeAed: pct(input.serviceFeeAed ?? 0, 1000, "The service fee (AED)"),
+    serviceFeePercent: pct(input.serviceFeePercent ?? 0, 20, "The service charge (%)"),
     frequencyDiscountPercent: { weekly: pct(freq.weekly ?? 0, 50, "The weekly discount (%)"), biweekly: pct(freq.biweekly ?? 0, 50, "The bi-weekly discount (%)") },
     referral: { friendAed: Math.round(pct(ref.friendAed ?? 0, 500, "The friend's discount (AED)")), rewardAed: Math.round(pct(ref.rewardAed ?? 0, 500, "The referral reward (AED)")) },
   };
@@ -96,7 +100,7 @@ export class PricingService {
   async load(): Promise<PricingConfig> {
     const [row] = await this.db.select().from(appSettings).where(eq(appSettings.key, KEY)).limit(1);
     try {
-      current = row ? validatePricing(row.value as unknown as PricingConfig) : this.defaults;
+      current = row ? validatePricing({ ...(row.value as unknown as PricingConfig), serviceFeePercent: (row.value as Partial<PricingConfig>).serviceFeePercent ?? this.defaults.serviceFeePercent }) : this.defaults;
     } catch {
       current = this.defaults; // a bad stored value never takes prices down
     }

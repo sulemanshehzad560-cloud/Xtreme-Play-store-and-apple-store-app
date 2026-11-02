@@ -25,7 +25,7 @@ interface Catalog {
   regularRates?: Record<string, { priceAed: number; minutes: number; cleaners: number }>;
   /** Fixed prices set in the dashboard: service → property type → size. */
   rates?: Record<string, Partial<Record<PropertyType, Record<string, { priceAed: number; minutes: number; cleaners: number }>>>>;
-  payments?: { tamaraFeePercent: number; tamaraInstalments: number; cardFeePercent?: number; serviceFeeAed?: number };
+  payments?: { tamaraFeePercent: number; tamaraInstalments: number; cardFeePercent?: number; serviceFeeAed?: number; serviceFeePercent?: number };
   frequencyDiscountPercent?: { weekly: number; biweekly: number };
 }
 interface Quote {
@@ -93,7 +93,8 @@ export default function BookService() {
   const fixed = q?.pricing === "fixed" && price != null;
   const rates = service ? (catalog.data?.rates ? catalog.data.rates[service.key]?.[type] : service.key === "regular" && type === "apartment" ? catalog.data?.regularRates : undefined) : undefined;
   const feePct = catalog.data?.payments?.tamaraFeePercent ?? 8;
-  const serviceFee = catalog.data?.payments?.serviceFeeAed ?? 0;
+  const servicePct = catalog.data?.payments?.serviceFeePercent ?? 0;
+  const serviceFee = price != null ? Math.round(((catalog.data?.payments?.serviceFeeAed ?? 0) + (price * servicePct) / 100) * 100) / 100 : 0;
   const tamaraFee = price != null ? Math.round(price * feePct) / 100 : 0;
   const payTotal = price != null ? Math.round((price + serviceFee + (pay === "tamara" ? tamaraFee : 0)) * 100) / 100 : null;
   const savePct = (f: Frequency) => (f === "one_time" ? 0 : (catalog.data?.frequencyDiscountPercent?.[f] ?? 0));
@@ -382,7 +383,7 @@ export default function BookService() {
                 <PriceRow label={`${frequency === "weekly" ? "Weekly" : "Bi-weekly"} saving (${q.discountPercent}%)`} value={`– ${aed(q.basePriceAed - price)}`} muted />
               ) : null}
               <PriceRow label="Cleaning materials" value="FREE" muted />
-              {serviceFee > 0 ? <PriceRow label="Service fee" value={aed(serviceFee)} muted /> : null}
+              {serviceFee > 0 ? <PriceRow label={servicePct ? `Service fee (${servicePct}%)` : "Service fee"} value={aed(serviceFee)} muted /> : null}
               {pay === "tamara" ? <PriceRow label={`Tamara fee (${feePct}%)`} value={aed(tamaraFee)} muted /> : null}
               <Divider />
               <PriceRow label={frequency === "one_time" ? "Total" : "Total per visit"} value={aed(payTotal)} bold />

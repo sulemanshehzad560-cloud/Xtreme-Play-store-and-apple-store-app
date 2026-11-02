@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Image, Share, Text as RNText, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { Button, Divider, ErrorText, InlineLoader, Row, Screen, Text } from "@/components/ui";
+import { api } from "@/lib/api";
 import { aed } from "@/lib/format";
 import { colors, fonts, radius, shadow, space } from "@/lib/theme";
 import { useApi } from "@/lib/useApi";
@@ -23,26 +25,44 @@ interface Invoice {
 const date = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 const money = (n: number) => `AED ${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-/** Tax invoice for a paid booking: the one place the VAT breakdown is shown. */
+/** Receipt for a paid booking. The VAT tax invoice itself is only sent by email. */
 export default function InvoiceScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const inv = useApi<Invoice>(`/bookings/${id}/invoice`);
   const i = inv.data;
+  const [mail, setMail] = useState<{ busy: boolean; note: string | null; ok: boolean }>({ busy: false, note: null, ok: true });
+
+  async function emailInvoice() {
+    setMail({ busy: true, note: null, ok: true });
+    try {
+      await api(`/bookings/${id}/invoice/email`, { method: "POST" });
+      setMail({ busy: false, note: i?.customer.email ? `Sent to ${i.customer.email}` : "Tax invoice sent to your email", ok: true });
+    } catch (e) {
+      setMail({ busy: false, note: (e as Error).message, ok: false });
+    }
+  }
 
   async function share() {
     if (!i) return;
     await Share.share({
       message:
-        `${i.seller.name}: Tax invoice ${i.invoiceNumber}\n` +
+        `${i.seller.name}: Receipt ${i.invoiceNumber}\n` +
         `Booking ${i.bookingReference} · ${date(i.issuedAt)}\n` +
         i.lines.map((l) => `${l.description}: ${money(l.amountAed)}`).join("\n") +
-        `\nSubtotal ${money(i.subtotalAed)}\nVAT ${Math.round(i.vatRate * 100)}% ${money(i.vatAed)}\nTotal ${money(i.totalAed)}`,
+        `\nTotal paid ${money(i.totalAed)}`,
     });
   }
 
   return (
-    <Screen edges={["left", "right"]} footer={i ? <View style={{ padding: space(4), paddingTop: 0 }}><Button title="Share invoice" variant="secondary" onPress={share} /></View> : undefined}>
-      {inv.loading ? <InlineLoader label="Preparing your invoice…" /> : null}
+    <Screen edges={["left", "right"]} footer={
+        i ? (
+          <View style={{ padding: space(4), paddingTop: 0, gap: space(2) }}>
+            <Button title={i.customer.email ? "Email me the tax invoice" : "Add your email to get the tax invoice"} onPress={emailInvoice} loading={mail.busy} disabled={!i.customer.email} />
+            <Button title="Share receipt" variant="secondary" onPress={share} />
+          </View>
+        ) : undefined
+      }>
+      {inv.loading ? <InlineLoader label="Preparing your receipt…" /> : null}
       <ErrorText error={inv.error} />
       {i ? (
         <View style={{ backgroundColor: colors.surface, borderRadius: radius.xl, overflow: "hidden", ...shadow.raised }}>
@@ -50,7 +70,7 @@ export default function InvoiceScreen() {
             <Row style={{ justifyContent: "space-between" }}>
               <Image source={require("../../../../assets/logo-mark.png")} style={{ width: 62, height: 48 }} resizeMode="contain" />
               <View style={{ alignItems: "flex-end" }}>
-                <RNText style={{ color: colors.goldBright, fontFamily: fonts.extrabold, fontSize: 20, letterSpacing: 1 }}>TAX INVOICE</RNText>
+                <RNText style={{ color: colors.goldBright, fontFamily: fonts.extrabold, fontSize: 20, letterSpacing: 1 }}>RECEIPT</RNText>
                 <RNText style={{ color: "#BDB4A3", fontFamily: fonts.medium, fontSize: 13 }}>{i.invoiceNumber}</RNText>
               </View>
             </Row>
@@ -60,7 +80,6 @@ export default function InvoiceScreen() {
                 {i.seller.address}
                 {"\n"}
                 {i.seller.phone} · {i.seller.email}
-                {i.seller.trn ? `\nTRN ${i.seller.trn}` : ""}
               </RNText>
             </View>
           </View>
@@ -98,10 +117,8 @@ export default function InvoiceScreen() {
             </View>
 
             <View style={{ gap: space(1.5) }}>
-              <Line label="Subtotal (excl. VAT)" value={money(i.subtotalAed)} />
-              <Line label={`VAT ${Math.round(i.vatRate * 100)}%`} value={money(i.vatAed)} />
               <Divider />
-              <Line label="Total (incl. VAT)" value={money(i.totalAed)} strong />
+              <Line label="Total paid" value={money(i.totalAed)} strong />
               {i.refundedAed > 0 ? <Line label="Refunded" value={`− ${money(i.refundedAed)}`} /> : null}
             </View>
 
@@ -113,8 +130,9 @@ export default function InvoiceScreen() {
                 </Text>
               </View>
             ) : null}
+            {mail.note ? <Text style={{ textAlign: "center", color: mail.ok ? colors.success : colors.danger, fontFamily: fonts.semibold }}>{mail.note}</Text> : null}
             <Text variant="small" style={{ textAlign: "center" }}>
-              Thank you for choosing Xtreme. {aed(i.totalAed)} paid with no gateway fees or hidden charges.
+              Thank you for choosing Xtreme. {aed(i.totalAed)} paid with no hidden charges. Your official tax invoice is sent to your email.
             </Text>
           </View>
         </View>

@@ -322,7 +322,7 @@ export async function demoApi(path: string, method: string, body: Json | undefin
       services: SERVICES,
       propertySizes: Object.fromEntries(Object.entries(PRICES).map(([t, sizes]) => [t, Object.keys(sizes).map((key) => ({ key, label: SIZE_LABELS[key] }))])),
       regularRates: REGULAR_RATES,
-      payments: { tamaraFeePercent: 8, tamaraInstalments: 4 },
+      payments: { tamaraFeePercent: 8, tamaraInstalments: 4, serviceFeeAed: 0, serviceFeePercent: 2 },
       frequencyDiscountPercent: { weekly: 10, biweekly: 5 },
       referral: { friendAed: 20, rewardAed: 20 },
     };
@@ -507,16 +507,19 @@ export async function demoApi(path: string, method: string, body: Json | undefin
     if (action === "payment-options") {
       const discountAed = demoDiscount(b);
       const total = b.priceAed! - discountAed;
+      const svc = Math.round(total * 2) / 100;
+      const tam = Math.round(total * 8) / 100;
       return {
         bookingId: b.id,
         promoCode: (b as any).promoCode ?? null,
-        amount: { priceAed: b.priceAed, discountAed, totalAed: total, vatAed: Math.round((total - total / 1.05) * 100) / 100, vatIncluded: true, currency: "AED" },
+        amount: { priceAed: b.priceAed, discountAed, totalAed: total, serviceFeeAed: svc, serviceFeePercent: 2, vatAed: Math.round((total - total / 1.05) * 100) / 100, vatIncluded: true, currency: "AED" },
         methods: [
-          { method: "card", available: true, label: "Credit / debit card, Apple Pay or Google Pay", feeAed: 0, totalAed: total },
-          { method: "tamara", available: true, label: "Pay in 4 with Tamara", feePercent: 8, feeAed: Math.round(total * 8) / 100, totalAed: Math.round(total * 108) / 100, instalments: 4 },
+          { method: "card", available: true, label: "Credit / debit card, Apple Pay or Google Pay", feePercent: 0, feeAed: svc, totalAed: Math.round((total + svc) * 100) / 100 },
+          { method: "tamara", available: true, label: "Pay in 4 with Tamara", feePercent: 8, feeAed: Math.round((svc + tam) * 100) / 100, totalAed: Math.round((total + svc + tam) * 100) / 100, instalments: 4 },
         ],
       };
     }
+    if (action === "invoice" && seg[3] === "email") return { sent: true };
     if (action === "invoice") {
       if (b.paymentStatus !== "paid" || b.priceAed == null) throw new DemoError(409, "not_paid", "The invoice is available once the booking is paid");
       const vat = Math.round((b.priceAed - b.priceAed / 1.05) * 100) / 100;

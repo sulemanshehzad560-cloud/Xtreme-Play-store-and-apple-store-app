@@ -14,7 +14,7 @@ import { colors, fonts, space } from "@/lib/theme";
 import { LineIcon, iconColor } from "@/components/LineIcon";
 
 interface Options {
-  amount: { priceAed: number; discountAed: number; totalAed: number; vatAed: number; serviceFeeAed?: number };
+  amount: { priceAed: number; discountAed: number; totalAed: number; serviceFeeAed?: number; serviceFeePercent?: number };
   promoCode: string | null;
   methods: { method: "card" | "tamara"; available: boolean; label: string; feeAed?: number; feePercent?: number; totalAed?: number; instalments?: number }[];
 }
@@ -187,14 +187,14 @@ export default function Pay() {
             ) : null}
             <SummaryLine label="Cleaning materials" value="FREE" />
             {tip ? <SummaryLine label="Tip for your team" value={aed(tip)} /> : null}
-            {serviceFee > 0 ? <SummaryLine label="Service fee" value={aed(serviceFee)} /> : null}
+            {serviceFee > 0 ? <SummaryLine label={options.amount.serviceFeePercent ? `Service fee (${options.amount.serviceFeePercent}%)` : "Service fee"} value={aed(serviceFee)} /> : null}
             {methodFee > 0 ? <SummaryLine label={`${method === "tamara" ? "Tamara" : "Card"} fee (${chosen?.feePercent ?? 0}%)`} value={aed(methodFee)} /> : null}
             <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.12)" }} />
             <Row style={{ justifyContent: "space-between", alignItems: "flex-end" }}>
               <Text style={{ color: "#BDB4A3", fontFamily: fonts.semibold }}>Total to pay</Text>
               <Text style={{ color: colors.onInk, fontFamily: fonts.extrabold, fontSize: 28 }}>{aed(total ?? options.amount.totalAed)}</Text>
             </Row>
-            <Text style={{ color: "#BDB4A3", fontSize: 12.5 }}>{method === "tamara" ? "VAT included · Tamara fee added for paying in instalments" : "VAT included · no hidden charges"}</Text>
+            <Text style={{ color: "#BDB4A3", fontSize: 12.5 }}>{method === "tamara" ? "Tamara fee added for paying in instalments · no hidden charges" : "No hidden charges · your tax invoice is emailed after payment"}</Text>
           </Card>
 
           {options.amount.discountAed > 0 ? (

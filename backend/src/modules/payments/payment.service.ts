@@ -22,6 +22,8 @@ export interface PaymentConfig {
   cardFeePercent: number;
   /** Flat service fee added to every payment, in AED. */
   serviceFeeAed: number;
+  /** Service charge added to every payment, in percent of the amount due. */
+  serviceFeePercent: number;
 }
 
 export type PayMethod = "card" | "tamara";
@@ -60,7 +62,7 @@ export class PaymentService {
     const booking = await this.payable(bookingId, customer);
     const amountMinor = dueMinor(booking);
     const [user] = await this.db.select().from(users).where(eq(users.id, customer.id)).limit(1);
-    const serviceFee = this.serviceFeeMinor();
+    const serviceFee = this.serviceFeeMinor(amountMinor);
     const cardFee = this.methodFeeMinor("card", amountMinor);
     const tamaraFee = this.methodFeeMinor("tamara", amountMinor);
     const tamara =
@@ -74,6 +76,7 @@ export class PaymentService {
         discountAed: booking.discountAed,
         totalAed: amountMinor / 100,
         serviceFeeAed: serviceFee / 100,
+        serviceFeePercent: this.config.serviceFeePercent,
         vatAed: this.vatMinor(amountMinor) / 100,
         vatIncluded: true,
         currency: CURRENCY,
@@ -111,7 +114,7 @@ export class PaymentService {
 
     await this.retirePendingAttempts(booking.id);
 
-    const serviceFeeMinor = this.serviceFeeMinor();
+    const serviceFeeMinor = this.serviceFeeMinor(dueMinor(booking));
     const feeMinor = serviceFeeMinor + this.methodFeeMinor(method, dueMinor(booking));
     const tipMinor = Math.max(0, Math.round((opts.tipAed ?? 0) * 100));
     const amountMinor = dueMinor(booking) + feeMinor + tipMinor;
@@ -303,7 +306,7 @@ export class PaymentService {
         ...(methodFeeMinor > 0
           ? [{ description: paid?.provider === "tamara" ? "Tamara instalment fee" : "Card processing fee", serviceDate: null, amountAed: methodFeeMinor / 100 }]
           : []),
-        ...(tipMinor > 0 ? [{ description: "Tip for your team (passed on in full, no VAT)", serviceDate: null, amountAed: tipMinor / 100 }] : []),
+        ...(tipMinor > 0 ? [{ description: "Tip for your team (passed on in full)", serviceDate: null, amountAed: tipMinor / 100 }] : []),
       ],
       currency: CURRENCY,
       vatRate: this.config.vatRate,
@@ -647,8 +650,9 @@ export class PaymentService {
     return Math.round((amountMinor * pct) / 100);
   }
 
-  private serviceFeeMinor() {
-    return Math.round(this.config.serviceFeeAed * 100);
+  /** Flat service fee plus the percentage service charge on the amount due. */
+  private serviceFeeMinor(amountMinor: number) {
+    return Math.round(this.config.serviceFeeAed * 100) + Math.round((amountMinor * this.config.serviceFeePercent) / 100);
   }
 
   /** VAT contained in a VAT-inclusive amount. */

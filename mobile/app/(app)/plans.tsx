@@ -75,7 +75,7 @@ export default function Plans() {
       })}
 
       <Text variant="small" style={{ textAlign: "center" }}>
-        Prices include VAT and all cleaning materials. Pay securely by card or Tamara.
+        Prices include all cleaning materials. Pay securely by card or Tamara.
       </Text>
     </Screen>
   );

@@ -131,11 +131,14 @@ export function createContainer(env: Env, log: FastifyBaseLogger, overrides: Con
       get serviceFeeAed() {
         return pricing().serviceFeeAed;
       },
+      get serviceFeePercent() {
+        return pricing().serviceFeePercent;
+      },
     },
     log,
   );
   const admin = new AdminService(db, tokens, env);
-  const prices = new PricingService(db, defaultPricing(env.TAMARA_FEE_PERCENT));
+  const prices = new PricingService(db, defaultPricing(env.TAMARA_FEE_PERCENT, env.SERVICE_FEE_PERCENT));
   const mailer = overrides.mailer ?? createMailer(env, log);
   const invoices = new InvoiceMailer(db, payments, notifications, mailer, { publicUrl: env.PUBLIC_URL }, log);
   bookings.onStatusChange(async (booking) => {

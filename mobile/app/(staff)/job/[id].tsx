@@ -189,7 +189,7 @@ export default function Job() {
               ? "Inspect the job, agree the price with the customer and send it. They get it at once in the app and can pay securely online."
               : `Current quote: ${aed(job.priceAed)}. Change it only if the customer agreed to a new price.`}
           </Text>
-          <Input label="Price (AED, incl. VAT)" value={price} onChangeText={setPrice} keyboardType="number-pad" placeholder="e.g. 250" />
+          <Input label="Price (AED)" value={price} onChangeText={setPrice} keyboardType="number-pad" placeholder="e.g. 250" />
           <Input label="What it covers (optional)" value={note} onChangeText={setNote} placeholder="e.g. 3-seater sofa and 2 chairs" maxLength={200} />
           <ErrorText error={quoteError} />
           <Button title={needsQuote ? "Send quote to customer" : "Send new quote"} onPress={sendQuote} loading={quoting} />
