@@ -12,6 +12,7 @@ import { startSharingLocation, stopSharingLocation } from "@/lib/staff-location"
 import { colors, fonts, radius, space } from "@/lib/theme";
 import type { Booking, StaffStatus } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
+import { dateLocale, t, useLanguage } from "@/lib/i18n";
 
 interface Me {
   displayName: string;
@@ -21,6 +22,7 @@ interface Me {
 
 export default function StaffHome() {
   const { signOut } = useAuth();
+  const { lang, setLang } = useLanguage();
   const me = useApi<Me>("/staff/me");
   const jobs = useApi<Booking[]>("/staff/me/jobs?scope=active");
   const [busy, setBusy] = useState(false);
@@ -32,7 +34,7 @@ export default function StaffHome() {
       if (status === "available") {
         const ok = await startSharingLocation();
         if (!ok) {
-          Alert.alert("Location needed", "Allow location 'Always' so customers can see you arriving. You can change this in Settings.");
+          Alert.alert(t("Location needed"), t("Allow location 'Always' so customers can see you arriving. You can change this in Settings."));
           return;
         }
       }
@@ -40,7 +42,7 @@ export default function StaffHome() {
       if (status === "off_duty") await stopSharingLocation();
       me.setData(next);
     } catch (e) {
-      Alert.alert("Could not update", e instanceof Error ? e.message : "");
+      Alert.alert(t("Could not update"), e instanceof Error ? e.message : "");
     } finally {
       setBusy(false);
     }
@@ -52,7 +54,7 @@ export default function StaffHome() {
       await api("/staff/me/status", { method: "PUT", body: { status: "off_duty" } });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "";
-      if (/finish job/i.test(msg)) return void Alert.alert("Job in progress", `${msg}, then sign out.`);
+      if (/finish job/i.test(msg)) return void Alert.alert(t("Job in progress"), t("{0}, then sign out.", { 0: msg }));
     }
     await stopSharingLocation().catch(() => undefined);
     await signOut();
@@ -69,10 +71,10 @@ export default function StaffHome() {
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <View style={{ backgroundColor: colors.ink, borderBottomLeftRadius: radius.xl, borderBottomRightRadius: radius.xl }}>
         <SafeAreaView edges={["top"]} style={{ padding: space(4), gap: space(4) }}>
-          <BrandMark size={26} sub="Team app" />
+          <BrandMark size={26} sub={t("Team app")} />
           <Row style={{ justifyContent: "space-between" }}>
             <View>
-              <RNText style={{ color: "#A79E8D", fontFamily: fonts.medium, fontSize: 13 }}>{me.data?.teamName ? `${me.data.teamName} · ` : ""}Good {greeting()}</RNText>
+              <RNText style={{ color: "#A79E8D", fontFamily: fonts.medium, fontSize: 13 }}>{me.data?.teamName ? `${me.data.teamName} · ` : ""}{greeting()}</RNText>
               <RNText style={{ color: "#fff", fontFamily: fonts.extrabold, fontSize: 24 }}>{me.data?.displayName ?? "…"}</RNText>
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: onDuty ? "#173A27" : "#2A251D", borderRadius: radius.pill, paddingHorizontal: space(3), paddingVertical: space(1.5) }}>
@@ -84,64 +86,65 @@ export default function StaffHome() {
             <View style={{ gap: space(2) }}>
               {today.length ? (
                 <RNText style={{ color: colors.goldBright, fontFamily: fonts.semibold, fontSize: 13 }}>
-                  You have {today.length === 1 ? "a job" : `${today.length} jobs`} today. Go on duty before you set off so your customer can follow you on the map.
+                  {t("You have")}{" "}{today.length === 1 ? t("a job") : t("{0} jobs", { 0: today.length })}{" "}{t("today. Go on duty before you set off so your customer can follow you on the map.")}
                 </RNText>
               ) : null}
-              <Button title="Go on duty" variant="gold" onPress={() => setDuty("available")} loading={busy} />
+              <Button title={t("Go on duty")} variant="gold" onPress={() => setDuty("available")} loading={busy} />
             </View>
           ) : (
             <Row style={{ gap: space(2) }}>
               {status === "on_break" ? (
-                <Button title="Back to work" variant="gold" onPress={() => setDuty("available")} loading={busy} style={{ flex: 1 }} />
+                <Button title={t("Back to work")} variant="gold" onPress={() => setDuty("available")} loading={busy} style={{ flex: 1 }} />
               ) : (
-                <Button title="Take a break" variant="gold" onPress={() => setDuty("on_break")} loading={busy} style={{ flex: 1 }} />
+                <Button title={t("Take a break")} variant="gold" onPress={() => setDuty("on_break")} loading={busy} style={{ flex: 1 }} />
               )}
-              <Button title="Go off duty" variant="secondary" onPress={() => setDuty("off_duty")} style={{ flex: 1 }} />
+              <Button title={t("Go off duty")} variant="secondary" onPress={() => setDuty("off_duty")} style={{ flex: 1 }} />
             </Row>
           )}
           <Row style={{ gap: space(2) }}>
-            <Stat value={String(today.length)} label="Today" />
-            <Stat value={String(live.length)} label="Live now" />
-            <Stat value={next ? when(next.scheduledAt).split(", ").pop() ?? "—" : "—"} label="Next start" />
+            <Stat value={String(today.length)} label={t("Today")} />
+            <Stat value={String(live.length)} label={t("Live now")} />
+            <Stat value={next ? when(next.scheduledAt).split(", ").pop() ?? "—" : "—"} label={t("Next start")} />
           </Row>
-          <RNText style={{ color: "#A79E8D", fontFamily: fonts.medium, fontSize: 12 }}>Your location is shared only while you're on duty, and only with your customer and the office.</RNText>
+          <RNText style={{ color: "#A79E8D", fontFamily: fonts.medium, fontSize: 12 }}>{t("Your location is shared only while you're on duty, and only with your customer and the office.")}</RNText>
         </SafeAreaView>
       </View>
 
       <Screen edges={["left", "right"]}>
         <Row style={{ justifyContent: "space-between" }}>
-          <Text variant="heading">Your jobs</Text>
-          <Text variant="small">{all.length} assigned</Text>
+          <Text variant="heading">{t("Your jobs")}</Text>
+          <Text variant="small">{all.length}{" "}{t("assigned")}</Text>
         </Row>
-        {jobs.loading ? <InlineLoader label="Fetching your jobs…" /> : null}
+        {jobs.loading ? <InlineLoader label={t("Fetching your jobs…")} /> : null}
         {!jobs.loading && jobs.data?.length === 0 ? (
           <Card style={{ alignItems: "center", paddingVertical: space(6) }}>
             <RNText style={{ fontSize: 36 }}>☕</RNText>
-            <Text variant="muted">No jobs assigned yet.</Text>
+            <Text variant="muted">{t("No jobs assigned yet.")}</Text>
           </Card>
         ) : null}
         {jobs.data?.map((j) => (
           <Card key={j.id} onPress={() => router.push(`/job/${j.id}`)} tone={live.includes(j) ? "gold" : "plain"}>
             <Row style={{ alignItems: "flex-start" }}>
               <View style={{ width: 58, alignItems: "center", paddingVertical: space(1), borderRadius: radius.md, backgroundColor: colors.ink }}>
-                <RNText style={{ color: colors.goldBright, fontFamily: fonts.extrabold, fontSize: 15 }}>{new Date(j.scheduledAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Dubai" })}</RNText>
-                <RNText style={{ color: "#A79E8D", fontFamily: fonts.medium, fontSize: 11 }}>{isToday(j.scheduledAt) ? "Today" : new Date(j.scheduledAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "Asia/Dubai" })}</RNText>
+                <RNText style={{ color: colors.goldBright, fontFamily: fonts.extrabold, fontSize: 15 }}>{new Date(j.scheduledAt).toLocaleTimeString(dateLocale(), { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Dubai" })}</RNText>
+                <RNText style={{ color: "#A79E8D", fontFamily: fonts.medium, fontSize: 11 }}>{isToday(j.scheduledAt) ? t("Today") : new Date(j.scheduledAt).toLocaleDateString(dateLocale(), { day: "numeric", month: "short", timeZone: "Asia/Dubai" })}</RNText>
               </View>
               <View style={{ flex: 1, gap: 2 }}>
                 <Row style={{ gap: space(2) }}>
                   <ServiceIcon name={j.service.key} size={22} tile={false} />
-                  <Text style={{ fontFamily: fonts.bold, flex: 1 }}>{j.service.name}</Text>
+                  <Text style={{ fontFamily: fonts.bold, flex: 1 }}>{t(j.service.name)}</Text>
                 </Row>
                 <Text variant="small">
-                  {j.reference} · {[j.address.building, j.address.area].filter(Boolean).join(", ")}
+                  {j.reference} · {[j.address.building, j.address.area && t(j.address.area)].filter(Boolean).join(", ")}
                 </Text>
-                {j.priceAed == null ? <Text style={{ fontSize: 12, color: colors.gold, fontFamily: fonts.semibold }}>Quote on site</Text> : null}
+                {j.priceAed == null ? <Text style={{ fontSize: 12, color: colors.gold, fontFamily: fonts.semibold }}>{t("Quote on site")}</Text> : null}
               </View>
               <StatusPill status={j.status} />
             </Row>
           </Card>
         ))}
-        <Button title="Sign out (goes off duty)" variant="ghost" onPress={() => void signOutStaff()} />
+        <Button title={t("Sign out (goes off duty)")} variant="ghost" onPress={() => void signOutStaff()} />
+        <Button title={lang === "ar" ? "English" : "العربية"} variant="ghost" size="sm" onPress={() => setLang(lang === "ar" ? "en" : "ar")} />
       </Screen>
     </View>
   );
@@ -149,7 +152,7 @@ export default function StaffHome() {
 
 function greeting() {
   const h = new Date().getHours();
-  return h < 12 ? "morning" : h < 17 ? "afternoon" : "evening";
+  return h < 12 ? t("Good morning") : h < 17 ? t("Good afternoon") : t("Good evening");
 }
 
 function Stat({ value, label }: { value: string; label: string }) {

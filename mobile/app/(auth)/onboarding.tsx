@@ -6,6 +6,7 @@ import { BookScene, PayScene, TrackScene } from "@/components/art/Scenes";
 import { Button } from "@/components/ui";
 import { markOnboarded } from "@/lib/onboarding";
 import { colors, fonts, space } from "@/lib/theme";
+import { t } from "@/lib/i18n";
 
 const W = Dimensions.get("window").width;
 
@@ -33,10 +34,10 @@ export default function Onboarding() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: space(5), paddingTop: space(2) }}>
         <RNText style={{ color: colors.gold, fontFamily: fonts.extrabold, fontSize: 17 }}>
-          Xtreme<RNText style={{ color: colors.text }}>-Cleaning Partner</RNText>
+          {t("Xtreme")}<RNText style={{ color: colors.text }}>{t("-Cleaning Partner")}</RNText>
         </RNText>
         <Pressable onPress={finish} accessibilityRole="button" hitSlop={12}>
-          <RNText style={{ color: colors.muted, fontFamily: fonts.semibold, fontSize: 15 }}>Skip</RNText>
+          <RNText style={{ color: colors.muted, fontFamily: fonts.semibold, fontSize: 15 }}>{t("Skip")}</RNText>
         </Pressable>
       </View>
 
@@ -51,8 +52,8 @@ export default function Onboarding() {
         {SLIDES.map(({ Art, title, body }) => (
           <View key={title} style={{ width: W, alignItems: "center", justifyContent: "center", paddingHorizontal: space(8), gap: space(5) }}>
             <Art size={Math.min(300, W - space(12))} />
-            <RNText style={{ fontFamily: fonts.extrabold, fontSize: 28, color: colors.text, textAlign: "center", letterSpacing: -0.4 }}>{title}</RNText>
-            <RNText style={{ fontFamily: fonts.medium, fontSize: 16, lineHeight: 24, color: colors.muted, textAlign: "center" }}>{body}</RNText>
+            <RNText style={{ fontFamily: fonts.extrabold, fontSize: 28, color: colors.text, textAlign: "center", letterSpacing: -0.4 }}>{t(title)}</RNText>
+            <RNText style={{ fontFamily: fonts.medium, fontSize: 16, lineHeight: 24, color: colors.muted, textAlign: "center" }}>{t(body)}</RNText>
           </View>
         ))}
       </ScrollView>
@@ -63,7 +64,7 @@ export default function Onboarding() {
             <View key={i} style={{ width: i === index ? 24 : 8, height: 8, borderRadius: 4, backgroundColor: i === index ? colors.ink : colors.border }} />
           ))}
         </View>
-        <Button title={index === SLIDES.length - 1 ? "Get started" : "Next"} onPress={next} />
+        <Button title={index === SLIDES.length - 1 ? t("Get started") : t("Next")} onPress={next} />
       </View>
     </SafeAreaView>
   );

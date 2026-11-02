@@ -7,6 +7,7 @@ import { Text } from "@/components/ui";
 import { api } from "@/lib/api";
 import { colors, fonts, radius, space } from "@/lib/theme";
 import { useApi } from "@/lib/useApi";
+import { dateLocale, t } from "@/lib/i18n";
 
 interface Notification {
   id: string;
@@ -19,10 +20,10 @@ interface Notification {
 
 const ago = (iso: string) => {
   const m = Math.round((Date.now() - new Date(iso).getTime()) / 60_000);
-  if (m < 1) return "just now";
-  if (m < 60) return `${m} min ago`;
+  if (m < 1) return t("just now");
+  if (m < 60) return t("{0} min ago", { 0: m });
   const h = Math.round(m / 60);
-  return h < 24 ? `${h} h ago` : new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  return h < 24 ? t("{0} h ago", { 0: h }) : new Date(iso).toLocaleDateString(dateLocale(), { day: "numeric", month: "short" });
 };
 
 const iconFor = (title: string) =>
@@ -61,9 +62,9 @@ export default function Notifications() {
       {!loading && !data?.length ? (
         <View style={{ alignItems: "center", paddingTop: space(16), gap: space(3) }}>
           <BellScene size={130} />
-          <Text variant="heading">You're all caught up</Text>
+          <Text variant="heading">{t("You're all caught up")}</Text>
           <Text variant="muted" style={{ textAlign: "center" }}>
-            Booking updates, payments and offers will appear here.
+            {t("Booking updates, payments and offers will appear here.")}
           </Text>
         </View>
       ) : null}
@@ -85,9 +86,9 @@ export default function Notifications() {
               <RNText style={{ fontSize: 18 }}>{iconFor(n.title)}</RNText>
             </View>
             <View style={{ flex: 1, gap: 2 }}>
-              <Text style={{ fontFamily: fonts.bold, fontSize: 15 }}>{n.title}</Text>
+              <Text style={{ fontFamily: fonts.bold, fontSize: 15 }}>{t(n.title)}</Text>
               <Text variant="small" style={{ color: colors.text }}>
-                {n.body}
+                {t(n.body)}
               </Text>
               <Text variant="small">{ago(n.createdAt)}</Text>
             </View>

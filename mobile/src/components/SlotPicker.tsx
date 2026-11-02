@@ -1,6 +1,7 @@
 import { ScrollView, View } from "react-native";
 import { Chip, Row, Text } from "./ui";
 import { colors, fonts, space } from "../lib/theme";
+import { dateLocale, t } from "@/lib/i18n";
 
 const SLOTS: [string, number[]][] = [
   ["Morning", [8, 9, 10, 11]],
@@ -36,7 +37,7 @@ export function firstOpenDay(days: Date[]) {
   return days.find((d) => openHours(d).length > 0) ?? days[0]!;
 }
 
-const dayName = (d: Date, i: number) => (i === 0 ? "Today" : i === 1 ? "Tmrw" : d.toLocaleDateString("en-GB", { weekday: "short" }));
+const dayName = (d: Date, i: number) => (i === 0 ? t("Today") : i === 1 ? t("Tmrw") : d.toLocaleDateString(dateLocale(), { weekday: "short" }));
 
 /** Day strip plus start-time chips (Abu Dhabi time). */
 export function SlotPicker({
@@ -45,7 +46,7 @@ export function SlotPicker({
   onDay,
   hour,
   onHour,
-  title = "Pick a day",
+  title = t("Pick a day"),
   note,
 }: {
   days: Date[];
@@ -67,7 +68,7 @@ export function SlotPicker({
             <View key={d.toDateString()} style={{ width: 70, opacity: full ? 0.4 : 1 }}>
               <Chip
                 label={String(d.getDate())}
-                sub={full ? "Full" : dayName(d, i)}
+                sub={full ? t("Full") : dayName(d, i)}
                 selected={d.toDateString() === day.toDateString()}
                 onPress={() => {
                   if (full) return;
@@ -80,15 +81,15 @@ export function SlotPicker({
         })}
       </ScrollView>
       <Text variant="small">
-        {day.toDateString() === new Date().toDateString() ? "Today · " : ""}
-        {day.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
+        {day.toDateString() === new Date().toDateString() ? t("Today · ") : ""}
+        {day.toLocaleDateString(dateLocale(), { weekday: "long", day: "numeric", month: "long" })}
       </Text>
       {SLOTS.map(([label, hours]) => {
         const free = hours.filter((h) => open.has(h));
         if (!free.length) return null;
         return (
           <View key={label} style={{ gap: space(2) }}>
-            <Text variant="label">{label}</Text>
+            <Text variant="label">{t(label)}</Text>
             <Row style={{ flexWrap: "wrap", gap: space(2) }}>
               {free.map((h) => (
                 <View key={h} style={{ width: "31%" }}>

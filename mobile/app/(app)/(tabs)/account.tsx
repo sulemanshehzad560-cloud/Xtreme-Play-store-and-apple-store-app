@@ -19,6 +19,7 @@ import { colors, fonts, radius, shadow, space } from "@/lib/theme";
 import type { Booking, Company } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { useThemeMode, type ThemeMode } from "@/lib/themeMode";
+import { t, useLanguage, type Lang } from "@/lib/i18n";
 
 const METHOD_LABEL: Record<string, string> = { phone: "Mobile", google: "Google", facebook: "Facebook", apple: "Apple" };
 
@@ -43,7 +44,7 @@ export default function Account() {
       await refreshUser();
       setEditing(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not save");
+      setError(e instanceof Error ? e.message : t("Could not save"));
     } finally {
       setSaving(false);
     }
@@ -71,15 +72,15 @@ export default function Account() {
       await api(`/me/identities/${provider}`, { body: { token, nonce } });
       await refreshUser();
     } catch (e) {
-      if (e instanceof Error && !/cancel/i.test(e.message)) Alert.alert("Could not connect", e.message);
+      if (e instanceof Error && !/cancel/i.test(e.message)) Alert.alert(t("Could not connect"), e.message);
     }
   }
 
   function confirmDelete() {
-    Alert.alert("Delete your account?", "Your profile, addresses and sign-in methods are erased and open bookings are cancelled (paid ones refunded). This can't be undone.", [
-      { text: "Keep my account", style: "cancel" },
+    Alert.alert(t("Delete your account?"), t("Your profile, addresses and sign-in methods are erased and open bookings are cancelled (paid ones refunded). This can't be undone."), [
+      { text: t("Keep my account"), style: "cancel" },
       {
-        text: "Delete",
+        text: t("Delete"),
         style: "destructive",
         onPress: async () => {
           await api("/me", { method: "DELETE" });
@@ -104,7 +105,7 @@ export default function Account() {
           <BrandMark size={24} />
           <Pressable onPress={() => setEditing(!editing)} accessibilityRole="button" style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "#2A251D", borderRadius: radius.pill, paddingHorizontal: space(3), paddingVertical: space(1.5) }}>
             <LineIcon name="edit" size={15} color={colors.goldBright} />
-            <RNText style={{ color: colors.goldBright, fontFamily: fonts.bold, fontSize: 13 }}>{editing ? "Close" : "Edit"}</RNText>
+            <RNText style={{ color: colors.goldBright, fontFamily: fonts.bold, fontSize: 13 }}>{editing ? t("Close") : t("Edit")}</RNText>
           </Pressable>
         </Row>
         <Row>
@@ -113,18 +114,18 @@ export default function Account() {
           </View>
           <View style={{ flex: 1, gap: 2 }}>
             <RNText style={{ color: "#fff", fontFamily: fonts.extrabold, fontSize: 21 }} numberOfLines={1}>
-              {user.fullName ?? "Add your name"}
+              {user.fullName ?? t("Add your name")}
             </RNText>
-            <RNText style={{ color: "#BDB4A3", fontFamily: fonts.medium, fontSize: 13 }}>{user.phone ?? "No mobile number yet"}</RNText>
+            <RNText style={{ color: "#BDB4A3", fontFamily: fonts.medium, fontSize: 13 }}>{user.phone ?? t("No mobile number yet")}</RNText>
             {user.email ? <RNText style={{ color: "#BDB4A3", fontFamily: fonts.medium, fontSize: 13 }} numberOfLines={1}>{user.email}</RNText> : null}
-            {user.dateOfBirth ? <RNText style={{ color: "#BDB4A3", fontFamily: fonts.medium, fontSize: 13 }}>Born {formatDob(user.dateOfBirth)}</RNText> : null}
+            {user.dateOfBirth ? <RNText style={{ color: "#BDB4A3", fontFamily: fonts.medium, fontSize: 13 }}>{t("Born")}{" "}{formatDob(user.dateOfBirth)}</RNText> : null}
           </View>
         </Row>
         <View style={{ flexDirection: "row", backgroundColor: "#211D17", borderRadius: radius.lg, borderWidth: 1, borderColor: "#3A3328" }}>
           {[
-            [String(total), "Bookings"],
-            [String(completed), "Completed"],
-            [String(addresses.data?.length ?? 0), "Addresses"],
+            [String(total), t("Bookings")],
+            [String(completed), t("Completed")],
+            [String(addresses.data?.length ?? 0), t("Addresses")],
           ].map(([n, l], i) => (
             <View key={l} style={{ flex: 1, alignItems: "center", paddingVertical: space(3), borderLeftWidth: i ? 1 : 0, borderLeftColor: "#3A3328" }}>
               <RNText style={{ color: colors.goldBright, fontFamily: fonts.extrabold, fontSize: 20 }}>{n}</RNText>
@@ -138,25 +139,25 @@ export default function Account() {
 
       {editing ? (
         <Card>
-          <Input label="Full name" value={name} onChangeText={setName} textContentType="name" />
-          <Input label="Email (for invoices and Tamara)" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+          <Input label={t("Full name")} value={name} onChangeText={setName} textContentType="name" />
+          <Input label={t("Email (for invoices and Tamara)")} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
           <BirthdayPicker value={dob} onChange={setDob} />
           <ErrorText error={error} />
-          <Button title="Save changes" onPress={save} loading={saving} />
+          <Button title={t("Save changes")} onPress={save} loading={saving} />
         </Card>
       ) : null}
 
-      <Section title="Account">
-        <Item icon="phone" title="Mobile number" subtitle={user.phone ? `${user.phone} · verified` : "Needed to book a service"} onPress={() => router.push("/phone")} />
-        <Item icon="pin" title="Saved addresses" subtitle={addresses.data?.length ? addresses.data.map((a) => a.area).join(", ") : "Add your home or office"} onPress={() => router.push("/addresses")} />
-        <Item icon="calendar" title="My subscriptions" subtitle="Regular cleaning plans and your visit calendar" onPress={() => router.push("/subscriptions")} />
-        <Item icon="receipt" title="Bookings & invoices" subtitle="Past services and receipts" onPress={() => router.push("/bookings")} />
-        <Item icon="bell" title="Notifications" subtitle="Booking updates and offers" onPress={() => router.push("/notifications")} />
-        <Item icon="key" title="Sign-in methods" subtitle={user.signInMethods.map((m) => METHOD_LABEL[m] ?? m).join(", ") || "—"} last={!missing.length} />
+      <Section title={t("Account")}>
+        <Item icon="phone" title={t("Mobile number")} subtitle={user.phone ? t("{0} · verified", { 0: user.phone }) : t("Needed to book a service")} onPress={() => router.push("/phone")} />
+        <Item icon="pin" title={t("Saved addresses")} subtitle={addresses.data?.length ? addresses.data.map((a) => t(a.area)).join(", ") : t("Add your home or office")} onPress={() => router.push("/addresses")} />
+        <Item icon="calendar" title={t("My subscriptions")} subtitle={t("Regular cleaning plans and your visit calendar")} onPress={() => router.push("/subscriptions")} />
+        <Item icon="receipt" title={t("Bookings & invoices")} subtitle={t("Past services and receipts")} onPress={() => router.push("/bookings")} />
+        <Item icon="bell" title={t("Notifications")} subtitle={t("Booking updates and offers")} onPress={() => router.push("/notifications")} />
+        <Item icon="key" title={t("Sign-in methods")} subtitle={user.signInMethods.map((m) => t(METHOD_LABEL[m] ?? m)).join(", ") || "—"} last={!missing.length} />
         {missing.length ? (
           <Row style={{ flexWrap: "wrap", gap: space(2), paddingHorizontal: space(4), paddingBottom: space(3) }}>
             {missing.map((p) => (
-              <Button key={p} title={`Connect ${METHOD_LABEL[p]}`} size="sm" variant="secondary" onPress={() => link(p)} />
+              <Button key={p} title={t("Connect {0}", { 0: t(METHOD_LABEL[p]) })} size="sm" variant="secondary" onPress={() => link(p)} />
             ))}
           </Row>
         ) : null}
@@ -164,35 +165,37 @@ export default function Account() {
 
       <PlanPromo />
 
+      <LanguageSection />
+
       <Appearance />
 
-      <Section title="Rewards">
-        <Item icon="tag" title="Invite friends" subtitle="Give your friends a discount, get credit for every booking" onPress={() => router.push("/invite")} last />
+      <Section title={t("Rewards")}>
+        <Item icon="tag" title={t("Invite friends")} subtitle={t("Give your friends a discount, get credit for every booking")} onPress={() => router.push("/invite")} last />
       </Section>
 
-      <Section title="Help & support">
-        <Item icon="chat" title="Chat with us" subtitle="Instant answers, or reply from our team" onPress={() => router.push("/chat")} />
-        <Item icon="chat" title="WhatsApp" subtitle={company.data?.phoneDisplay} onPress={() => company.data && open(company.data.whatsapp)} />
-        <Item icon="call" title="Call us" subtitle="+971 2 675 6844" onPress={() => company.data && open(`tel:${company.data.phone}`)} />
-        <Item icon="mail" title="Email" subtitle={company.data?.email} onPress={() => company.data && open(`mailto:${company.data.email}`)} last />
+      <Section title={t("Help & support")}>
+        <Item icon="chat" title={t("Chat with us")} subtitle={t("Instant answers, or reply from our team")} onPress={() => router.push("/chat")} />
+        <Item icon="chat" title={t("WhatsApp")} subtitle={company.data?.phoneDisplay} onPress={() => company.data && open(company.data.whatsapp)} />
+        <Item icon="call" title={t("Call us")} subtitle="+971 2 675 6844" onPress={() => company.data && open(`tel:${company.data.phone}`)} />
+        <Item icon="mail" title={t("Email")} subtitle={company.data?.email} onPress={() => company.data && open(`mailto:${company.data.email}`)} last />
       </Section>
 
-      <Section title="About">
-        <Item icon="globe" title="About Xtreme" subtitle="www.xtreme-fmgroup.com" onPress={() => company.data && open(company.data.website)} />
-        <Item icon="shield" title="Privacy policy" onPress={() => open(`${API_URL}/privacy`)} />
-        <Item icon="trash" title="Delete account" subtitle="Erase your profile and data" danger onPress={confirmDelete} last />
+      <Section title={t("About")}>
+        <Item icon="globe" title={t("About Xtreme")} subtitle={t("www.xtreme-fmgroup.com")} onPress={() => company.data && open(company.data.website)} />
+        <Item icon="shield" title={t("Privacy policy")} onPress={() => open(`${API_URL}/privacy`)} />
+        <Item icon="trash" title={t("Delete account")} subtitle={t("Erase your profile and data")} danger onPress={confirmDelete} last />
       </Section>
 
       <Pressable onPress={signOut} accessibilityRole="button" style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: space(2), backgroundColor: pressed ? colors.surfaceAlt : colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, paddingVertical: space(4) })}>
         <LineIcon name="logout" size={20} color={colors.text} />
-        <Text style={{ fontFamily: fonts.bold }}>Sign out</Text>
+        <Text style={{ fontFamily: fonts.bold }}>{t("Sign out")}</Text>
       </Pressable>
 
       <View style={{ alignItems: "center", gap: space(1), marginTop: space(2) }}>
         <Image source={require("../../../assets/logo-mark.png")} style={{ width: 52, height: 40, opacity: 0.9 }} resizeMode="contain" />
-        <Text style={{ fontFamily: fonts.bold, fontSize: 13 }}>Xtreme Facilities Management</Text>
+        <Text style={{ fontFamily: fonts.bold, fontSize: 13 }}>{t("Xtreme Facilities Management")}</Text>
         <Text variant="small" style={{ textAlign: "center" }}>
-          Mazyad Offices T-1, Abu Dhabi · Version 1.0.0{DEMO ? " · demo" : ""}
+          {t("Mazyad Offices T-1, Abu Dhabi · Version 1.0.0")}{DEMO ? t(" · demo") : ""}
         </Text>
       </View>
     </Screen>
@@ -205,6 +208,37 @@ const THEMES: [ThemeMode, LineIconName, string][] = [
   ["system", "auto", "Auto"],
 ];
 
+function LanguageSection() {
+  const { lang, setLang } = useLanguage();
+  function choose(l: Lang) {
+    if (l === lang) return;
+    setLang(l);
+    // The app redraws in the new language from the home screen; come back here.
+    setTimeout(() => router.navigate("/account"), 80);
+  }
+  return (
+    <Section title={t("Language")}>
+      <View style={{ flexDirection: "row", gap: space(2), padding: space(3) }}>
+        {([["en", "English", "PlusJakartaSans_700Bold"], ["ar", "العربية", "Tajawal_700Bold"]] as const).map(([l, label, font]) => {
+          const on = l === lang;
+          return (
+            <Pressable
+              key={l}
+              onPress={() => choose(l)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: on }}
+              style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: space(2), paddingVertical: space(3), borderRadius: radius.md, borderWidth: 1.5, borderColor: on ? colors.gold : colors.border, backgroundColor: on ? colors.goldSoft : colors.surface }}
+            >
+              <LineIcon name="globe" size={20} color={iconColor("globe")} />
+              <RNText style={{ color: on ? colors.gold : colors.text, fontFamily: font, fontSize: 15 }}>{label}</RNText>
+            </Pressable>
+          );
+        })}
+      </View>
+    </Section>
+  );
+}
+
 function Appearance() {
   const { mode, setMode } = useThemeMode();
   function choose(m: ThemeMode) {
@@ -214,7 +248,7 @@ function Appearance() {
     setTimeout(() => router.navigate("/account"), 80);
   }
   return (
-    <Section title="Appearance">
+    <Section title={t("Appearance")}>
       <View style={{ flexDirection: "row", gap: space(2), padding: space(3) }}>
         {THEMES.map(([m, icon, label]) => {
           const on = m === mode;
@@ -227,7 +261,7 @@ function Appearance() {
               style={{ flex: 1, alignItems: "center", gap: 4, paddingVertical: space(3), borderRadius: radius.md, borderWidth: 1.5, borderColor: on ? colors.gold : colors.border, backgroundColor: on ? colors.goldSoft : colors.surface }}
             >
               <LineIcon name={icon} size={22} color={iconColor(icon)} />
-              <RNText style={{ color: on ? colors.gold : colors.text, fontFamily: fonts.bold, fontSize: 13 }}>{label}</RNText>
+              <RNText style={{ color: on ? colors.gold : colors.text, fontFamily: fonts.bold, fontSize: 13 }}>{t(label)}</RNText>
             </Pressable>
           );
         })}

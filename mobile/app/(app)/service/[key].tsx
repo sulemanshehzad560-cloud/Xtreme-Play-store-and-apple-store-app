@@ -15,6 +15,7 @@ import { TamaraBadge } from "@/components/BrandIcons";
 import { PlanPromo } from "@/components/Promo";
 import { SlotPicker, abuDhabiTime, firstOpenDay, hourLabel, nextDays } from "@/components/SlotPicker";
 import { LineIcon, iconColor, type LineIconName } from "@/components/LineIcon";
+import { dateLocale, t } from "@/lib/i18n";
 
 type PropertyType = "apartment" | "villa" | "office" | "restaurant";
 type Pay = "card" | "tamara";
@@ -60,7 +61,7 @@ const FREQUENCY: [Frequency, string, string][] = [
   ["biweekly", "Bi-weekly", "Every two weeks"],
 ];
 
-const duration = (min: number) => (min < 60 ? `${min} min` : min % 60 ? `${Math.floor(min / 60)}½ hrs` : `${min / 60} hr${min > 60 ? "s" : ""}`);
+const duration = (min: number) => (min < 60 ? t("{0} min", { 0: min }) : min % 60 ? t("{0}½ hrs", { 0: Math.floor(min / 60) }) : min > 60 ? t("{0} hrs", { 0: min / 60 }) : t("1 hr"));
 
 export default function BookService() {
   // "Book again" passes the previous booking's property and frequency.
@@ -156,8 +157,8 @@ export default function BookService() {
     } catch (e) {
       if (e instanceof ApiError && e.code === "phone_required") {
         router.push("/phone");
-        setError("Add your mobile number, then tap Confirm again.");
-      } else setError(e instanceof Error ? e.message : "Could not book");
+        setError(t("Add your mobile number, then tap Confirm again."));
+      } else setError(e instanceof Error ? e.message : t("Could not book"));
     } finally {
       setBusy(false);
     }
@@ -166,14 +167,14 @@ export default function BookService() {
   if (!service) {
     return (
       <Screen edges={["left", "right"]}>
-        <InlineLoader label="Preparing your booking…" />
+        <InlineLoader label={t("Preparing your booking…")} />
       </Screen>
     );
   }
 
   const selectedAddress = saved.data?.find((a) => a.id === addressId);
-  const totalLabel = q === undefined ? "…" : fixed ? aed(step === 3 ? payTotal : price!) : "On site visit";
-  const cta = step < 3 ? "Continue" : fixed ? `Pay ${aed(payTotal)}` : "Book site visit";
+  const totalLabel = q === undefined ? "…" : fixed ? aed(step === 3 ? payTotal : price!) : t("On site visit");
+  const cta = step < 3 ? t("Continue") : fixed ? t("Pay {0}", { 0: aed(payTotal) }) : t("Book site visit");
 
   return (
     <Screen
@@ -181,7 +182,7 @@ export default function BookService() {
       footer={
         <StickyFooter>
           <View style={{ flex: 1 }}>
-            <Text variant="small">{fixed ? (frequency === "one_time" ? "Total" : "Per visit") : "Price"}</Text>
+            <Text variant="small">{fixed ? (frequency === "one_time" ? t("Total") : t("Per visit")) : t("Price")}</Text>
             <Text variant="price">{totalLabel}</Text>
           </View>
           <Button title={cta} onPress={() => (step < 3 ? setStep(step + 1) : submit())} disabled={!canContinue} loading={busy} style={{ flex: 1.3 }} />
@@ -190,18 +191,18 @@ export default function BookService() {
     >
       <Stack.Screen
         options={{
-          title: service.name,
+          title: t(service.name),
           headerLeft:
             step > 0
               ? () => (
-                  <Text onPress={() => setStep(step - 1)} style={{ fontSize: 30, paddingRight: space(3) }} accessibilityLabel="Previous step">
+                  <Text onPress={() => setStep(step - 1)} style={{ fontSize: 30, paddingRight: space(3) }} accessibilityLabel={t("Previous step")}>
                     ‹
                   </Text>
                 )
               : undefined,
         }}
       />
-      <StepBar steps={STEPS} current={step} />
+      <StepBar steps={STEPS.map((x) => t(x))} current={step} />
 
       {step === 0 ? (
         <>
@@ -211,35 +212,35 @@ export default function BookService() {
                 <ServiceIcon name={service.key} size={52} tile={false} />
               </View>
               <View style={{ flex: 1, gap: 2 }}>
-                <Text variant="heading">{service.name}</Text>
+                <Text variant="heading">{t(service.name)}</Text>
                 <Text variant="small">
-                  {ratingLabel(service)} · {service.startingFromAed ? `from ${aed(service.startingFromAed)}` : "price on site visit"}
+                  {ratingLabel(service)} · {service.startingFromAed ? t("from {0}", { 0: aed(service.startingFromAed) }) : t("price on site visit")}
                 </Text>
               </View>
             </Row>
             <Divider />
             <View style={{ flexDirection: "row", alignItems: "center", gap: space(2), backgroundColor: colors.successSoft, borderRadius: radius.md, paddingHorizontal: space(3), paddingVertical: space(2) }}>
               <LineIcon name="bottle" size={18} color={colors.success} />
-              <Text style={{ flex: 1, color: colors.success, fontFamily: fonts.bold, fontSize: 13.5 }}>Cleaning materials included FREE</Text>
+              <Text style={{ flex: 1, color: colors.success, fontFamily: fonts.bold, fontSize: 13.5 }}>{t("Cleaning materials included FREE")}</Text>
             </View>
             {service.highlights.filter((h) => !/materials included free/i.test(h)).map((h) => (
               <Row key={h} style={{ gap: space(2) }}>
                 <RNText style={{ color: colors.success, fontSize: 15 }}>✓</RNText>
-                <Text style={{ fontSize: 14, flex: 1 }}>{h}</Text>
+                <Text style={{ fontSize: 14, flex: 1 }}>{t(h)}</Text>
               </Row>
             ))}
           </Card>
 
-          <Text variant="heading">Property type</Text>
+          <Text variant="heading">{t("Property type")}</Text>
           <Row style={{ gap: space(2) }}>
-            {types.map(([t, label, icon]) => (
-              <View key={t} style={{ flex: 1 }}>
-                <Chip icon={<LineIcon name={icon} size={24} color={iconColor(icon)} />} label={label} selected={type === t} onPress={() => setType(t)} />
+            {types.map(([k, label, icon]) => (
+              <View key={k} style={{ flex: 1 }}>
+                <Chip icon={<LineIcon name={icon} size={24} color={iconColor(icon)} />} label={t(label)} selected={type === k} onPress={() => setType(k)} />
               </View>
             ))}
           </Row>
 
-          <Text variant="heading">Size</Text>
+          <Text variant="heading">{t("Size")}</Text>
           {rates ? (
             <View style={{ gap: space(2) }}>
               {sizes.map((s) => {
@@ -251,8 +252,8 @@ export default function BookService() {
                     selected={on}
                     onPress={() => setSize(s.key)}
                     title={SIZE_LABEL[s.key] ?? s.label}
-                    subtitle={r ? `${duration(r.minutes)} · ${r.cleaners} cleaners · materials free` : "Free site visit, priced on site · materials free"}
-                    right={<Text style={{ fontFamily: fonts.extrabold, fontSize: r ? 16 : 13, color: on ? colors.gold : colors.text }}>{r ? aed(r.priceAed) : "On quote"}</Text>}
+                    subtitle={r ? t("{0} · {1} cleaners · materials free", { 0: duration(r.minutes), 1: r.cleaners }) : t("Free site visit, priced on site · materials free")}
+                    right={<Text style={{ fontFamily: fonts.extrabold, fontSize: r ? 16 : 13, color: on ? colors.gold : colors.text }}>{r ? aed(r.priceAed) : t("On quote")}</Text>}
                   />
                 );
               })}
@@ -267,17 +268,17 @@ export default function BookService() {
 
           {service.key === "regular" ? (
             <>
-              <Text variant="heading">How often?</Text>
+              <Text variant="heading">{t("How often?")}</Text>
               <Row style={{ gap: space(2) }}>
                 {FREQUENCY.map(([f, label, sub]) => (
                   <View key={f} style={{ flex: 1 }}>
-                    <Chip label={label} sub={savePct(f) ? `Save ${savePct(f)}% per visit` : sub} selected={frequency === f} onPress={() => setFrequency(f)} />
+                    <Chip label={t(label)} sub={savePct(f) ? t("Save {0}% per visit", { 0: savePct(f) }) : t(sub)} selected={frequency === f} onPress={() => setFrequency(f)} />
                   </View>
                 ))}
               </Row>
               {frequency !== "one_time" ? (
                 <Text variant="small">
-                  After each visit we set up the next one {frequency === "weekly" ? "a week" : "two weeks"} later at the same time. You pay each visit in the app, and can skip or stop any time.
+                  {t("After each visit we set up the next one")}{" "}{frequency === "weekly" ? t("a week") : t("two weeks")}{" "}{t("later at the same time. You pay each visit in the app, and can skip or stop any time.")}
                 </Text>
               ) : null}
               <PlanPromo />
@@ -288,13 +289,13 @@ export default function BookService() {
             <Card tone="gold">
               <Row style={{ gap: space(2) }}>
                 <LineIcon name="doc" size={22} color={iconColor("doc")} />
-                <Text style={{ fontFamily: fonts.bold, flex: 1 }}>Priced on a site visit</Text>
+                <Text style={{ fontFamily: fonts.bold, flex: 1 }}>{t("Priced on a site visit")}</Text>
               </Row>
               <Text style={{ fontSize: 14, lineHeight: 20 }}>
                 {service.key === "deep"
-                  ? "Every deep clean is different. The price depends on the property and whether it is empty or occupied. "
+                  ? t("Every deep clean is different. The price depends on the property and whether it is empty or occupied. ")
                   : ""}
-                Our team visits at the time you choose, checks the job and sends your quote to the app. Nothing to pay now; you pay securely in the app once you accept the quote.
+                {t("Our team visits at the time you choose, checks the job and sends your quote to the app. Nothing to pay now; you pay securely in the app once you accept the quote.")}
               </Text>
             </Card>
           ) : null}
@@ -308,14 +309,14 @@ export default function BookService() {
           onDay={setDay}
           hour={hour}
           onHour={setHour}
-          title={fixed ? "Pick a day" : "When can we visit?"}
-          note={fixed ? undefined : "This is the time for the site visit. The schedule for the work is agreed with you once the quotation is finalized."}
+          title={fixed ? t("Pick a day") : t("When can we visit?")}
+          note={fixed ? undefined : t("This is the time for the site visit. The schedule for the work is agreed with you once the quotation is finalized.")}
         />
       ) : null}
 
       {step === 2 ? (
         <>
-          <Text variant="heading">Where should we come?</Text>
+          <Text variant="heading">{t("Where should we come?")}</Text>
           {saved.data?.map((a) => (
             <OptionCard
               key={a.id}
@@ -324,72 +325,72 @@ export default function BookService() {
                 setAdding(false);
                 setAddressId(a.id);
               }}
-              title={`${a.label} · ${a.area}`}
+              title={`${t(a.label)} · ${t(a.area)}`}
               subtitle={[a.unit, a.building].filter(Boolean).join(", ") || undefined}
             />
           ))}
-          {saved.data?.length ? <OptionCard selected={adding} onPress={() => setAdding(true)} title="+ Add a new address" /> : null}
+          {saved.data?.length ? <OptionCard selected={adding} onPress={() => setAdding(true)} title={t("+ Add a new address")} /> : null}
 
           {adding ? (
             <Card>
               <AddressPicker value={draft} onChange={setDraft} />
             </Card>
           ) : null}
-          <Input label="Notes for the team (optional)" value={notes} onChangeText={setNotes} placeholder="Parking, pets, access code…" multiline style={{ minHeight: 70, textAlignVertical: "top" }} />
+          <Input label={t("Notes for the team (optional)")} value={notes} onChangeText={setNotes} placeholder={t("Parking, pets, access code…")} multiline style={{ minHeight: 70, textAlignVertical: "top" }} />
         </>
       ) : null}
 
       {step === 3 ? (
         <>
           <Card>
-            <Text variant="heading">Booking summary</Text>
+            <Text variant="heading">{t("Booking summary")}</Text>
             <SummaryRow
               icon={<ServiceIcon name={service.key} size={26} tile={false} />}
-              label="Service"
-              value={`${service.name}${frequency !== "one_time" && service.key === "regular" ? ` · ${frequency === "weekly" ? "Weekly" : "Bi-weekly"}` : ""}`}
+              label={t("Service")}
+              value={`${t(service.name)}${frequency !== "one_time" && service.key === "regular" ? ` · ${frequency === "weekly" ? t("Weekly") : t("Bi-weekly")}` : ""}`}
             />
-            {q?.durationMinutes ? <SummaryRow icon={<LineIcon name="clock" size={20} color={iconColor("clock")} />} label="Team & time" value={`${q.cleaners} cleaners · about ${duration(q.durationMinutes)} · materials free`} /> : null}
-            <SummaryRow icon={<LineIcon name="home" size={20} color={iconColor("home")} />} label="Property" value={`${PROPERTY.find(([t]) => t === type)![1]} · ${SIZE_LABEL[size] ?? size}`} />
-            <SummaryRow icon={<LineIcon name="calendar" size={20} color={iconColor("calendar")} />} label={fixed ? "Date & time" : "Site visit"} value={`${day.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} · ${hour != null ? hourLabel(hour) : ""}`} />
+            {q?.durationMinutes ? <SummaryRow icon={<LineIcon name="clock" size={20} color={iconColor("clock")} />} label={t("Team & time")} value={t("{0} cleaners · about {1} · materials free", { 0: q.cleaners, 1: duration(q.durationMinutes) })} /> : null}
+            <SummaryRow icon={<LineIcon name="home" size={20} color={iconColor("home")} />} label={t("Property")} value={`${t(PROPERTY.find(([k]) => k === type)![1])} · ${t(SIZE_LABEL[size] ?? size)}`} />
+            <SummaryRow icon={<LineIcon name="calendar" size={20} color={iconColor("calendar")} />} label={fixed ? t("Date & time") : t("Site visit")} value={`${day.toLocaleDateString(dateLocale(), { weekday: "short", day: "numeric", month: "short" })} · ${hour != null ? hourLabel(hour) : ""}`} />
             <SummaryRow
               icon={<LineIcon name="pin" size={20} color={iconColor("pin")} />}
-              label="Address"
+              label={t("Address")}
               value={(adding ? [draft.unit, draft.building, draft.area] : [selectedAddress?.unit, selectedAddress?.building, selectedAddress?.area]).filter(Boolean).join(", ")}
             />
           </Card>
 
-          <Text variant="heading">Payment method</Text>
+          <Text variant="heading">{t("Payment method")}</Text>
           {fixed ? (
             <>
-              <OptionCard selected={pay === "card"} onPress={() => setPay("card")} title="Card, Apple Pay or Google Pay" subtitle="Pay securely now" icon={<LineIcon name="card" size={24} color={iconColor("card")} />} />
+              <OptionCard selected={pay === "card"} onPress={() => setPay("card")} title={t("Card, Apple Pay or Google Pay")} subtitle={t("Pay securely now")} icon={<LineIcon name="card" size={24} color={iconColor("card")} />} />
               <OptionCard
                 selected={pay === "tamara"}
                 onPress={() => setPay("tamara")}
-                title="Tamara: pay in 4"
-                subtitle={price ? `4 payments of ${aed(Math.round(((price + serviceFee + tamaraFee) / 4) * 100) / 100)} · includes ${feePct}% Tamara fee` : "Split into 4 payments"}
+                title={t("Tamara: pay in 4")}
+                subtitle={price ? t("4 payments of {0} · includes {1}% Tamara fee", { 0: aed(Math.round(((price + serviceFee + tamaraFee) / 4) * 100) / 100), 1: feePct }) : t("Split into 4 payments")}
                 icon={<TamaraBadge />}
               />
             </>
           ) : (
             <Card tone="gold">
-              <Text style={{ fontSize: 14 }}>Nothing to pay now. Our team inspects on the visit and sends your quote to the app; you pay by card or Tamara once you accept it.</Text>
+              <Text style={{ fontSize: 14 }}>{t("Nothing to pay now. Our team inspects on the visit and sends your quote to the app; you pay by card or Tamara once you accept it.")}</Text>
             </Card>
           )}
 
           {fixed && price != null ? (
             <Card>
-              <PriceRow label={`${service.name} (${SIZE_LABEL[size] ?? size})`} value={aed(q?.basePriceAed ?? price)} />
+              <PriceRow label={`${t(service.name)} (${SIZE_LABEL[size] ?? size})`} value={aed(q?.basePriceAed ?? price)} />
               {q?.basePriceAed ? (
-                <PriceRow label={`${frequency === "weekly" ? "Weekly" : "Bi-weekly"} saving (${q.discountPercent}%)`} value={`– ${aed(q.basePriceAed - price)}`} muted />
+                <PriceRow label={t("{0} saving ({1}%)", { 0: frequency === "weekly" ? "Weekly" : "Bi-weekly", 1: q.discountPercent })} value={`– ${aed(q.basePriceAed - price)}`} muted />
               ) : null}
-              <PriceRow label="Cleaning materials" value="FREE" muted />
-              {serviceFee > 0 ? <PriceRow label={servicePct ? `Service fee (${servicePct}%)` : "Service fee"} value={aed(serviceFee)} muted /> : null}
-              {pay === "tamara" ? <PriceRow label={`Tamara fee (${feePct}%)`} value={aed(tamaraFee)} muted /> : null}
+              <PriceRow label={t("Cleaning materials")} value={t("FREE")} muted />
+              {serviceFee > 0 ? <PriceRow label={servicePct ? t("Service fee ({0}%)", { 0: servicePct }) : t("Service fee")} value={aed(serviceFee)} muted /> : null}
+              {pay === "tamara" ? <PriceRow label={t("Tamara fee ({0}%)", { 0: feePct })} value={aed(tamaraFee)} muted /> : null}
               <Divider />
-              <PriceRow label={frequency === "one_time" ? "Total" : "Total per visit"} value={aed(payTotal)} bold />
+              <PriceRow label={frequency === "one_time" ? t("Total") : t("Total per visit")} value={aed(payTotal)} bold />
             </Card>
           ) : null}
-          <Text variant="small">Free cancellation until your team sets off. Paid bookings are refunded automatically.</Text>
+          <Text variant="small">{t("Free cancellation until your team sets off. Paid bookings are refunded automatically.")}</Text>
         </>
       ) : null}
 

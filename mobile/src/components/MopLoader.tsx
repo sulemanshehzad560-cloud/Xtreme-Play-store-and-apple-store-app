@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { AccessibilityInfo, Animated, Easing, Text, View } from "react-native";
 import Svg, { G, Line, Path, Rect } from "react-native-svg";
 import { fonts } from "../lib/theme";
+import { t } from "@/lib/i18n";
 
 // Drawing space; the whole scene is scaled by `size`.
 const W = 260;
@@ -69,7 +70,7 @@ export function MopLoader({ size = 1, label, cycleMessages = false, tone = "ligh
   const trailOpacity = p.interpolate({ inputRange: [0, 1, 1.6, 2], outputRange: [0.12, 0.12, 0.06, 0] });
 
   return (
-    <View accessible accessibilityRole="progressbar" accessibilityLabel={label ?? "Loading"} style={{ alignItems: "center", gap: 8 * size }}>
+    <View accessible accessibilityRole="progressbar" accessibilityLabel={label ?? t("Loading")} style={{ alignItems: "center", gap: 8 * size }}>
       <View style={{ width: W * size, height: H * size }}>
         <View style={{ width: W, height: H, transform: [{ scale: size }], transformOrigin: "top left" }}>
           <Rug c={c} />
@@ -103,7 +104,7 @@ export function MopLoader({ size = 1, label, cycleMessages = false, tone = "ligh
         </View>
       </View>
       {label || cycleMessages ? (
-        <Text style={{ fontFamily: fonts.medium, fontSize: 14 * Math.max(0.85, size), letterSpacing: 0.2, color: c.text }}>{label ?? MESSAGES[msg]}</Text>
+        <Text style={{ fontFamily: fonts.medium, fontSize: 14 * Math.max(0.85, size), letterSpacing: 0.2, color: c.text }}>{label ?? t(MESSAGES[msg]!)}</Text>
       ) : null}
     </View>
   );

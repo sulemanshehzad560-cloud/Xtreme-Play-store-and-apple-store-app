@@ -19,6 +19,7 @@ import { MOST_BOOKED, SERVICE_SHORT } from "@/lib/serviceIcons";
 import { colors, fonts, radius, shadow, space } from "@/lib/theme";
 import type { Booking, Company, Service } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
+import { t } from "@/lib/i18n";
 
 interface Availability {
   onDuty: number;
@@ -38,10 +39,10 @@ const SLIDE = W - space(8);
 const promos = (homeFrom: number | null, weeklySave: number): Promo[] => [
   {
     key: "regular",
-    tag: "MATERIALS FREE",
-    title: homeFrom ? `Home cleaning from AED ${homeFrom}` : "Home cleaning by trained teams",
-    body: "Vetted, uniformed cleaners. Book for today, pay in the app.",
-    cta: "Book a clean",
+    tag: t("MATERIALS FREE"),
+    title: homeFrom ? t("Home cleaning from AED {0}", { 0: homeFrom }) : t("Home cleaning by trained teams"),
+    body: t("Vetted, uniformed cleaners. Book for today, pay in the app."),
+    cta: t("Book a clean"),
     service: "regular",
     photo: require("../../../assets/promos/team-apartment.jpg"),
     colors: ["#14110B", "#14110B"],
@@ -49,10 +50,10 @@ const promos = (homeFrom: number | null, weeklySave: number): Promo[] => [
   },
   {
     key: "plans",
-    tag: weeklySave > 0 ? `SAVE ${weeklySave}% WEEKLY` : "SAME TEAM EVERY VISIT",
-    title: "Your home cleaned every week, for less",
-    body: "Monthly or yearly plans. Plan all your visits on a calendar.",
-    cta: "See plans",
+    tag: weeklySave > 0 ? t("SAVE {0}% WEEKLY", { 0: weeklySave }) : t("SAME TEAM EVERY VISIT"),
+    title: t("Your home cleaned every week, for less"),
+    body: t("Monthly or yearly plans. Plan all your visits on a calendar."),
+    cta: t("See plans"),
     service: "plans",
     photo: require("../../../assets/promos/bed-making.jpg"),
     colors: ["#14213D", "#14213D"],
@@ -60,10 +61,10 @@ const promos = (homeFrom: number | null, weeklySave: number): Promo[] => [
   },
   {
     key: "glass",
-    tag: "STREAK-FREE",
-    title: "Sparkling windows & glass",
-    body: "Balcony doors, glass walls and windows, inside and out.",
-    cta: "Book glass cleaning",
+    tag: t("STREAK-FREE"),
+    title: t("Sparkling windows & glass"),
+    body: t("Balcony doors, glass walls and windows, inside and out."),
+    cta: t("Book glass cleaning"),
     service: "glass",
     photo: require("../../../assets/promos/glass-cleaning.jpg"),
     align: "right",
@@ -72,10 +73,10 @@ const promos = (homeFrom: number | null, weeklySave: number): Promo[] => [
   },
   {
     key: "deep",
-    tag: "FREE SITE VISIT",
-    title: "Deep cleaning, every corner",
-    body: "Homes and offices, move-in ready. Priced on a free visit.",
-    cta: "Book a visit",
+    tag: t("FREE SITE VISIT"),
+    title: t("Deep cleaning, every corner"),
+    body: t("Homes and offices, move-in ready. Priced on a free visit."),
+    cta: t("Book a visit"),
     service: "deep",
     photo: require("../../../assets/promos/office-clean.jpg"),
     colors: ["#0B3B37", "#0B3B37"],
@@ -83,10 +84,10 @@ const promos = (homeFrom: number | null, weeklySave: number): Promo[] => [
   },
   {
     key: "sofa",
-    tag: "STAINS & ODOURS OUT",
-    title: "Fresh sofas, carpets & mattresses",
-    body: "Deep extraction lifts dust and allergens. Dry in hours.",
-    cta: "Book sofa cleaning",
+    tag: t("STAINS & ODOURS OUT"),
+    title: t("Fresh sofas, carpets & mattresses"),
+    body: t("Deep extraction lifts dust and allergens. Dry in hours."),
+    cta: t("Book sofa cleaning"),
     service: "sofa",
     art: "carpet",
     colors: ["#3A1730", "#7A2E5B"],
@@ -94,10 +95,10 @@ const promos = (homeFrom: number | null, weeklySave: number): Promo[] => [
   },
   {
     key: "tamara",
-    tag: "PAY IN 4",
-    title: "Split any booking into 4 with Tamara",
-    body: "Interest-free instalments. Choose Tamara at checkout.",
-    cta: "Book now",
+    tag: t("PAY IN 4"),
+    title: t("Split any booking into 4 with Tamara"),
+    body: t("Interest-free instalments. Choose Tamara at checkout."),
+    cta: t("Book now"),
     service: "regular",
     art: <PayInFourScene width={140} height={120} />,
     colors: ["#FFE9EF", "#F8C9D7"],
@@ -164,9 +165,10 @@ export default function Home() {
   const all = services.data?.services ?? [];
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return q ? all.filter((s) => `${s.name} ${SERVICE_SHORT[s.key] ?? ""}`.toLowerCase().includes(q)) : [];
+    return q ? all.filter((s) => `${t(s.name)} ${SERVICE_SHORT[s.key] ?? ""}`.toLowerCase().includes(q)) : [];
   }, [query, all]);
-  const area = addresses.data?.find((a) => a.isDefault)?.area ?? addresses.data?.[0]?.area;
+  const rawArea = addresses.data?.find((a) => a.isDefault)?.area ?? addresses.data?.[0]?.area;
+  const area = rawArea ? t(rawArea) : rawArea;
   const unread = inbox.data?.filter((n) => !n.read).length ?? 0;
   const first = user?.fullName?.split(" ")[0];
   const open = (key: string) => router.push(key === "plans" ? "/plans" : `/service/${key}`);
@@ -185,8 +187,8 @@ export default function Home() {
           <Image source={require("../../../assets/logo-mark.png")} style={{ position: "absolute", right: -30, bottom: -10, width: 210, height: 160, opacity: 0.08 }} resizeMode="contain" />
           <SafeAreaView edges={["top"]} style={{ paddingHorizontal: space(4), paddingTop: space(2), gap: space(4) }}>
             <Row style={{ justifyContent: "space-between" }}>
-              <BrandMark size={30} sub="by Xtreme Facilities Management" />
-              <Pressable onPress={() => router.push("/notifications")} accessibilityRole="button" accessibilityLabel={`Notifications, ${unread} unread`} style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: "#2A251D", alignItems: "center", justifyContent: "center" }}>
+              <BrandMark size={30} sub={t("by Xtreme Facilities Management")} />
+              <Pressable onPress={() => router.push("/notifications")} accessibilityRole="button" accessibilityLabel={t("Notifications, {0} unread", { 0: unread })} style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: "#2A251D", alignItems: "center", justifyContent: "center" }}>
                 <LineIcon name="bell" size={21} color="#F6F0E3" />
                 {unread ? (
                   <View style={{ position: "absolute", top: 4, right: 4, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: colors.danger, alignItems: "center", justifyContent: "center", paddingHorizontal: 4, borderWidth: 2, borderColor: colors.ink }}>
@@ -195,22 +197,22 @@ export default function Home() {
                 ) : null}
               </Pressable>
             </Row>
-            <Pressable onPress={() => router.push("/addresses")} style={{ flexDirection: "row", alignItems: "center", gap: space(2), alignSelf: "flex-start", backgroundColor: "#211D17", borderRadius: radius.pill, paddingLeft: space(2), paddingRight: space(4), paddingVertical: space(1.5), borderWidth: 1, borderColor: "#3A3328" }} accessibilityRole="button" accessibilityLabel="Service location">
+            <Pressable onPress={() => router.push("/addresses")} style={{ flexDirection: "row", alignItems: "center", gap: space(2), alignSelf: "flex-start", backgroundColor: "#211D17", borderRadius: radius.pill, paddingLeft: space(2), paddingRight: space(4), paddingVertical: space(1.5), borderWidth: 1, borderColor: "#3A3328" }} accessibilityRole="button" accessibilityLabel={t("Service location")}>
               <LineIcon name="pin" size={18} color={colors.goldBright} />
-              <RNText style={{ color: "#A79E8D", fontFamily: fonts.medium, fontSize: 12 }}>Service location</RNText>
+              <RNText style={{ color: "#A79E8D", fontFamily: fonts.medium, fontSize: 12 }}>{t("Service location")}</RNText>
               <RNText style={{ color: "#fff", fontFamily: fonts.bold, fontSize: 13, flexShrink: 1 }} numberOfLines={1}>
-                {area ?? "Set your address"} ▾
+                {area ?? t("Set your address")} ▾
               </RNText>
             </Pressable>
             <View style={{ gap: 2 }}>
-              <RNText style={{ color: colors.goldBright, fontFamily: fonts.semibold, fontSize: 15 }}>Hi{first ? ` ${first}` : " there"},</RNText>
-              <RNText style={{ color: "#fff", fontFamily: fonts.extrabold, fontSize: 26, lineHeight: 33, letterSpacing: -0.4 }}>What can we help you with today?</RNText>
+              <RNText style={{ color: colors.goldBright, fontFamily: fonts.semibold, fontSize: 15 }}>{first ? t("Hi {0},", { 0: first }) : t("Hi there,")}</RNText>
+              <RNText style={{ color: "#fff", fontFamily: fonts.extrabold, fontSize: 26, lineHeight: 33, letterSpacing: -0.4 }}>{t("What can we help you with today?")}</RNText>
               {/* Social proof, shown once there are enough real reviews to be meaningful. */}
               {stats.data?.rating && stats.data.reviewCount >= 5 ? (
                 <RNText style={{ color: "#E9E3D6", fontFamily: fonts.semibold, fontSize: 13, marginTop: 2 }}>
                   <RNText style={{ color: colors.star }}>★ </RNText>
-                  {stats.data.rating.toFixed(1)} from {stats.data.reviewCount.toLocaleString("en")} reviews
-                  {stats.data.completedJobs >= 50 ? ` · ${(Math.floor(stats.data.completedJobs / 50) * 50).toLocaleString("en")}+ homes cleaned` : ""}
+                  {stats.data.rating.toFixed(1)}{" "}{t("from")}{" "}{stats.data.reviewCount.toLocaleString("en")}{" "}{t("reviews")}
+                  {stats.data.completedJobs >= 50 ? t(" · {0}+ homes cleaned", { 0: (Math.floor(stats.data.completedJobs / 50) * 50).toLocaleString("en") }) : ""}
                 </RNText>
               ) : null}
             </View>
@@ -218,13 +220,13 @@ export default function Home() {
               {/* Every booking includes cleaning materials at no cost. */}
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.goldBright, borderRadius: radius.pill, paddingLeft: space(2.5), paddingRight: space(3.5), paddingVertical: space(1.5) }}>
                 <LineIcon name="bottle" size={16} color="#16130E" />
-                <RNText style={{ color: "#16130E", fontFamily: fonts.extrabold, fontSize: 13 }}>Cleaning materials FREE</RNText>
+                <RNText style={{ color: "#16130E", fontFamily: fonts.extrabold, fontSize: 13 }}>{t("Cleaning materials FREE")}</RNText>
               </View>
               {teams && teams.available > 0 ? (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#24201A", borderRadius: radius.pill, paddingHorizontal: space(3), paddingVertical: space(1.5) }}>
                   <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#3DDC84" }} />
                   <RNText style={{ color: "#E9E3D6", fontFamily: fonts.semibold, fontSize: 12 }}>
-                    {teams.available} teams available{teams.nearestEtaMinutes != null ? ` · ~${teams.nearestEtaMinutes} min` : ""}
+                    {teams.available}{" "}{t("teams available")}{teams.nearestEtaMinutes != null ? t(" · ~{0} min", { 0: teams.nearestEtaMinutes }) : ""}
                   </RNText>
                 </View>
               ) : null}
@@ -238,7 +240,7 @@ export default function Home() {
             <TextInput
               value={query}
               onChangeText={setQuery}
-              placeholder="Search services (e.g. sofa, carpet, kitchen)"
+              placeholder={t("Search services (e.g. sofa, carpet, kitchen)")}
               placeholderTextColor={colors.faint}
               style={{ flex: 1, fontFamily: fonts.medium, fontSize: 15, color: colors.text }}
               returnKeyType="search"
@@ -252,12 +254,12 @@ export default function Home() {
 
           {query ? (
             <Card style={{ gap: 0, paddingVertical: space(1) }}>
-              {results.length === 0 ? <Text variant="muted" style={{ padding: space(3) }}>No services match “{query}”.</Text> : null}
+              {results.length === 0 ? <Text variant="muted" style={{ padding: space(3) }}>{t("No services match “")}{query}”.</Text> : null}
               {results.map((s) => (
                 <Pressable key={s.key} onPress={() => open(s.key)} style={{ flexDirection: "row", alignItems: "center", gap: space(3), paddingVertical: space(2.5) }}>
                   <ServiceIcon name={s.key} size={40} />
-                  <Text style={{ flex: 1, fontFamily: fonts.semibold }}>{s.name}</Text>
-                  <Text variant="small">{s.startingFromAed ? `from ${aed(s.startingFromAed)}` : "On quote"}</Text>
+                  <Text style={{ flex: 1, fontFamily: fonts.semibold }}>{t(s.name)}</Text>
+                  <Text variant="small">{s.startingFromAed ? t("from {0}", { 0: aed(s.startingFromAed) }) : t("On quote")}</Text>
                 </Pressable>
               ))}
             </Card>
@@ -266,9 +268,9 @@ export default function Home() {
           {/* What every booking includes */}
           <View style={{ flexDirection: "row", gap: space(2) }}>
             {[
-              ["star", "Best value", "in the area", true],
-              ["bolt", "Book for", "today", false],
-              ["shield", "Vetted &", "insured", false],
+              ["star", t("Best value"), t("in the area"), true],
+              ["bolt", t("Book for"), t("today"), false],
+              ["shield", t("Vetted &"), t("insured"), false],
             ].map(([icon, a, b, hot]) => (
               <View
                 key={String(a)}
@@ -298,13 +300,13 @@ export default function Home() {
             <FadeIn key={b.id}>
               <Card onPress={() => router.push(b.trackable ? `/booking/${b.id}/track` : `/booking/${b.id}`)} tone="gold">
                 <Row style={{ justifyContent: "space-between" }}>
-                  <Text variant="label">UPCOMING</Text>
+                  <Text variant="label">{t("UPCOMING")}</Text>
                   <StatusPill status={b.status} awaitingPayment={b.awaitingPayment} />
                 </Row>
                 <Row>
                   <ServiceIcon name={b.service.key} size={48} />
                   <View style={{ flex: 1 }}>
-                    <Text variant="subheading">{b.service.name}</Text>
+                    <Text variant="subheading">{t(b.service.name)}</Text>
                     <Text variant="small">
                       {when(b.scheduledAt)} · {b.reference}
                     </Text>
@@ -314,7 +316,7 @@ export default function Home() {
                   <View style={{ backgroundColor: colors.ink, borderRadius: radius.md, paddingVertical: space(3), alignItems: "center" }}>
                     <Row style={{ gap: space(2) }}>
                       <LineIcon name="map" size={18} color={colors.goldBright} />
-                      <RNText style={{ color: colors.goldBright, fontFamily: fonts.bold }}>Track your team live</RNText>
+                      <RNText style={{ color: colors.goldBright, fontFamily: fonts.bold }}>{t("Track your team live")}</RNText>
                     </Row>
                   </View>
                 ) : null}
@@ -347,24 +349,24 @@ export default function Home() {
 
           <PlanPromo />
 
-          <SectionHeader title="All services" />
+          <SectionHeader title={t("All services")} />
           {services.loading ? <SkeletonCard /> : null}
           <View style={{ flexDirection: "row", flexWrap: "wrap", rowGap: space(4) }}>
             {all.map((s, i) => (
               <FadeIn key={s.key} delay={i * 25} style={{ width: "25%" }}>
-                <Pressable onPress={() => open(s.key)} style={({ pressed }) => ({ alignItems: "center", gap: space(1.5), transform: [{ scale: pressed ? 0.94 : 1 }] })} accessibilityRole="button" accessibilityLabel={s.name}>
+                <Pressable onPress={() => open(s.key)} style={({ pressed }) => ({ alignItems: "center", gap: space(1.5), transform: [{ scale: pressed ? 0.94 : 1 }] })} accessibilityRole="button" accessibilityLabel={t(s.name)}>
                   <View style={{ width: 66, height: 66, borderRadius: radius.lg + 2, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center", ...shadow.card }}>
                     <ServiceIcon name={s.key} size={50} tile={false} />
                   </View>
                   <RNText style={{ fontFamily: fonts.semibold, fontSize: 12, color: colors.text, textAlign: "center" }} numberOfLines={2}>
-                    {SERVICE_SHORT[s.key] ?? s.name}
+                    {t(SERVICE_SHORT[s.key] ?? s.name)}
                   </RNText>
                 </Pressable>
               </FadeIn>
             ))}
           </View>
 
-          <SectionHeader title="Most booked" />
+          <SectionHeader title={t("Most booked")} />
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space(3), paddingRight: space(4) }} style={{ marginHorizontal: -space(4), paddingLeft: space(4) }}>
             {MOST_BOOKED.map((k) => all.find((s) => s.key === k))
               .filter((s): s is Service => Boolean(s))
@@ -382,10 +384,10 @@ export default function Home() {
                   </View>
                   <View style={{ padding: space(3), gap: 4 }}>
                     <Text style={{ fontFamily: fonts.bold, fontSize: 14 }} numberOfLines={1}>
-                      {s.name}
+                      {t(s.name)}
                     </Text>
-                    <Text variant="small">{ratingLabel(s)} · materials free</Text>
-                    <Text style={{ fontFamily: fonts.bold, fontSize: 14, color: colors.gold }}>{s.startingFromAed ? `From ${aed(s.startingFromAed)}` : "Free site visit & quote"}</Text>
+                    <Text variant="small">{ratingLabel(s)}{" "}{t("· materials free")}</Text>
+                    <Text style={{ fontFamily: fonts.bold, fontSize: 14, color: colors.gold }}>{s.startingFromAed ? t("From {0}", { 0: aed(s.startingFromAed) }) : t("Free site visit & quote")}</Text>
                   </View>
                 </Pressable>
               ))}
@@ -400,9 +402,9 @@ export default function Home() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontFamily: fonts.extrabold, fontSize: 15 }}>
-                  Give AED {referral.friendAed}, get AED {referral.rewardAed}
+                  {t("Give AED {0}, get AED {1}", { 0: referral.friendAed, 1: referral.rewardAed })}
                 </Text>
-                <Text variant="small">Invite friends. They save on their first clean, you get credit.</Text>
+                <Text variant="small">{t("Invite friends. They save on their first clean, you get credit.")}</Text>
               </View>
               <RNText style={{ color: colors.gold, fontSize: 22 }}>›</RNText>
             </Pressable>
@@ -421,8 +423,8 @@ export default function Home() {
                 ) : null}
               </View>
               <View style={{ flex: 1 }}>
-                <RNText style={{ color: "#fff", fontFamily: fonts.bold, fontSize: 16 }}>Need help? Chat with us</RNText>
-                <RNText style={{ color: "#BDB4A3", fontFamily: fonts.medium, fontSize: 13 }}>Instant answers · our team replies 7 days a week</RNText>
+                <RNText style={{ color: "#fff", fontFamily: fonts.bold, fontSize: 16 }}>{t("Need help? Chat with us")}</RNText>
+                <RNText style={{ color: "#BDB4A3", fontFamily: fonts.medium, fontSize: 13 }}>{t("Instant answers · our team replies 7 days a week")}</RNText>
               </View>
               <RNText style={{ color: colors.goldBright, fontSize: 24 }}>›</RNText>
             </Row>
@@ -444,17 +446,17 @@ function WhyXtreme() {
     blue: { bg: colors.infoSoft, fg: colors.info, sub: colors.muted, blob: colors.surface },
   };
   const blocks: [LineIconName, string, string, Tone][] = [
-    ["shield", "Vetted pros", "Background-checked, uniformed and insured teams", tones.ink],
-    ["check", "Satisfaction guarantee", "Not happy? We come back and make it right", tones.gold],
-    ["bottle", "Materials free", "All materials and equipment included, every time", tones.green],
-    ["lock", "Secure payments", "Card, Apple Pay, Google Pay or Tamara, encrypted and secure", tones.blue],
+    ["shield", t("Vetted pros"), t("Background-checked, uniformed and insured teams"), tones.ink],
+    ["check", t("Satisfaction guarantee"), t("Not happy? We come back and make it right"), tones.gold],
+    ["bottle", t("Materials free"), t("All materials and equipment included, every time"), tones.green],
+    ["lock", t("Secure payments"), t("Card, Apple Pay, Google Pay or Tamara, encrypted and secure"), tones.blue],
   ];
   const tileW = (W - space(4) * 2 - space(3)) / 2;
   return (
     <View style={{ gap: space(3) }}>
       <View style={{ gap: 2 }}>
-        <RNText style={{ color: colors.gold, fontFamily: fonts.extrabold, fontSize: 12, letterSpacing: 1.2 }}>WHY XTREME</RNText>
-        <Text variant="title">Why customers choose us</Text>
+        <RNText style={{ color: colors.gold, fontFamily: fonts.extrabold, fontSize: 12, letterSpacing: 1.2 }}>{t("WHY XTREME")}</RNText>
+        <Text variant="title">{t("Why customers choose us")}</Text>
       </View>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space(3) }}>
         {blocks.map(([icon, title, body, t], i) => (
@@ -473,10 +475,10 @@ function WhyXtreme() {
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space(2) }}>
         {(
           [
-            ["bolt", "Book for today"],
-            ["calendar", "Weekly or bi-weekly"],
-            ["home", "Free site visits"],
-            ["chat", "Help 7 days a week"],
+            ["bolt", t("Book for today")],
+            ["calendar", t("Weekly or bi-weekly")],
+            ["home", t("Free site visits")],
+            ["chat", t("Help 7 days a week")],
           ] as [LineIconName, string][]
         ).map(([icon, c]) => (
           <View key={c} style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: colors.surface, borderColor: colors.goldLine, borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: space(3), paddingVertical: space(1.5) }}>

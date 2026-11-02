@@ -10,6 +10,7 @@ import { aed, when } from "@/lib/format";
 import { colors, fonts, radius, space } from "@/lib/theme";
 import type { Booking } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
+import { t } from "@/lib/i18n";
 
 export default function Bookings() {
   const [scope, setScope] = useState<"active" | "past">("active");
@@ -28,7 +29,7 @@ export default function Bookings() {
         />
       }
     >
-      <Text variant="title">My bookings</Text>
+      <Text variant="title">{t("My bookings")}</Text>
       <FreeMaterials compact />
       <View style={{ flexDirection: "row", backgroundColor: colors.divider, borderRadius: radius.md, padding: 4 }}>
         {(["active", "past"] as const).map((s) => (
@@ -39,7 +40,7 @@ export default function Bookings() {
             accessibilityState={{ selected: scope === s }}
             style={{ flex: 1, paddingVertical: space(2.5), borderRadius: radius.sm, backgroundColor: scope === s ? colors.surface : "transparent", alignItems: "center" }}
           >
-            <RNText style={{ fontFamily: scope === s ? fonts.bold : fonts.semibold, color: scope === s ? colors.text : colors.muted }}>{s === "active" ? "Upcoming" : "Past"}</RNText>
+            <RNText style={{ fontFamily: scope === s ? fonts.bold : fonts.semibold, color: scope === s ? colors.text : colors.muted }}>{s === "active" ? t("Upcoming") : t("Past")}</RNText>
           </Pressable>
         ))}
       </View>
@@ -53,11 +54,11 @@ export default function Bookings() {
       {!loading && data?.length === 0 ? (
         <Card style={{ alignItems: "center", paddingVertical: space(8) }}>
           <EmptyCalendarScene size={160} />
-          <Text variant="heading">{scope === "active" ? "No upcoming bookings" : "No past bookings yet"}</Text>
+          <Text variant="heading">{scope === "active" ? t("No upcoming bookings") : t("No past bookings yet")}</Text>
           <Text variant="muted" style={{ textAlign: "center" }}>
-            Book a service in a few taps and track your team live.
+            {t("Book a service in a few taps and track your team live.")}
           </Text>
-          <Button title="Book a service" size="sm" onPress={() => router.push("/(app)/(tabs)")} />
+          <Button title={t("Book a service")} size="sm" onPress={() => router.push("/(app)/(tabs)")} />
         </Card>
       ) : null}
 
@@ -69,7 +70,7 @@ export default function Bookings() {
               <ServiceIcon name={b.service.key} size={40} tile={false} />
             </View>
             <View style={{ flex: 1, gap: 2 }}>
-              <Text style={{ fontFamily: fonts.bold }}>{b.service.name}</Text>
+              <Text style={{ fontFamily: fonts.bold }}>{t(b.service.name)}</Text>
               <Text variant="small">{when(b.scheduledAt)}</Text>
               <Text variant="small">{b.reference}</Text>
             </View>
@@ -78,12 +79,12 @@ export default function Bookings() {
           <Row style={{ justifyContent: "space-between", borderTopWidth: 1, borderTopColor: colors.divider, paddingTop: space(3), marginTop: space(1) }}>
             <Text style={{ fontFamily: fonts.bold }}>
               {aed(b.amountDueAed ?? b.priceAed)}
-              <Text variant="small"> · {b.paymentStatus === "paid" ? "Paid" : b.paymentStatus === "refunded" ? "Refunded" : b.priceAed == null ? "Survey" : "Unpaid"}</Text>
+              <Text variant="small"> · {b.paymentStatus === "paid" ? t("Paid") : b.paymentStatus === "refunded" ? t("Refunded") : b.priceAed == null ? t("Survey") : t("Unpaid")}</Text>
             </Text>
             {b.trackable ? (
-              <Button title="Track" size="sm" onPress={() => router.push(`/booking/${b.id}/track`)} />
+              <Button title={t("Track")} size="sm" onPress={() => router.push(`/booking/${b.id}/track`)} />
             ) : scope === "past" ? (
-              <Button title="Book again" size="sm" variant="secondary" onPress={() => router.push(`/service/${b.service.key}`)} />
+              <Button title={t("Book again")} size="sm" variant="secondary" onPress={() => router.push(`/service/${b.service.key}`)} />
             ) : null}
           </Row>
         </Card>

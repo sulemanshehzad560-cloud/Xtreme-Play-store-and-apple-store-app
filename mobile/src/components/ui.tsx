@@ -24,6 +24,7 @@ import { API_URL } from "../lib/config";
 import { colors, fonts, radius, shadow, space } from "../lib/theme";
 import { STATUS_LABEL } from "../lib/format";
 import type { BookingStatus } from "../lib/types";
+import { t } from "@/lib/i18n";
 
 // ------------------------------------------------------------------ layout
 
@@ -147,7 +148,7 @@ export function Avatar({ name, size = 44, uri }: { name: string | null | undefin
         source={{ uri: src, ...(own && uri.includes("/v1/users/") && token ? { headers: { Authorization: `Bearer ${token}` } } : {}) }}
         onError={() => setFailed(true)}
         style={{ width: size, height: size, borderRadius: size / 2, borderWidth: 2, borderColor: colors.goldLine, backgroundColor: colors.ink }}
-        accessibilityLabel={name ? `${name}'s photo` : "Profile photo"}
+        accessibilityLabel={name ? t("{0}'s photo", { 0: name }) : t("Profile photo")}
       />
     );
   }
@@ -305,7 +306,7 @@ export function StatusPill({ status, awaitingPayment }: { status: BookingStatus;
   return (
     <View style={[styles.pill, { backgroundColor: bg }]}>
       <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: fg }} />
-      <RNText style={{ color: fg, fontFamily: fonts.bold, fontSize: 12 }}>{awaitingPayment ? "Awaiting payment" : STATUS_LABEL[status]}</RNText>
+      <RNText style={{ color: fg, fontFamily: fonts.bold, fontSize: 12 }}>{awaitingPayment ? t("Awaiting payment") : STATUS_LABEL[status]}</RNText>
     </View>
   );
 }
@@ -320,7 +321,7 @@ export function StepBar({ steps, current }: { steps: string[]; current: number }
         ))}
       </Row>
       <Text variant="small">
-        Step {current + 1} of {steps.length} · <Text variant="small" style={{ color: colors.text, fontFamily: fonts.semibold }}>{steps[current]}</Text>
+        {t("Step")}{" "}{current + 1}{" "}{t("of")}{" "}{steps.length} · <Text variant="small" style={{ color: colors.text, fontFamily: fonts.semibold }}>{steps[current]}</Text>
       </Text>
     </View>
   );
@@ -329,7 +330,7 @@ export function StepBar({ steps, current }: { steps: string[]; current: number }
 export function ErrorText({ error }: { error: string | null }) {
   return error ? (
     <View style={{ backgroundColor: colors.dangerSoft, borderRadius: radius.sm, padding: space(3) }}>
-      <Text style={{ color: colors.danger, fontSize: 14 }}>{error}</Text>
+      <Text style={{ color: colors.danger, fontSize: 14 }}>{t(error)}</Text>
     </View>
   ) : null;
 }

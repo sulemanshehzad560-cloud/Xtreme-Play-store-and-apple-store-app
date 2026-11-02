@@ -14,6 +14,7 @@ import { useApi } from "@/lib/useApi";
 import { LineIcon, iconColor } from "@/components/LineIcon";
 import { Celebration } from "@/components/Celebration";
 import * as StoreReview from "expo-store-review";
+import { dateLocale, isRTL, t } from "@/lib/i18n";
 
 const FLOW: [BookingStatus, string][] = [
   ["requested", "Booking received"],
@@ -47,7 +48,7 @@ export default function BookingDetail() {
   if (!b) {
     return (
       <Screen edges={["left", "right"]}>
-        <InlineLoader label="Fetching your booking…" />
+        <InlineLoader label={t("Fetching your booking…")} />
       </Screen>
     );
   }
@@ -56,17 +57,17 @@ export default function BookingDetail() {
   const lead = b.team.find((m) => m.isLead) ?? b.team[0];
 
   const cancel = () =>
-    Alert.alert("Cancel this booking?", b.paymentStatus === "paid" ? "You'll get a full refund to your original payment method." : "You can book again any time.", [
-      { text: "Keep booking", style: "cancel" },
+    Alert.alert(t("Cancel this booking?"), b.paymentStatus === "paid" ? t("You'll get a full refund to your original payment method.") : t("You can book again any time."), [
+      { text: t("Keep booking"), style: "cancel" },
       {
-        text: "Cancel booking",
+        text: t("Cancel booking"),
         style: "destructive",
         onPress: async () => {
           try {
             await api(`/bookings/${b.id}/cancel`, { body: {} });
             await reload();
           } catch (e) {
-            Alert.alert("Could not cancel", e instanceof Error ? e.message : "");
+            Alert.alert(t("Could not cancel"), e instanceof Error ? e.message : "");
           }
         },
       },
@@ -76,20 +77,20 @@ export default function BookingDetail() {
     <Screen edges={["left", "right"]}>
       <Celebration
         visible={celebrate}
-        title="Your clean is booked!"
-        message={`${b.service.name} · ${when(b.scheduledAt)}\nPayment received and your booking is confirmed. We'll notify you at every step.`}
+        title={t("Your clean is booked!")}
+        message={t("{0} · {1}\nPayment received and your booking is confirmed. We'll notify you at every step.", { 0: t(b.service.name), 1: when(b.scheduledAt) })}
         onClose={() => setCelebrate(false)}
       />
       {paid || (isNew && !b.awaitingPayment) ? (
         <Card tone="gold" style={{ alignItems: "center", paddingVertical: space(5) }}>
           <SuccessBurst size={120} />
           <Text variant="title" style={{ fontSize: 22, textAlign: "center" }}>
-            {paid ? "Payment successful!" : b.status === "confirmed" ? "Booking confirmed!" : "Booking received!"}
+            {paid ? t("Payment successful!") : b.status === "confirmed" ? t("Booking confirmed!") : t("Booking received!")}
           </Text>
           <Text variant="muted" style={{ textAlign: "center" }}>
             {b.reference} · {when(b.scheduledAt)}
             {"\n"}
-            {paid ? "Your booking is confirmed. We'll notify you at every step." : "We'll notify you at every step."}
+            {paid ? t("Your booking is confirmed. We'll notify you at every step.") : t("We'll notify you at every step.")}
           </Text>
         </Card>
       ) : null}
@@ -98,15 +99,15 @@ export default function BookingDetail() {
         <Card tone="ink" style={{ gap: space(2.5) }}>
           <Row style={{ gap: space(2) }}>
             <LineIcon name="clock" size={22} color={colors.goldBright} />
-            <Text style={{ color: colors.goldBright, fontFamily: fonts.extrabold, fontSize: 17, flex: 1 }}>Complete payment to confirm</Text>
+            <Text style={{ color: colors.goldBright, fontFamily: fonts.extrabold, fontSize: 17, flex: 1 }}>{t("Complete payment to confirm")}</Text>
           </Row>
           <Text style={{ color: "#D9D2C4", lineHeight: 20 }}>
-            Once you pay, your booking is confirmed and we assign your team.
+            {t("Once you pay, your booking is confirmed and we assign your team.")}
           </Text>
           {b.discountAed ? (
-            <Text style={{ color: colors.goldBright, fontFamily: fonts.bold }}>{aed(b.discountAed)} discount applied</Text>
+            <Text style={{ color: colors.goldBright, fontFamily: fonts.bold }}>{aed(b.discountAed)}{" "}{t("discount applied")}</Text>
           ) : null}
-          <Button title={`Pay ${aed(b.amountDueAed ?? b.priceAed)} securely`} variant="gold" onPress={() => router.push(`/booking/${b.id}/pay`)} />
+          <Button title={t("Pay {0} securely", { 0: aed(b.amountDueAed ?? b.priceAed) })} variant="gold" onPress={() => router.push(`/booking/${b.id}/pay`)} />
         </Card>
       ) : null}
 
@@ -116,19 +117,19 @@ export default function BookingDetail() {
             <ServiceIcon name={b.service.key} size={44} tile={false} />
           </View>
           <View style={{ flex: 1, gap: 4 }}>
-            <Text variant="heading">{b.service.name}</Text>
+            <Text variant="heading">{t(b.service.name)}</Text>
             <Text variant="small">
               {when(b.scheduledAt)} · {b.reference}
             </Text>
             <StatusPill status={b.status} awaitingPayment={b.awaitingPayment} />
           </View>
         </Row>
-        {b.trackable ? <Button title="Track your team live" icon={<LineIcon name="map" size={18} color={colors.onPrimary} />} onPress={() => router.push(`/booking/${b.id}/track`)} /> : null}
+        {b.trackable ? <Button title={t("Track your team live")} icon={<LineIcon name="map" size={18} color={colors.onPrimary} />} onPress={() => router.push(`/booking/${b.id}/track`)} /> : null}
       </Card>
 
       {b.status !== "cancelled" ? (
         <Card>
-          <Text variant="heading">Status</Text>
+          <Text variant="heading">{t("Status")}</Text>
           {FLOW.map(([s, label], i) => {
             const done = i <= reached;
             const current = i === reached;
@@ -151,18 +152,18 @@ export default function BookingDetail() {
                   </View>
                   {i < FLOW.length - 1 ? <View style={{ width: 2, height: 18, backgroundColor: i < reached ? colors.ink : colors.border }} /> : null}
                 </View>
-                <Text style={{ fontFamily: current ? fonts.bold : fonts.medium, color: done ? colors.text : colors.faint, fontSize: 15 }}>{label}</Text>
+                <Text style={{ fontFamily: current ? fonts.bold : fonts.medium, color: done ? colors.text : colors.faint, fontSize: 15 }}>{t(label)}</Text>
               </Row>
             );
           })}
         </Card>
       ) : (
-        <Notice>This booking was cancelled{b.paymentStatus === "refunded" ? " and your payment was refunded" : ""}.</Notice>
+        <Notice>{t("This booking was cancelled")}{b.paymentStatus === "refunded" ? t(" and your payment was refunded") : ""}.</Notice>
       )}
 
       {lead ? (
         <Card>
-          <Text variant="heading">Your professional</Text>
+          <Text variant="heading">{t("Your professional")}</Text>
           <Row>
             <Avatar name={lead.displayName} size={52} />
             <View style={{ flex: 1 }}>
@@ -170,65 +171,65 @@ export default function BookingDetail() {
               <Text variant="small">
                 {lead.teamName ? `${lead.teamName} · ` : ""}
                 {STAFF_LABEL[lead.status]}
-                {b.team.length > 1 ? ` · +${b.team.length - 1} team member` : ""}
+                {b.team.length > 1 ? t(" · +{0} team member", { 0: b.team.length - 1 }) : ""}
               </Text>
             </View>
           </Row>
           {company.data ? (
             <Row style={{ gap: space(2) }}>
-              <Button title="Call" icon={<LineIcon name="call" size={18} color={iconColor("call")} />} variant="secondary" size="sm" style={{ flex: 1 }} onPress={() => Linking.openURL(`tel:${company.data!.phone}`)} />
-              <Button title="WhatsApp" icon={<LineIcon name="chat" size={18} color={iconColor("chat")} />} variant="secondary" size="sm" style={{ flex: 1 }} onPress={() => Linking.openURL(company.data!.whatsapp)} />
+              <Button title={t("Call")} icon={<LineIcon name="call" size={18} color={iconColor("call")} />} variant="secondary" size="sm" style={{ flex: 1 }} onPress={() => Linking.openURL(`tel:${company.data!.phone}`)} />
+              <Button title={t("WhatsApp")} icon={<LineIcon name="chat" size={18} color={iconColor("chat")} />} variant="secondary" size="sm" style={{ flex: 1 }} onPress={() => Linking.openURL(company.data!.whatsapp)} />
             </Row>
           ) : null}
         </Card>
       ) : null}
 
       <Card>
-        <Text variant="heading">Details</Text>
-        <Detail label="Property" value={`${b.property.type[0]!.toUpperCase()}${b.property.type.slice(1)} · ${SIZE_LABEL[b.property.size] ?? b.property.size}`} />
-        <Detail label="Address" value={[b.address.unit, b.address.building, b.address.area].filter(Boolean).join(", ")} />
+        <Text variant="heading">{t("Details")}</Text>
+        <Detail label={t("Property")} value={`${t(b.property.type[0]!.toUpperCase() + b.property.type.slice(1))} · ${SIZE_LABEL[b.property.size] ?? b.property.size}`} />
+        <Detail label={t("Address")} value={[b.address.unit, b.address.building, b.address.area].filter(Boolean).join(", ")} />
         {b.frequency && b.frequency !== "one_time" ? (
-          <Detail label="Repeats" value={`${b.frequency === "weekly" ? "Every week" : "Every two weeks"} · the next visit is set up after this one. Cancel a visit to stop repeating.`} />
+          <Detail label={t("Repeats")} value={t("{0} · the next visit is set up after this one. Cancel a visit to stop repeating.", { 0: b.frequency === "weekly" ? "Every week" : "Every two weeks" })} />
         ) : null}
-        <Detail label="Cleaning materials" value="Included free" />
-        {b.notes ? <Detail label="Notes" value={b.notes} /> : null}
+        <Detail label={t("Cleaning materials")} value={t("Included free")} />
+        {b.notes ? <Detail label={t("Notes")} value={b.notes} /> : null}
         <Divider />
         <Row style={{ justifyContent: "space-between" }}>
           <View>
-            <Text variant="small">Payment</Text>
-            <Text style={{ fontFamily: fonts.semibold, color: b.paymentStatus === "paid" || b.paymentStatus === "included" ? colors.success : colors.text }}>{PAYMENT_LABEL[b.paymentStatus]}</Text>
+            <Text variant="small">{t("Payment")}</Text>
+            <Text style={{ fontFamily: fonts.semibold, color: b.paymentStatus === "paid" || b.paymentStatus === "included" ? colors.success : colors.text }}>{t(PAYMENT_LABEL[b.paymentStatus])}</Text>
           </View>
           <View style={{ alignItems: "flex-end" }}>
             {b.discountAed ? <Text variant="small" style={{ textDecorationLine: "line-through" }}>{aed(b.priceAed)}</Text> : null}
-            <Text variant="price">{b.paymentStatus === "included" ? "Included" : aed(b.amountDueAed ?? b.priceAed)}</Text>
+            <Text variant="price">{b.paymentStatus === "included" ? t("Included") : aed(b.amountDueAed ?? b.priceAed)}</Text>
           </View>
         </Row>
         {b.discountAed ? (
           <Text variant="small" style={{ color: colors.success, fontFamily: fonts.semibold }}>
-            Discount {aed(b.discountAed)}{b.promoCode ? ` · code ${b.promoCode}` : ""}
+            {t("Discount")}{" "}{aed(b.discountAed)}{b.promoCode ? t(" · code {0}", { 0: b.promoCode }) : ""}
           </Text>
         ) : null}
         {b.priceAed == null && b.status !== "cancelled" ? (
-          <Text variant="small">Our team inspects on arrival and sends your quote here. You'll get a notification and can pay securely in the app.</Text>
+          <Text variant="small">{t("Our team inspects on arrival and sends your quote here. You'll get a notification and can pay securely in the app.")}</Text>
         ) : null}
-        {b.canPay && !b.awaitingPayment ? <Button title={`Pay ${aed(b.amountDueAed ?? b.priceAed)} now`} variant="gold" onPress={() => router.push(`/booking/${b.id}/pay`)} /> : null}
+        {b.canPay && !b.awaitingPayment ? <Button title={t("Pay {0} now", { 0: aed(b.amountDueAed ?? b.priceAed) })} variant="gold" onPress={() => router.push(`/booking/${b.id}/pay`)} /> : null}
         {["paid", "partially_refunded", "refunded"].includes(b.paymentStatus) ? (
-          <Button title="View receipt" variant="secondary" onPress={() => router.push(`/booking/${b.id}/invoice`)} />
+          <Button title={t("View receipt")} variant="secondary" onPress={() => router.push(`/booking/${b.id}/invoice`)} />
         ) : null}
       </Card>
 
       {b.status === "completed" && !b.review ? (
         <Card tone="gold">
-          <Text variant="heading">How was your service?</Text>
+          <Text variant="heading">{t("How was your service?")}</Text>
           <Row style={{ justifyContent: "center", gap: space(2) }}>
             {[1, 2, 3, 4, 5].map((n) => (
-              <Pressable key={n} onPress={() => setRating(n)} accessibilityLabel={`${n} stars`}>
+              <Pressable key={n} onPress={() => setRating(n)} accessibilityLabel={t("{0} stars", { 0: n })}>
                 <RNText style={{ fontSize: 38, color: n <= rating ? colors.star : colors.border }}>★</RNText>
               </Pressable>
             ))}
           </Row>
           <Button
-            title="Submit rating"
+            title={t("Submit rating")}
             disabled={!rating}
             onPress={async () => {
               await api(`/bookings/${b.id}/review`, { body: { rating } });
@@ -239,14 +240,14 @@ export default function BookingDetail() {
           />
         </Card>
       ) : null}
-      {b.review ? <Text variant="small" style={{ textAlign: "center" }}>You rated this service {"★".repeat(b.review.rating)}</Text> : null}
+      {b.review ? <Text variant="small" style={{ textAlign: "center" }}>{t("You rated this service")}{" "}{"★".repeat(b.review.rating)}</Text> : null}
 
       {b.status === "completed" || b.status === "cancelled" ? <Button
-          title="Book again"
+          title={t("Book again")}
           onPress={() => router.push({ pathname: "/service/[key]", params: { key: b.service.key, type: b.property.type, size: b.property.size, ...(b.frequency && b.frequency !== "one_time" ? { frequency: b.frequency } : {}) } })}
         /> : null}
-      {b.canReschedule ? <Button title="Reschedule" icon={<LineIcon name="calendar" size={18} color={iconColor("calendar")} />} variant="secondary" onPress={() => setRescheduling(true)} /> : null}
-      {b.canCancel ? <Button title="Cancel booking" variant="danger" onPress={cancel} /> : null}
+      {b.canReschedule ? <Button title={t("Reschedule")} icon={<LineIcon name="calendar" size={18} color={iconColor("calendar")} />} variant="secondary" onPress={() => setRescheduling(true)} /> : null}
+      {b.canCancel ? <Button title={t("Cancel booking")} variant="danger" onPress={cancel} /> : null}
       <RescheduleSheet
         visible={rescheduling}
         onClose={() => setRescheduling(false)}
@@ -255,9 +256,9 @@ export default function BookingDetail() {
             await api(`/bookings/${b.id}`, { method: "PATCH", body: { scheduledAt: iso } });
             setRescheduling(false);
             await reload();
-            Alert.alert("Rescheduled", "Your new time is confirmed.");
+            Alert.alert(t("Rescheduled"), t("Your new time is confirmed."));
           } catch (e) {
-            Alert.alert("Could not reschedule", e instanceof Error ? e.message : "");
+            Alert.alert(t("Could not reschedule"), e instanceof Error ? e.message : "");
           }
         }}
       />
@@ -293,13 +294,14 @@ function RescheduleSheet({ visible, onClose, onPick }: { visible: boolean; onClo
   const [busy, setBusy] = useState(false);
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={{ flex: 1, direction: isRTL() ? "rtl" : "ltr" }}>
       <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.35)" }} onPress={onClose} />
       <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: space(5), gap: space(3), paddingBottom: space(10) }}>
-        <Text variant="heading">Pick a new time</Text>
+        <Text variant="heading">{t("Pick a new time")}</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space(2) }}>
           {days.map((d) => (
             <View key={d.toDateString()} style={{ width: 62 }}>
-              <Chip label={String(d.getDate())} sub={d.toLocaleDateString("en-GB", { weekday: "short" })} selected={d.toDateString() === day.toDateString()} onPress={() => setDay(d)} />
+              <Chip label={String(d.getDate())} sub={d.toLocaleDateString(dateLocale(), { weekday: "short" })} selected={d.toDateString() === day.toDateString()} onPress={() => setDay(d)} />
             </View>
           ))}
         </ScrollView>
@@ -311,7 +313,7 @@ function RescheduleSheet({ visible, onClose, onPick }: { visible: boolean; onClo
           ))}
         </Row>
         <Button
-          title="Confirm new time"
+          title={t("Confirm new time")}
           disabled={hour == null}
           loading={busy}
           onPress={async () => {
@@ -320,6 +322,7 @@ function RescheduleSheet({ visible, onClose, onPick }: { visible: boolean; onClo
             setBusy(false);
           }}
         />
+      </View>
       </View>
     </Modal>
   );

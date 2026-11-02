@@ -3,6 +3,7 @@ import { Pressable, Text as RNText, View } from "react-native";
 import { Chip, Row, Text } from "./ui";
 import { hourLabel, openHours } from "./SlotPicker";
 import { colors, fonts, radius, space } from "../lib/theme";
+import { dateLocale, t } from "@/lib/i18n";
 
 /** "YYYY-MM-DD" for a local date. */
 export const dayKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -78,13 +79,13 @@ export function MonthCalendar({
       <View style={{ backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: space(3), gap: space(2) }}>
         <Row style={{ justifyContent: "space-between" }}>
           <Nav label="‹" disabled={!canPrev} onPress={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1, 12))} />
-          <Text style={{ fontFamily: fonts.extrabold, fontSize: 16 }}>{month.toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</Text>
+          <Text style={{ fontFamily: fonts.extrabold, fontSize: 16 }}>{month.toLocaleDateString(dateLocale(), { month: "long", year: "numeric" })}</Text>
           <Nav label="›" disabled={!canNext} onPress={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1, 12))} />
         </Row>
         <View style={{ flexDirection: "row" }}>
           {WEEK.map((w) => (
             <RNText key={w} style={{ flex: 1, textAlign: "center", fontFamily: fonts.semibold, fontSize: 11.5, color: colors.faint }}>
-              {w}
+              {t(w)}
             </RNText>
           ))}
         </View>
@@ -130,23 +131,23 @@ export function MonthCalendar({
         </View>
         <Row style={{ justifyContent: "space-between", marginTop: space(1) }}>
           <Text variant="small">
-            <Text style={{ fontFamily: fonts.extrabold, color: colors.text }}>{selected.length}</Text> of {max} visit{max === 1 ? "" : "s"} picked
+            <Text style={{ fontFamily: fonts.extrabold, color: colors.text }}>{selected.length}</Text>{" "}{t("of")}{" "}{max}{" "}{t("visit")}{max === 1 ? "" : "s"}{" "}{t("picked")}
           </Text>
           {selected.length ? (
             <Text onPress={() => onChange([])} style={{ color: colors.danger, fontFamily: fonts.bold, fontSize: 13 }}>
-              Clear
+              {t("Clear")}
             </Text>
           ) : null}
         </Row>
         {Object.keys(booked).length ? (
           <Row style={{ gap: space(2) }}>
             <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: colors.success }} />
-            <Text variant="small">Already booked</Text>
+            <Text variant="small">{t("Already booked")}</Text>
           </Row>
         ) : null}
       </View>
 
-      <Text variant="heading">Start time for {selected.length > 1 ? "all visits" : "your visit"}</Text>
+      <Text variant="heading">{t("Start time for")}{" "}{selected.length > 1 ? t("all visits") : t("your visit")}</Text>
       <Row style={{ flexWrap: "wrap", gap: space(2) }}>
         {HOURS.map((h) => {
           const ok = hourOk(h);

@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { colors, fonts, radius, shadow, space } from "@/lib/theme";
 import type { Company } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
+import { dateLocale, t } from "@/lib/i18n";
 
 interface Message {
   id: string;
@@ -17,7 +18,7 @@ interface Message {
 
 const QUICK = ["Prices", "Are materials included?", "Which areas do you cover?", "Weekly cleaning", "Payment options", "Cancel or reschedule"];
 
-const time = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+const time = (iso: string) => new Date(iso).toLocaleTimeString(dateLocale(), { hour: "2-digit", minute: "2-digit" });
 
 /** "Chat with us": instant automated answers, and replies from the office in the same thread. */
 export default function Chat() {
@@ -58,7 +59,7 @@ export default function Chat() {
     } catch (e) {
       setMessages((m) => (m ?? []).filter((x) => x.id !== temp.id));
       setText(msg);
-      setError(e instanceof Error ? e.message : "Message not sent");
+      setError(e instanceof Error ? e.message : t("Message not sent"));
     } finally {
       setSending(false);
     }
@@ -67,7 +68,7 @@ export default function Chat() {
   const welcome: Message = {
     id: "welcome",
     sender: "bot",
-    body: "Hi! I'm the Xtreme assistant. Ask about prices, booking, payments or our areas and I'll answer straight away. For anything else, our team replies right here.",
+    body: t("Hi! I'm the Xtreme assistant. Ask about prices, booking, payments or our areas and I'll answer straight away. For anything else, our team replies right here."),
     createdAt: new Date().toISOString(),
   };
   const data = messages ? [welcome, ...messages] : [];
@@ -76,14 +77,14 @@ export default function Chat() {
     <SafeAreaView edges={["left", "right", "bottom"]} style={{ flex: 1, backgroundColor: colors.bg }}>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={90} style={{ flex: 1 }}>
         <View style={{ backgroundColor: colors.ink, paddingHorizontal: space(4), paddingVertical: space(3), flexDirection: "row", alignItems: "center", gap: space(3) }}>
-          <BrandMark size={26} sub="Usually replies in minutes" />
+          <BrandMark size={26} sub={t("Usually replies in minutes")} />
           <View style={{ marginLeft: "auto", flexDirection: "row", alignItems: "center", gap: 6 }}>
             <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#3DDC84" }} />
-            <RNText style={{ color: "#E9E3D6", fontFamily: fonts.semibold, fontSize: 12 }}>Online</RNText>
+            <RNText style={{ color: "#E9E3D6", fontFamily: fonts.semibold, fontSize: 12 }}>{t("Online")}</RNText>
           </View>
         </View>
 
-        {!messages && !error ? <InlineLoader label="Opening chat…" /> : null}
+        {!messages && !error ? <InlineLoader label={t("Opening chat…")} /> : null}
         <FlatList
           ref={list}
           data={data}
@@ -94,8 +95,8 @@ export default function Chat() {
             messages && messages.length < 2 ? (
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space(2), marginTop: space(2) }}>
                 {QUICK.map((q) => (
-                  <Pressable key={q} onPress={() => send(q)} style={{ borderWidth: 1.5, borderColor: colors.goldLine, backgroundColor: colors.surface, borderRadius: radius.pill, paddingHorizontal: space(3), paddingVertical: space(2) }}>
-                    <RNText style={{ color: colors.gold, fontFamily: fonts.bold, fontSize: 13 }}>{q}</RNText>
+                  <Pressable key={q} onPress={() => send(t(q))} style={{ borderWidth: 1.5, borderColor: colors.goldLine, backgroundColor: colors.surface, borderRadius: radius.pill, paddingHorizontal: space(3), paddingVertical: space(2) }}>
+                    <RNText style={{ color: colors.gold, fontFamily: fonts.bold, fontSize: 13 }}>{t(q)}</RNText>
                   </Pressable>
                 ))}
               </View>
@@ -107,7 +108,7 @@ export default function Chat() {
         {company.data ? (
           <Pressable onPress={() => Linking.openURL(company.data!.whatsapp)} style={{ alignSelf: "center", paddingVertical: space(1.5) }}>
             <RNText style={{ color: colors.muted, fontFamily: fonts.semibold, fontSize: 12.5 }}>
-              Prefer WhatsApp? <RNText style={{ color: "#1DA851", fontFamily: fonts.bold }}>Chat on {company.data.phoneDisplay}</RNText>
+              {t("Prefer WhatsApp?")}{" "}<RNText style={{ color: "#1DA851", fontFamily: fonts.bold }}>{t("Chat on")}{" "}{company.data.phoneDisplay}</RNText>
             </RNText>
           </Pressable>
         ) : null}
@@ -115,7 +116,7 @@ export default function Chat() {
           <TextInput
             value={text}
             onChangeText={setText}
-            placeholder="Type your message…"
+            placeholder={t("Type your message…")}
             placeholderTextColor={colors.faint}
             multiline
             maxLength={2000}
@@ -125,7 +126,7 @@ export default function Chat() {
             onPress={() => send(text)}
             disabled={!text.trim() || sending}
             accessibilityRole="button"
-            accessibilityLabel="Send"
+            accessibilityLabel={t("Send")}
             style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: text.trim() ? colors.ink : colors.border, alignItems: "center", justifyContent: "center" }}
           >
             <RNText style={{ color: text.trim() ? colors.goldBright : colors.faint, fontSize: 20, fontFamily: fonts.bold, marginLeft: 2 }}>➤</RNText>
@@ -142,7 +143,7 @@ function Bubble({ m }: { m: Message }) {
     <View style={{ alignSelf: mine ? "flex-end" : "flex-start", maxWidth: "84%", gap: 3 }}>
       {!mine ? (
         <RNText style={{ fontFamily: fonts.bold, fontSize: 11.5, color: m.sender === "staff" ? colors.gold : colors.muted, marginLeft: 4 }}>
-          {m.sender === "staff" ? "Xtreme team" : "Xtreme assistant · instant answer"}
+          {m.sender === "staff" ? t("Xtreme team") : t("Xtreme assistant · instant answer")}
         </RNText>
       ) : null}
       <View

@@ -39,7 +39,8 @@ export type LineIconName =
   | "user"
   | "map"
   | "briefcase"
-  | "search";
+  | "search"
+  | "heart";
 
 // Each icon has its own colour, so lists and highlights are easy to scan.
 const TINT: Partial<Record<LineIconName, string>> = {
@@ -78,6 +79,7 @@ const TINT: Partial<Record<LineIconName, string>> = {
   bottle: "#12A594",
   user: "#2F6FDE",
   map: "#1E9E5A",
+  heart: "#E5484D",
 };
 
 /** The icon's own colour (for coloured icons on light or dark backgrounds). */
@@ -91,6 +93,8 @@ export function LineIcon({ name, size = 22, color = colors.text }: { name: LineI
     <Svg width={size} height={size} viewBox="0 0 24 24">
       {(() => {
         switch (name) {
+          case "heart":
+            return <Path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.2a4.3 4.3 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20Z" {...p} />;
           case "phone":
             return (
               <>

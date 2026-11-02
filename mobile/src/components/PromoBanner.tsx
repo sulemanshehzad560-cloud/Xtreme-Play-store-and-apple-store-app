@@ -3,6 +3,7 @@ import { Image, Pressable, Text as RNText, View, type ImageSourcePropType } from
 import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient, Rect, Stop } from "react-native-svg";
 import { ServiceIcon } from "./art/ServiceIcon";
 import { fonts, radius, space } from "../lib/theme";
+import { isRTL } from "@/lib/i18n";
 
 export interface Promo {
   key: string;
@@ -67,7 +68,7 @@ export function PromoBanner({ promo, width, height = 184, onPress }: { promo: Pr
         </RNText>
       </View>
       <View style={{ position: "absolute", left: space(5), bottom: space(4), backgroundColor: promo.light ? "#16130E" : "#FFFFFF", borderRadius: radius.pill, paddingHorizontal: space(4), paddingVertical: space(2) }}>
-        <RNText style={{ color: promo.light ? "#FFFFFF" : "#16130E", fontFamily: fonts.bold, fontSize: 13 }}>{promo.cta} →</RNText>
+        <RNText style={{ color: promo.light ? "#FFFFFF" : "#16130E", fontFamily: fonts.bold, fontSize: 13 }}>{promo.cta} {isRTL() ? "←" : "→"}</RNText>
       </View>
     </Pressable>
   );
@@ -108,7 +109,7 @@ function PhotoBanner({ promo, width, height, onPress }: { promo: Promo; width: n
         </RNText>
       </View>
       <View style={{ position: "absolute", bottom: space(4), ...(right ? { right: space(5) } : { left: space(5) }), backgroundColor: "#FFFFFF", borderRadius: radius.pill, paddingHorizontal: space(4), paddingVertical: space(2) }}>
-        <RNText style={{ color: "#16130E", fontFamily: fonts.bold, fontSize: 13 }}>{promo.cta} →</RNText>
+        <RNText style={{ color: "#16130E", fontFamily: fonts.bold, fontSize: 13 }}>{promo.cta} {isRTL() ? "←" : "→"}</RNText>
       </View>
     </Pressable>
   );

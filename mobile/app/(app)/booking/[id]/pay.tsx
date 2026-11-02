@@ -12,6 +12,7 @@ import { aed, when } from "@/lib/format";
 import type { Booking } from "@/lib/types";
 import { colors, fonts, space } from "@/lib/theme";
 import { LineIcon, iconColor } from "@/components/LineIcon";
+import { t } from "@/lib/i18n";
 
 interface Options {
   amount: { priceAed: number; discountAed: number; totalAed: number; serviceFeeAed?: number; serviceFeePercent?: number };
@@ -48,6 +49,7 @@ export default function Pay() {
   const [method, setMethod] = useState<"card" | "tamara">(preselected ?? "card");
   // Optional tip for the team, passed on in full.
   const [tip, setTip] = useState(0);
+  const [tipOpen, setTipOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -69,11 +71,11 @@ export default function Pay() {
     setPromoNote(null);
     try {
       const r = await api<Booking & { promoMessage?: string }>(`/bookings/${id}/promo`, { body: { code: code.trim() } });
-      setPromoNote({ text: r.promoMessage ?? "Code applied", ok: true });
+      setPromoNote({ text: r.promoMessage ?? t("Code applied"), ok: true });
       setCode("");
       await load();
     } catch (e) {
-      setPromoNote({ text: e instanceof Error ? e.message : "This code could not be applied", ok: false });
+      setPromoNote({ text: e instanceof Error ? e.message : t("This code could not be applied"), ok: false });
     } finally {
       setPromoBusy(false);
     }
@@ -86,7 +88,7 @@ export default function Pay() {
       await api(`/bookings/${id}/promo`, { method: "DELETE" });
       await load();
     } catch (e) {
-      setPromoNote({ text: e instanceof Error ? e.message : "Could not remove the code", ok: false });
+      setPromoNote({ text: e instanceof Error ? e.message : t("Could not remove the code"), ok: false });
     } finally {
       setPromoBusy(false);
     }
@@ -97,8 +99,8 @@ export default function Pay() {
     const p = await api<{ status: string }>(`/payments/${paymentId}/sync`, { body: {} });
     if (p.status === "captured") {
       router.dismissTo(`/booking/${id}?paid=1`);
-    } else if (p.status === "pending") setError("The payment wasn't completed. You can try again.");
-    else setError("The payment didn't go through. Please try another method.");
+    } else if (p.status === "pending") setError(t("The payment wasn't completed. You can try again."));
+    else setError(t("The payment didn't go through. Please try another method."));
   }
 
   async function payByCard() {
@@ -142,7 +144,7 @@ export default function Pay() {
       if (method === "card") await payByCard();
       else await payByTamara();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Payment failed");
+      setError(e instanceof Error ? e.message : t("Payment failed"));
     } finally {
       setBusy(false);
     }
@@ -161,19 +163,19 @@ export default function Pay() {
       edges={["left", "right"]}
       footer={
         <StickyFooter>
-          <Button title={total != null ? `Pay ${aed(total)}` : "Pay"} onPress={confirm} loading={busy} disabled={!options} style={{ flex: 1 }} />
+          <Button title={total != null ? t("Pay {0}", { 0: aed(total) }) : t("Pay")} onPress={confirm} loading={busy} disabled={!options} style={{ flex: 1 }} />
         </StickyFooter>
       }
     >
-      {!options && !error ? <InlineLoader label="Getting your payment options…" /> : null}
+      {!options && !error ? <InlineLoader label={t("Getting your payment options…")} /> : null}
       {options ? (
         <>
           <Card tone="ink" style={{ gap: space(2.5) }}>
             <View>
-              <Text style={{ color: colors.goldBright, fontFamily: fonts.bold, fontSize: 12, letterSpacing: 1.2 }}>ORDER SUMMARY</Text>
+              <Text style={{ color: colors.goldBright, fontFamily: fonts.bold, fontSize: 12, letterSpacing: 1.2 }}>{t("ORDER SUMMARY")}</Text>
               {booking ? (
                 <>
-                  <Text style={{ color: colors.onInk, fontFamily: fonts.extrabold, fontSize: 19, marginTop: space(1) }}>{booking.service.name}</Text>
+                  <Text style={{ color: colors.onInk, fontFamily: fonts.extrabold, fontSize: 19, marginTop: space(1) }}>{t(booking.service.name)}</Text>
                   <Text style={{ color: "#BDB4A3", fontSize: 13.5, marginTop: 2 }}>
                     {booking.reference} · {when(booking.scheduledAt)}
                   </Text>
@@ -181,38 +183,38 @@ export default function Pay() {
               ) : null}
             </View>
             <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.12)" }} />
-            <SummaryLine label="Service price" value={aed(options.amount.priceAed)} />
+            <SummaryLine label={t("Service price")} value={aed(options.amount.priceAed)} />
             {options.amount.discountAed > 0 ? (
-              <SummaryLine label={options.promoCode ? `Discount (${options.promoCode})` : "Discount"} value={`– ${aed(options.amount.discountAed)}`} accent />
+              <SummaryLine label={options.promoCode ? t("Discount ({0})", { 0: options.promoCode }) : t("Discount")} value={`– ${aed(options.amount.discountAed)}`} accent />
             ) : null}
-            <SummaryLine label="Cleaning materials" value="FREE" />
-            {tip ? <SummaryLine label="Tip for your team" value={aed(tip)} /> : null}
-            {serviceFee > 0 ? <SummaryLine label={options.amount.serviceFeePercent ? `Service fee (${options.amount.serviceFeePercent}%)` : "Service fee"} value={aed(serviceFee)} /> : null}
-            {methodFee > 0 ? <SummaryLine label={`${method === "tamara" ? "Tamara" : "Card"} fee (${chosen?.feePercent ?? 0}%)`} value={aed(methodFee)} /> : null}
+            <SummaryLine label={t("Cleaning materials")} value={t("FREE")} />
+            {tip ? <SummaryLine label={t("Tip for your team")} value={aed(tip)} /> : null}
+            {serviceFee > 0 ? <SummaryLine label={options.amount.serviceFeePercent ? t("Service fee ({0}%)", { 0: options.amount.serviceFeePercent }) : t("Service fee")} value={aed(serviceFee)} /> : null}
+            {methodFee > 0 ? <SummaryLine label={t("{0} fee ({1}%)", { 0: method === "tamara" ? "Tamara" : "Card", 1: chosen?.feePercent ?? 0 })} value={aed(methodFee)} /> : null}
             <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.12)" }} />
             <Row style={{ justifyContent: "space-between", alignItems: "flex-end" }}>
-              <Text style={{ color: "#BDB4A3", fontFamily: fonts.semibold }}>Total to pay</Text>
+              <Text style={{ color: "#BDB4A3", fontFamily: fonts.semibold }}>{t("Total to pay")}</Text>
               <Text style={{ color: colors.onInk, fontFamily: fonts.extrabold, fontSize: 28 }}>{aed(total ?? options.amount.totalAed)}</Text>
             </Row>
-            <Text style={{ color: "#BDB4A3", fontSize: 12.5 }}>{method === "tamara" ? "Tamara fee added for paying in instalments · no hidden charges" : "No hidden charges · your tax invoice is emailed after payment"}</Text>
+            <Text style={{ color: "#BDB4A3", fontSize: 12.5 }}>{method === "tamara" ? t("Tamara fee added for paying in instalments · no hidden charges") : t("No hidden charges · your tax invoice is emailed after payment")}</Text>
           </Card>
 
           {options.amount.discountAed > 0 ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: space(2), backgroundColor: colors.successSoft, borderRadius: 14, padding: space(3) }}>
               <LineIcon name="tag" size={20} color={colors.success} />
-              <Text style={{ flex: 1, color: colors.success, fontFamily: fonts.bold }}>You save {aed(options.amount.discountAed)} on this booking</Text>
+              <Text style={{ flex: 1, color: colors.success, fontFamily: fonts.bold }}>{t("You save")}{" "}{aed(options.amount.discountAed)}{" "}{t("on this booking")}</Text>
             </View>
           ) : null}
 
           <Card style={{ gap: space(2) }}>
-            <Text variant="subheading">Promo code</Text>
+            <Text variant="subheading">{t("Promo code")}</Text>
             {options.promoCode ? (
               <Row style={{ justifyContent: "space-between" }}>
                 <View style={{ backgroundColor: colors.goldSoft, borderRadius: 8, paddingHorizontal: space(2.5), paddingVertical: space(1) }}>
                   <Text style={{ color: colors.gold, fontFamily: fonts.extrabold, letterSpacing: 1 }}>{options.promoCode}</Text>
                 </View>
                 <Text onPress={promoBusy ? undefined : removeCode} style={{ color: colors.danger, fontFamily: fonts.bold }}>
-                  Remove
+                  {t("Remove")}
                 </Text>
               </Row>
             ) : (
@@ -221,7 +223,7 @@ export default function Pay() {
                   <Input
                     value={code}
                     onChangeText={(t) => setCode(t.toUpperCase())}
-                    placeholder="Enter code"
+                    placeholder={t("Enter code")}
                     autoCapitalize="characters"
                     autoCorrect={false}
                     maxLength={24}
@@ -229,51 +231,72 @@ export default function Pay() {
                     onSubmitEditing={applyCode}
                   />
                 </View>
-                <Button title="Apply" variant="secondary" size="sm" onPress={applyCode} loading={promoBusy} disabled={!code.trim()} style={{ minHeight: 50 }} />
+                <Button title={t("Apply")} variant="secondary" size="sm" onPress={applyCode} loading={promoBusy} disabled={!code.trim()} style={{ minHeight: 50 }} />
               </Row>
             )}
             {promoNote ? <Text style={{ color: promoNote.ok ? colors.success : colors.danger, fontFamily: fonts.semibold, fontSize: 13.5 }}>{promoNote.text}</Text> : null}
           </Card>
 
-          <Card>
-            <Row style={{ gap: space(2) }}>
-              <LineIcon name="sparkle" size={20} color={iconColor("sparkle")} />
-              <Text style={{ fontFamily: fonts.bold, flex: 1 }}>Add a tip for your team?</Text>
-            </Row>
-            <Text variant="small">Optional. 100% goes to the cleaners who visit you.</Text>
-            <Row style={{ gap: space(2) }}>
-              {[0, 5, 10, 20].map((v) => (
-                <Pressable
-                  key={v}
-                  onPress={() => setTip(v)}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: tip === v }}
-                  style={{ flex: 1, alignItems: "center", paddingVertical: space(2.5), borderRadius: 12, borderWidth: 1.5, borderColor: tip === v ? colors.gold : colors.border, backgroundColor: tip === v ? colors.goldSoft : colors.surface }}
+          {tipOpen || tip ? (
+            <Card style={{ gap: space(2.5) }}>
+              <Row style={{ justifyContent: "space-between" }}>
+                <Text style={{ fontFamily: fonts.bold }}>{t("Tip your team")}</Text>
+                <Text
+                  onPress={() => {
+                    setTip(0);
+                    setTipOpen(false);
+                  }}
+                  style={{ color: colors.muted, fontFamily: fonts.semibold, fontSize: 13.5 }}
                 >
-                  <RNText style={{ color: colors.text, fontFamily: tip === v ? fonts.extrabold : fonts.semibold, fontSize: 14 }}>{v ? `AED ${v}` : "No tip"}</RNText>
-                </Pressable>
-              ))}
-            </Row>
-          </Card>
+                  {t("No thanks")}
+                </Text>
+              </Row>
+              <Row style={{ gap: space(2) }}>
+                {[10, 20, 30].map((v) => (
+                  <Pressable
+                    key={v}
+                    onPress={() => setTip(tip === v ? 0 : v)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: tip === v }}
+                    style={{ flex: 1, alignItems: "center", paddingVertical: space(2.5), borderRadius: 12, borderWidth: 1.5, borderColor: tip === v ? colors.gold : colors.border, backgroundColor: tip === v ? colors.goldSoft : colors.surface }}
+                  >
+                    <RNText style={{ color: colors.text, fontFamily: tip === v ? fonts.extrabold : fonts.semibold, fontSize: 14 }}>{aed(v)}</RNText>
+                  </Pressable>
+                ))}
+              </Row>
+              <Text variant="small">{t("Completely optional. 100% goes to the cleaners who visit you.")}</Text>
+            </Card>
+          ) : (
+            <Pressable
+              onPress={() => setTipOpen(true)}
+              accessibilityRole="button"
+              style={{ flexDirection: "row", alignItems: "center", gap: space(2), paddingVertical: space(1), paddingHorizontal: space(1) }}
+            >
+              <LineIcon name="heart" size={18} color={colors.gold} />
+              <Text style={{ flex: 1, color: colors.muted, fontSize: 14 }}>
+                {t("Want to thank your team?")}{" "}<Text style={{ color: colors.gold, fontFamily: fonts.bold, fontSize: 14 }}>{t("Add a tip")}</Text>
+              </Text>
+            </Pressable>
+          )}
 
-          <Text variant="heading">Choose how to pay</Text>
+          <Text variant="heading">{t("Choose how to pay")}</Text>
           <OptionCard
             selected={method === "card"}
             disabled={!available("card")}
             onPress={() => setMethod("card")}
-            title="Credit or debit card"
-            subtitle="Visa, Mastercard, Apple Pay, Google Pay"
+            title={t("Credit or debit card")}
+            subtitle={t("Visa, Mastercard, Apple Pay, Google Pay")}
             icon={<LineIcon name="card" size={24} color={iconColor("card")} />}
           />
           <OptionCard
             selected={method === "tamara"}
             disabled={!available("tamara")}
             onPress={() => setMethod("tamara")}
-            title="Pay in 4 with Tamara"
+            title={t("Pay in 4 with Tamara")}
             subtitle={
               tamara?.totalAed
-                ? `4 payments of ${aed(Math.round(((tamara.totalAed + tip) / 4) * 100) / 100)} · includes ${tamara.feePercent ?? 8}% Tamara fee`
-                : "Pay in instalments"
+                ? t("4 payments of {0} · includes {1}% Tamara fee", { 0: aed(Math.round(((tamara.totalAed + tip) / 4) * 100) / 100), 1: tamara.feePercent ?? 8 })
+                : t("Pay in instalments")
             }
             icon={<TamaraBadge />}
           />
@@ -281,11 +304,11 @@ export default function Pay() {
           <View style={{ flexDirection: "row", alignItems: "center", gap: space(2), justifyContent: "center", marginTop: space(2) }}>
             <LineIcon name="lock" size={15} color={iconColor("lock")} />
             <Text variant="small" style={{ fontFamily: fonts.medium }}>
-              Payments are encrypted and processed securely.
+              {t("Payments are encrypted and processed securely.")}
             </Text>
           </View>
-          <Notice tone="info">Your booking is confirmed as soon as the payment goes through.</Notice>
-          {DEMO ? <Notice>Demo build: no real payment is taken. Tapping Pay marks the booking as paid.</Notice> : null}
+          <Notice tone="info">{t("Your booking is confirmed as soon as the payment goes through.")}</Notice>
+          {DEMO ? <Notice>{t("Demo build: no real payment is taken. Tapping Pay marks the booking as paid.")}</Notice> : null}
         </>
       ) : null}
       <ErrorText error={error} />

@@ -9,6 +9,7 @@ import { AppleIcon, FacebookIcon, GoogleIcon } from "@/components/BrandIcons";
 import { Button, Text } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import { colors, fonts, radius, space } from "@/lib/theme";
+import { t } from "@/lib/i18n";
 
 const PERKS: [LineIconName, string][] = [
   ["shield", "Vetted, trained & insured teams"],
@@ -31,8 +32,8 @@ export default function Welcome() {
     try {
       await fn();
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Please try again";
-      if (!/cancel/i.test(msg)) Alert.alert("Sign-in failed", msg);
+      const msg = e instanceof Error ? e.message : t("Please try again");
+      if (!/cancel/i.test(msg)) Alert.alert(t("Sign-in failed"), msg);
     } finally {
       setBusy(null);
     }
@@ -42,16 +43,16 @@ export default function Welcome() {
     <View style={{ flex: 1, backgroundColor: colors.ink }}>
       <SafeAreaView edges={["top"]} style={{ paddingHorizontal: space(6), paddingTop: space(6), paddingBottom: space(10), gap: space(5) }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: space(3) }}>
-          <Image source={require("../../assets/logo.png")} style={{ width: 52, height: 52, borderRadius: 14 }} accessibilityLabel="Xtreme logo" />
+          <Image source={require("../../assets/logo.png")} style={{ width: 52, height: 52, borderRadius: 14 }} accessibilityLabel={t("Xtreme logo")} />
           <View>
             <RNText style={{ color: colors.goldBright, fontFamily: fonts.extrabold, fontSize: 20 }}>
-              Xtreme<RNText style={{ color: "#fff" }}>-Cleaning Partner</RNText>
+              {t("Xtreme")}<RNText style={{ color: "#fff" }}>{t("-Cleaning Partner")}</RNText>
             </RNText>
-            <RNText style={{ color: "#A79E8D", fontFamily: fonts.medium, fontSize: 12 }}>by Xtreme Facilities Management</RNText>
+            <RNText style={{ color: "#A79E8D", fontFamily: fonts.medium, fontSize: 12 }}>{t("by Xtreme Facilities Management")}</RNText>
           </View>
         </View>
         <RNText style={{ color: "#fff", fontFamily: fonts.extrabold, fontSize: 30, lineHeight: 38, letterSpacing: -0.5 }}>
-          Cleaning services you can trust, <RNText style={{ color: colors.goldBright }}>booked in a minute.</RNText>
+          {t("Cleaning services you can trust,")}{" "}<RNText style={{ color: colors.goldBright }}>{t("booked in a minute.")}</RNText>
         </RNText>
         <View style={{ gap: space(2.5) }}>
           {PERKS.map(([icon, text]) => (
@@ -59,31 +60,31 @@ export default function Welcome() {
               <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: "#2A251D", alignItems: "center", justifyContent: "center" }}>
                 <LineIcon name={icon} size={16} color={iconColor(icon)} />
               </View>
-              <RNText style={{ color: "#E9E3D6", fontFamily: fonts.medium, fontSize: 15 }}>{text}</RNText>
+              <RNText style={{ color: "#E9E3D6", fontFamily: fonts.medium, fontSize: 15 }}>{t(text)}</RNText>
             </View>
           ))}
         </View>
       </SafeAreaView>
 
       <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: colors.bg, borderTopLeftRadius: radius.xl + 4, borderTopRightRadius: radius.xl + 4, padding: space(6), gap: space(3) }}>
-        <Text variant="heading">Get started</Text>
+        <Text variant="heading">{t("Get started")}</Text>
         <Text variant="muted" style={{ marginTop: -space(2), marginBottom: space(1) }}>
-          Sign in or create your account
+          {t("Sign in or create your account")}
         </Text>
-        <Button title="Continue with mobile number" onPress={() => router.push("/(auth)/phone")} icon={<LineIcon name="phone" size={18} color="#fff" />} />
+        <Button title={t("Continue with mobile number")} onPress={() => router.push("/(auth)/phone")} icon={<LineIcon name="phone" size={18} color="#fff" />} />
         {Platform.OS === "ios" ? (
-          <Button title="Continue with Apple" variant="secondary" loading={busy === "apple"} onPress={run("apple", auth.signInWithApple)} icon={<AppleIcon color={colors.text} />} />
+          <Button title={t("Continue with Apple")} variant="secondary" loading={busy === "apple"} onPress={run("apple", auth.signInWithApple)} icon={<AppleIcon color={colors.text} />} />
         ) : null}
-        <Button title="Continue with Google" variant="secondary" loading={busy === "google"} onPress={run("google", auth.signInWithGoogle)} icon={<GoogleIcon />} />
-        <Button title="Continue with Facebook" variant="secondary" loading={busy === "facebook"} onPress={run("facebook", auth.signInWithFacebook)} icon={<FacebookIcon />} />
+        <Button title={t("Continue with Google")} variant="secondary" loading={busy === "google"} onPress={run("google", auth.signInWithGoogle)} icon={<GoogleIcon />} />
+        <Button title={t("Continue with Facebook")} variant="secondary" loading={busy === "facebook"} onPress={run("facebook", auth.signInWithFacebook)} icon={<FacebookIcon />} />
         <Pressable onPress={() => router.push("/(auth)/staff-login")} accessibilityRole="button" style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: space(2), paddingVertical: space(2) }}>
           <LineIcon name="key" size={18} color={colors.gold} />
           <RNText style={{ fontFamily: fonts.semibold, fontSize: 14, color: colors.muted }}>
-            Xtreme staff? <RNText style={{ color: colors.gold, fontFamily: fonts.bold }}>Staff sign in</RNText>
+            {t("Xtreme staff?")}{" "}<RNText style={{ color: colors.gold, fontFamily: fonts.bold }}>{t("Staff sign in")}</RNText>
           </RNText>
         </Pressable>
         <Text variant="small" style={{ textAlign: "center", marginTop: "auto" }}>
-          By continuing you agree to our Terms of Service and Privacy Policy.
+          {t("By continuing you agree to our Terms of Service and Privacy Policy.")}
         </Text>
       </SafeAreaView>
     </View>

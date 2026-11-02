@@ -1,5 +1,6 @@
 import { Stack } from "expo-router";
 import { colors, fonts } from "@/lib/theme";
+import { t } from "@/lib/i18n";
 
 export default function AppLayout() {
   return (
@@ -14,19 +15,19 @@ export default function AppLayout() {
       }}
     >
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="service/[key]" options={{ title: "Book a service" }} />
-      <Stack.Screen name="booking/[id]/index" options={{ title: "Booking details" }} />
+      <Stack.Screen name="service/[key]" options={{ title: t("Book a service") }} />
+      <Stack.Screen name="booking/[id]/index" options={{ title: t("Booking details") }} />
       <Stack.Screen name="booking/[id]/track" options={{ headerShown: false }} />
-      <Stack.Screen name="booking/[id]/pay" options={{ title: "Payment", presentation: "modal" }} />
-      <Stack.Screen name="booking/[id]/invoice" options={{ title: "Receipt" }} />
-      <Stack.Screen name="phone" options={{ title: "Mobile number", presentation: "modal" }} />
-      <Stack.Screen name="notifications" options={{ title: "Notifications" }} />
-      <Stack.Screen name="addresses" options={{ title: "Saved addresses" }} />
-      <Stack.Screen name="plans" options={{ title: "Cleaning plans" }} />
-      <Stack.Screen name="subscribe/[planId]" options={{ title: "Subscribe" }} />
-      <Stack.Screen name="subscriptions" options={{ title: "My subscriptions" }} />
-      <Stack.Screen name="chat" options={{ title: "Chat with us" }} />
-      <Stack.Screen name="invite" options={{ title: "Invite friends" }} />
+      <Stack.Screen name="booking/[id]/pay" options={{ title: t("Payment"), presentation: "modal" }} />
+      <Stack.Screen name="booking/[id]/invoice" options={{ title: t("Receipt") }} />
+      <Stack.Screen name="phone" options={{ title: t("Mobile number"), presentation: "modal" }} />
+      <Stack.Screen name="notifications" options={{ title: t("Notifications") }} />
+      <Stack.Screen name="addresses" options={{ title: t("Saved addresses") }} />
+      <Stack.Screen name="plans" options={{ title: t("Cleaning plans") }} />
+      <Stack.Screen name="subscribe/[planId]" options={{ title: t("Subscribe") }} />
+      <Stack.Screen name="subscriptions" options={{ title: t("My subscriptions") }} />
+      <Stack.Screen name="chat" options={{ title: t("Chat with us") }} />
+      <Stack.Screen name="invite" options={{ title: t("Invite friends") }} />
     </Stack>
   );
 }

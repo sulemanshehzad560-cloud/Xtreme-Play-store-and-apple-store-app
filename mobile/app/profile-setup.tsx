@@ -8,6 +8,7 @@ import { Button, ErrorText, Input, Screen, StickyFooter, Text } from "@/componen
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { colors, fonts, radius, space } from "@/lib/theme";
+import { t } from "@/lib/i18n";
 
 /** Shown once after signing in by phone, when the account has no name yet. */
 export default function ProfileSetup() {
@@ -25,7 +26,7 @@ export default function ProfileSetup() {
       await api("/me", { method: "PATCH", body: { fullName: name.trim(), dateOfBirth: dob } });
       await refreshUser();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not save");
+      setError(e instanceof Error ? e.message : t("Could not save"));
       setBusy(false);
     }
   }
@@ -35,28 +36,28 @@ export default function ProfileSetup() {
       <Screen
         footer={
           <StickyFooter>
-            <Button title="Continue" onPress={save} loading={busy} disabled={!ready} style={{ flex: 1 }} />
+            <Button title={t("Continue")} onPress={save} loading={busy} disabled={!ready} style={{ flex: 1 }} />
           </StickyFooter>
         }
       >
         <View style={{ backgroundColor: colors.ink, borderRadius: radius.xl, padding: space(5), gap: space(4), alignItems: "center" }}>
-          <BrandMark size={26} sub="by Xtreme Facilities Management" />
+          <BrandMark size={26} sub={t("by Xtreme Facilities Management")} />
           <ProfilePhoto size={96} />
           <View style={{ alignItems: "center", gap: 4 }}>
-            <RNText style={{ color: "#fff", fontFamily: fonts.extrabold, fontSize: 22, textAlign: "center" }}>Welcome! Let's set up your profile</RNText>
+            <RNText style={{ color: "#fff", fontFamily: fonts.extrabold, fontSize: 22, textAlign: "center" }}>{t("Welcome! Let's set up your profile")}</RNText>
             <RNText style={{ color: "#BDB4A3", fontFamily: fonts.medium, fontSize: 13.5, textAlign: "center" }}>
-              Add a photo if you like, so your team knows who to look for.
+              {t("Add a photo if you like, so your team knows who to look for.")}
             </RNText>
           </View>
         </View>
 
-        <Input label="Full name" value={name} onChangeText={setName} placeholder="e.g. Sara Al Mansoori" textContentType="name" autoComplete="name" autoCapitalize="words" maxLength={80} />
+        <Input label={t("Full name")} value={name} onChangeText={setName} placeholder={t("e.g. Sara Al Mansoori")} textContentType="name" autoComplete="name" autoCapitalize="words" maxLength={80} />
         <BirthdayPicker value={dob} onChange={setDob} />
-        <Text variant="small">We use your date of birth only to keep your account secure and to send you birthday offers.</Text>
+        <Text variant="small">{t("We use your date of birth only to keep your account secure and to send you birthday offers.")}</Text>
         <ErrorText error={error} />
         <FreeMaterials compact />
         <Text onPress={signOut} style={{ textAlign: "center", color: colors.muted, fontFamily: fonts.semibold, marginTop: space(2) }}>
-          Use a different number
+          {t("Use a different number")}
         </Text>
       </Screen>
     </KeyboardAvoidingView>

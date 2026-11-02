@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { Image, PanResponder, Pressable, Text as RNText, View, type LayoutChangeEvent } from "react-native";
 import { API_URL } from "../lib/config";
 import { colors, fonts, radius } from "../lib/theme";
+import { t } from "@/lib/i18n";
 
 /**
  * Map tiles from OpenStreetMap (free, no key). Used on Android, where the native Google map
@@ -54,7 +55,7 @@ export function OsmTiles({ width, height, center, zoom, anchor }: { width: numbe
 export function OsmAttribution() {
   return (
     <View style={{ position: "absolute", right: 6, top: 6, backgroundColor: "rgba(255,255,255,0.8)", borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
-      <RNText style={{ fontSize: 9.5, color: "#555" }}>© OpenStreetMap contributors</RNText>
+      <RNText style={{ fontSize: 9.5, color: "#555" }}>{t("© OpenStreetMap contributors")}</RNText>
     </View>
   );
 }
@@ -110,7 +111,7 @@ export function OsmPicker({ value, onChange, height = 210 }: { value: LatLng; on
           <Pressable
             key={s}
             onPress={() => setZoom((z) => Math.max(11, Math.min(18, z + (s === "+" ? 1 : -1))))}
-            accessibilityLabel={s === "+" ? "Zoom in" : "Zoom out"}
+            accessibilityLabel={s === "+" ? t("Zoom in") : t("Zoom out")}
             style={{ width: 34, height: 34, borderRadius: 8, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center", elevation: 3 }}
           >
             <RNText style={{ fontSize: 20, fontFamily: fonts.bold, color: colors.text }}>{s}</RNText>

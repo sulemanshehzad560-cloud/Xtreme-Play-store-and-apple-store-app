@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { AccessibilityInfo, Animated, Easing, Text, View } from "react-native";
 import { fonts } from "../lib/theme";
+import { t } from "@/lib/i18n";
 
 // Same black as the native splash, so the hand-over is seamless.
 const BG = "#030405";
@@ -52,7 +53,7 @@ export function BrandIntro({ onDone }: { onDone: () => void }) {
   const rise = (v: Animated.Value, by = 10) => ({ opacity: v, transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [by, 0] }) }] });
 
   return (
-    <View style={{ flex: 1, backgroundColor: BG }} accessible accessibilityLabel="Xtreme Cleaning Partner, powered by Xtreme Facilities Management">
+    <View style={{ flex: 1, backgroundColor: BG }} accessible accessibilityLabel={t("Xtreme Cleaning Partner, powered by Xtreme Facilities Management")}>
       <Animated.View style={{ flex: 1, alignItems: "center", justifyContent: "center", opacity: out }}>
         <Animated.Image
           source={require("../../assets/logo-mark.png")}
@@ -65,14 +66,14 @@ export function BrandIntro({ onDone }: { onDone: () => void }) {
           }}
         />
         <Animated.View style={[{ alignItems: "center", marginTop: 28 }, rise(name)]}>
-          <Text style={{ color: GOLD, fontFamily: fonts.bold, fontSize: 24, letterSpacing: 9 }}>XTREME</Text>
-          <Text style={{ color: "#D9D3C7", fontFamily: fonts.medium, fontSize: 11, letterSpacing: 5, marginTop: 6 }}>HOME PARTNER</Text>
+          <Text style={{ color: GOLD, fontFamily: fonts.bold, fontSize: 24, letterSpacing: 9 }}>{t("XTREME")}</Text>
+          <Text style={{ color: "#D9D3C7", fontFamily: fonts.medium, fontSize: 11, letterSpacing: 5, marginTop: 6 }}>{t("HOME PARTNER")}</Text>
         </Animated.View>
         <Animated.View style={{ width: 56, height: 1, backgroundColor: GOLD, opacity: 0.7, marginTop: 22, transform: [{ scaleX: line }] }} />
 
         <Animated.View style={[{ position: "absolute", bottom: 64, alignItems: "center" }, rise(footer, 6)]}>
-          <Text style={{ color: MUTED, fontFamily: fonts.regular, fontSize: 11, letterSpacing: 2 }}>POWERED BY</Text>
-          <Text style={{ color: "#CFC8BA", fontFamily: fonts.semibold, fontSize: 13, letterSpacing: 1.6, marginTop: 6 }}>XTREME FACILITIES MANAGEMENT</Text>
+          <Text style={{ color: MUTED, fontFamily: fonts.regular, fontSize: 11, letterSpacing: 2 }}>{t("POWERED BY")}</Text>
+          <Text style={{ color: "#CFC8BA", fontFamily: fonts.semibold, fontSize: 13, letterSpacing: 1.6, marginTop: 6 }}>{t("XTREME FACILITIES MANAGEMENT")}</Text>
         </Animated.View>
       </Animated.View>
     </View>

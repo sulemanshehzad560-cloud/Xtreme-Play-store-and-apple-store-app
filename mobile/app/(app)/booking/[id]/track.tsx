@@ -11,6 +11,7 @@ import { colors, fonts, radius, shadow, space } from "@/lib/theme";
 import type { BookingStatus, Company, Tracking } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { LineIcon, iconColor, iconSoft } from "@/components/LineIcon";
+import { t } from "@/lib/i18n";
 
 const HEADLINE: Partial<Record<BookingStatus, string>> = {
   assigned: "Your team is getting ready",
@@ -21,7 +22,7 @@ const HEADLINE: Partial<Record<BookingStatus, string>> = {
 
 export default function Track() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [t, setT] = useState<Tracking | null>(null);
+  const [trk, setT] = useState<Tracking | null>(null);
   const company = useApi<Company>("/company");
 
   useEffect(() => {
@@ -35,22 +36,22 @@ export default function Track() {
     "booking:status": () => api<Tracking>(`/bookings/${id}/tracking`).then(setT).catch(() => undefined),
   });
 
-  if (!t) {
+  if (!trk) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.bg, justifyContent: "center" }}>
-        <InlineLoader label="Finding your team…" />
+        <InlineLoader label={t("Finding your team…")} />
       </View>
     );
   }
-  const lead = t.team.find((m) => m.isLead) ?? t.team[0];
-  const headline = t.status === "en_route" ? (t.etaMinutes != null ? `Arriving in ${t.etaMinutes} min` : "Your team is on the way") : (HEADLINE[t.status] ?? "Your booking");
+  const lead = trk.team.find((m) => m.isLead) ?? trk.team[0];
+  const headline = trk.status === "en_route" ? (trk.etaMinutes != null ? t("Arriving in {0} min", { 0: trk.etaMinutes }) : t("Your team is on the way")) : (HEADLINE[trk.status] ? t(HEADLINE[trk.status]!) : t("Your booking"));
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <LiveMap destination={t.destination} van={t.location} heading={t.location?.heading} />
+      <LiveMap destination={trk.destination} van={trk.location} heading={trk.location?.heading} />
 
       <SafeAreaView edges={["top"]} style={{ position: "absolute", left: space(4), top: 0 }}>
-        <Pressable onPress={() => router.back()} accessibilityLabel="Back" style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center", marginTop: space(2), ...shadow.raised }}>
+        <Pressable onPress={() => router.back()} accessibilityLabel={t("Back")} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center", marginTop: space(2), ...shadow.raised }}>
           <RNText style={{ fontSize: 26, color: colors.text, marginTop: -3 }}>‹</RNText>
         </Pressable>
       </SafeAreaView>
@@ -61,9 +62,9 @@ export default function Track() {
           <Text variant="title" style={{ fontSize: 22, flex: 1 }}>
             {headline}
           </Text>
-          <StatusPill status={t.status} />
+          <StatusPill status={trk.status} />
         </Row>
-        {t.status === "en_route" ? <EtaBar minutes={t.etaMinutes} /> : null}
+        {trk.status === "en_route" ? <EtaBar minutes={trk.etaMinutes} /> : null}
         {lead ? (
           <Row>
             <Avatar name={lead.displayName} size={50} />
@@ -71,22 +72,22 @@ export default function Track() {
               <Text style={{ fontFamily: fonts.bold }}>{lead.displayName}</Text>
               <Text variant="small">
                 {STAFF_LABEL[lead.status]}
-                {t.team.length > 1 ? ` · +${t.team.length - 1} more` : ""}
+                {trk.team.length > 1 ? t(" · +{0} more", { 0: trk.team.length - 1 }) : ""}
               </Text>
             </View>
             {company.data ? (
               <Row style={{ gap: space(2) }}>
-                <RoundAction glyph="call" label="Call" onPress={() => Linking.openURL(`tel:${company.data!.phone}`)} />
-                <RoundAction glyph="chat" label="WhatsApp" onPress={() => Linking.openURL(company.data!.whatsapp)} />
+                <RoundAction glyph="call" label={t("Call")} onPress={() => Linking.openURL(`tel:${company.data!.phone}`)} />
+                <RoundAction glyph="chat" label={t("WhatsApp")} onPress={() => Linking.openURL(company.data!.whatsapp)} />
               </Row>
             ) : null}
           </Row>
         ) : (
-          <Text variant="muted">We'll show your team here as soon as they're assigned.</Text>
+          <Text variant="muted">{t("We'll show your team here as soon as they're assigned.")}</Text>
         )}
-        {!t.live && t.status !== "completed" ? <Text variant="small">Live location appears once your team sets off.</Text> : null}
-        {t.location?.stale ? <Text variant="small" style={{ color: colors.warning }}>Waiting for an updated location…</Text> : null}
-        <Button title="View booking details" variant="secondary" size="sm" onPress={() => router.push(`/booking/${id}`)} />
+        {!trk.live && trk.status !== "completed" ? <Text variant="small">{t("Live location appears once your team sets off.")}</Text> : null}
+        {trk.location?.stale ? <Text variant="small" style={{ color: colors.warning }}>{t("Waiting for an updated location…")}</Text> : null}
+        <Button title={t("View booking details")} variant="secondary" size="sm" onPress={() => router.push(`/booking/${id}`)} />
       </SafeAreaView>
     </View>
   );
@@ -100,8 +101,8 @@ function EtaBar({ minutes }: { minutes: number | null }) {
         <View style={{ width: `${pct * 100}%`, height: 6, borderRadius: 3, backgroundColor: colors.gold }} />
       </View>
       <Row style={{ justifyContent: "space-between" }}>
-        <Text variant="small">Left the depot</Text>
-        <Text variant="small">Your door</Text>
+        <Text variant="small">{t("Left the depot")}</Text>
+        <Text variant="small">{t("Your door")}</Text>
       </Row>
     </View>
   );

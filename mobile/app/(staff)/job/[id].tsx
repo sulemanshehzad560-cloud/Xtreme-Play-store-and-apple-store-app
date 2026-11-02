@@ -10,6 +10,7 @@ import { LineIcon } from "@/components/LineIcon";
 import { colors, fonts, space } from "@/lib/theme";
 import type { Booking, BookingStatus, StaffStatus } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
+import { t } from "@/lib/i18n";
 
 /** The lead can quote on site once the team is on the way. */
 const CAN_QUOTE: BookingStatus[] = ["en_route", "arrived", "in_progress"];
@@ -36,7 +37,7 @@ export default function Job() {
   if (!job) {
     return (
       <Screen edges={["left", "right"]}>
-        <InlineLoader label="Loading the job…" />
+        <InlineLoader label={t("Loading the job…")} />
       </Screen>
     );
   }
@@ -54,14 +55,14 @@ export default function Job() {
   /** Puts the staff member on duty and starts location sharing, so the customer can follow them. */
   async function goOnDuty(): Promise<boolean> {
     if (!(await startSharingLocation())) {
-      Alert.alert("Location needed", "Allow location 'Always' so the customer can see you arriving. You can change this in Settings.");
+      Alert.alert(t("Location needed"), t("Allow location 'Always' so the customer can see you arriving. You can change this in Settings."));
       return false;
     }
     try {
       me.setData(await api<{ status: StaffStatus }>("/staff/me/status", { method: "PUT", body: { status: "available" } }));
       return true;
     } catch (e) {
-      Alert.alert("Could not go on duty", e instanceof Error ? e.message : "");
+      Alert.alert(t("Could not go on duty"), e instanceof Error ? e.message : "");
       return false;
     }
   }
@@ -69,15 +70,15 @@ export default function Job() {
   // Navigating without starting the trip leaves the customer with no map, so starting the trip comes first.
   function navigate() {
     if (job!.status === "assigned") {
-      return Alert.alert("Start the trip first", "The customer is told you're on the way and can follow you live on the map.", [
-        { text: "Cancel", style: "cancel" },
-        { text: "Start trip & navigate", onPress: async () => (await advance()) && openMaps() },
+      return Alert.alert(t("Start the trip first"), t("The customer is told you're on the way and can follow you live on the map."), [
+        { text: t("Cancel"), style: "cancel" },
+        { text: t("Start trip & navigate"), onPress: async () => (await advance()) && openMaps() },
       ]);
     }
     if (offDuty) {
-      return Alert.alert("You're off duty", "Go on duty so the customer can see you on the map.", [
-        { text: "Cancel", style: "cancel" },
-        { text: "Go on duty & navigate", onPress: async () => (await goOnDuty()) && openMaps() },
+      return Alert.alert(t("You're off duty"), t("Go on duty so the customer can see you on the map."), [
+        { text: t("Cancel"), style: "cancel" },
+        { text: t("Go on duty & navigate"), onPress: async () => (await goOnDuty()) && openMaps() },
       ]);
     }
     openMaps();
@@ -90,16 +91,16 @@ export default function Job() {
 
   async function sendQuote() {
     const amount = Number(price.replace(/[^0-9]/g, ""));
-    if (!amount) return setQuoteError("Enter the price in AED");
+    if (!amount) return setQuoteError(t("Enter the price in AED"));
     setQuoting(true);
     setQuoteError(null);
     try {
       setData(await api<Booking>(`/staff/jobs/${job!.id}/quote`, { body: { priceAed: amount, ...(note.trim() ? { note: note.trim() } : {}) } }));
       setPrice("");
       setNote("");
-      Alert.alert("Quote sent", `The customer can now see AED ${amount} and pay in the app.`);
+      Alert.alert(t("Quote sent"), t("The customer can now see AED {0} and pay in the app.", { 0: amount }));
     } catch (e) {
-      setQuoteError(e instanceof Error ? e.message : "Could not send the quote");
+      setQuoteError(e instanceof Error ? e.message : t("Could not send the quote"));
     } finally {
       setQuoting(false);
     }
@@ -111,14 +112,14 @@ export default function Job() {
     try {
       // The customer follows the team on the map, so setting off starts location sharing (and puts you on duty).
       if (next.to === "en_route" && !(await startSharingLocation())) {
-        Alert.alert("Location needed", "Allow location 'Always' so the customer can see you arriving. You can change this in Settings.");
+        Alert.alert(t("Location needed"), t("Allow location 'Always' so the customer can see you arriving. You can change this in Settings."));
         return false;
       }
       setData(await api<Booking>(`/staff/jobs/${job!.id}/status`, { body: { status: next.to } }));
       if (next.to === "en_route") void me.reload();
       return true;
     } catch (e) {
-      Alert.alert("Could not update", e instanceof Error ? e.message : "");
+      Alert.alert(t("Could not update"), e instanceof Error ? e.message : "");
       return false;
     } finally {
       setBusy(false);
@@ -131,23 +132,23 @@ export default function Job() {
       footer={
         next ? (
           <StickyFooter>
-            <Button title={next.label} onPress={advance} loading={busy} disabled={next.to === "completed" && needsQuote} style={{ flex: 1 }} />
+            <Button title={t(next.label)} onPress={advance} loading={busy} disabled={next.to === "completed" && needsQuote} style={{ flex: 1 }} />
           </StickyFooter>
         ) : undefined
       }
     >
       {offDuty ? (
         <Card tone="gold">
-          <Text variant="label">YOU'RE OFF DUTY</Text>
-          <Text variant="small">The customer can't see you on the map. Go on duty before you set off so they can follow you arriving.</Text>
-          <Button title="Go on duty" onPress={goOnDuty} />
+          <Text variant="label">{t("YOU'RE OFF DUTY")}</Text>
+          <Text variant="small">{t("The customer can't see you on the map. Go on duty before you set off so they can follow you arriving.")}</Text>
+          <Button title={t("Go on duty")} onPress={goOnDuty} />
         </Card>
       ) : null}
       <Card tone="ink">
         <Row style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
           <View style={{ flex: 1, gap: 2 }}>
             <RNText style={{ color: colors.goldBright, fontFamily: fonts.bold, fontSize: 12, letterSpacing: 1 }}>{job.reference}</RNText>
-            <RNText style={{ color: "#fff", fontFamily: fonts.extrabold, fontSize: 22 }}>{job.service.name}</RNText>
+            <RNText style={{ color: "#fff", fontFamily: fonts.extrabold, fontSize: 22 }}>{t(job.service.name)}</RNText>
             <RNText style={{ color: "#CFC8BA", fontFamily: fonts.medium, fontSize: 13 }}>{when(job.scheduledAt)}</RNText>
           </View>
           <StatusPill status={job.status} />
@@ -158,56 +159,56 @@ export default function Job() {
           ))}
         </Row>
         <RNText style={{ color: "#A79E8D", fontFamily: fonts.medium, fontSize: 12 }}>
-          {job.property.type} · {SIZE_LABEL[job.property.size] ?? job.property.size}
-          {job.team.length > 1 ? ` · team of ${job.team.length}` : ""}
+          {t(job.property.type[0]!.toUpperCase() + job.property.type.slice(1))} · {SIZE_LABEL[job.property.size] ?? job.property.size}
+          {job.team.length > 1 ? t(" · team of {0}", { 0: job.team.length }) : ""}
         </RNText>
       </Card>
       <Card>
-        <Text variant="label">CUSTOMER</Text>
-        <Text style={{ fontFamily: fonts.bold, fontSize: 17 }}>{job.customer?.fullName ?? "Customer"}</Text>
+        <Text variant="label">{t("CUSTOMER")}</Text>
+        <Text style={{ fontFamily: fonts.bold, fontSize: 17 }}>{job.customer?.fullName ?? t("Customer")}</Text>
         {job.customer?.phone ? (
           <Row style={{ gap: space(2) }}>
-            <Button title="Call" icon={<LineIcon name="call" size={18} />} variant="secondary" size="sm" style={{ flex: 1 }} onPress={() => Linking.openURL(`tel:${job.customer!.phone}`)} />
-            <Button title="WhatsApp" icon={<LineIcon name="chat" size={18} />} variant="secondary" size="sm" style={{ flex: 1 }} onPress={() => Linking.openURL(`https://wa.me/${job.customer!.phone!.replace(/[^0-9]/g, "")}`)} />
+            <Button title={t("Call")} icon={<LineIcon name="call" size={18} />} variant="secondary" size="sm" style={{ flex: 1 }} onPress={() => Linking.openURL(`tel:${job.customer!.phone}`)} />
+            <Button title={t("WhatsApp")} icon={<LineIcon name="chat" size={18} />} variant="secondary" size="sm" style={{ flex: 1 }} onPress={() => Linking.openURL(`https://wa.me/${job.customer!.phone!.replace(/[^0-9]/g, "")}`)} />
           </Row>
         ) : null}
       </Card>
       <Card>
-        <Text variant="label">ADDRESS</Text>
+        <Text variant="label">{t("ADDRESS")}</Text>
         <Row style={{ alignItems: "flex-start", gap: space(2) }}>
           <LineIcon name="pin" size={20} color={colors.gold} />
-          <Text style={{ fontFamily: fonts.semibold, flex: 1 }}>{[job.address.unit, job.address.building, job.address.area].filter(Boolean).join(", ")}</Text>
+          <Text style={{ fontFamily: fonts.semibold, flex: 1 }}>{[job.address.unit, job.address.building, job.address.area && t(job.address.area)].filter(Boolean).join(", ")}</Text>
         </Row>
-        {job.notes ? <Text variant="small">Notes: {job.notes}</Text> : null}
-        <Button title="Navigate" icon={<LineIcon name="globe" size={18} />} variant="secondary" size="sm" onPress={navigate} />
+        {job.notes ? <Text variant="small">{t("Notes:")}{" "}{job.notes}</Text> : null}
+        <Button title={t("Navigate")} icon={<LineIcon name="globe" size={18} />} variant="secondary" size="sm" onPress={navigate} />
       </Card>
       {showQuote ? (
         <Card tone="gold">
-          <Text variant="label">{needsQuote ? "QUOTE THE PRICE" : "UPDATE THE QUOTE"}</Text>
+          <Text variant="label">{needsQuote ? t("QUOTE THE PRICE") : t("UPDATE THE QUOTE")}</Text>
           <Text variant="small">
             {needsQuote
-              ? "Inspect the job, agree the price with the customer and send it. They get it at once in the app and can pay securely online."
-              : `Current quote: ${aed(job.priceAed)}. Change it only if the customer agreed to a new price.`}
+              ? t("Inspect the job, agree the price with the customer and send it. They get it at once in the app and can pay securely online.")
+              : t("Current quote: {0}. Change it only if the customer agreed to a new price.", { 0: aed(job.priceAed) })}
           </Text>
-          <Input label="Price (AED)" value={price} onChangeText={setPrice} keyboardType="number-pad" placeholder="e.g. 250" />
-          <Input label="What it covers (optional)" value={note} onChangeText={setNote} placeholder="e.g. 3-seater sofa and 2 chairs" maxLength={200} />
+          <Input label={t("Price (AED)")} value={price} onChangeText={setPrice} keyboardType="number-pad" placeholder="e.g. 250" />
+          <Input label={t("What it covers (optional)")} value={note} onChangeText={setNote} placeholder={t("e.g. 3-seater sofa and 2 chairs")} maxLength={200} />
           <ErrorText error={quoteError} />
-          <Button title={needsQuote ? "Send quote to customer" : "Send new quote"} onPress={sendQuote} loading={quoting} />
+          <Button title={needsQuote ? t("Send quote to customer") : t("Send new quote")} onPress={sendQuote} loading={quoting} />
         </Card>
       ) : null}
       <Card>
-        <Text variant="label">PAYMENT</Text>
+        <Text variant="label">{t("PAYMENT")}</Text>
         <Divider />
         <Text style={{ fontFamily: fonts.semibold }}>
           {job.paymentStatus === "included"
-            ? "Included in the customer's subscription"
+            ? t("Included in the customer's subscription")
             : job.paymentStatus === "paid"
-            ? `Paid in the app · ${aed(job.priceAed)}`
+            ? t("Paid in the app · {0}", { 0: aed(job.priceAed) })
             : job.priceAed == null
-              ? "Price to be quoted on site"
-              : `${aed(job.priceAed)} · customer pays securely in the app`}
+              ? t("Price to be quoted on site")
+              : t("{0} · customer pays securely in the app", { 0: aed(job.priceAed) })}
         </Text>
-        {needsQuote && next?.to === "completed" ? <Text variant="small">Send the quote before marking the job completed.</Text> : null}
+        {needsQuote && next?.to === "completed" ? <Text variant="small">{t("Send the quote before marking the job completed.")}</Text> : null}
       </Card>
       <View />
     </Screen>

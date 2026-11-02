@@ -12,6 +12,7 @@ import { colors, fonts, space } from "@/lib/theme";
 import type { Interval, Subscription, SubscriptionPlan } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { LineIcon, iconColor, type LineIconName } from "@/components/LineIcon";
+import { dateLocale, isRTL, t } from "@/lib/i18n";
 
 type PropertyType = "apartment" | "villa" | "office";
 interface Address {
@@ -24,7 +25,7 @@ interface Address {
 }
 
 const STEPS = ["Plan", "Schedule", "Address", "Review & pay"];
-const shortDay = (k: string) => fromKey(k).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+const shortDay = (k: string) => fromKey(k).toLocaleDateString(dateLocale(), { weekday: "short", day: "numeric", month: "short" });
 const PROPERTY: [PropertyType, string, LineIconName][] = [
   ["apartment", "Apartment", "office"],
   ["villa", "Villa", "villa"],
@@ -69,7 +70,7 @@ export default function Subscribe() {
   if (!plan) {
     return (
       <Screen edges={["left", "right"]}>
-        <InlineLoader label="Loading the plan…" />
+        <InlineLoader label={t("Loading the plan…")} />
       </Screen>
     );
   }
@@ -103,8 +104,8 @@ export default function Subscribe() {
     } catch (e) {
       if (e instanceof ApiError && e.code === "phone_required") {
         router.push("/phone");
-        setError("Add your mobile number, then tap Subscribe again.");
-      } else setError(e instanceof Error ? e.message : "Could not subscribe");
+        setError(t("Add your mobile number, then tap Subscribe again."));
+      } else setError(e instanceof Error ? e.message : t("Could not subscribe"));
     } finally {
       setBusy(false);
     }
@@ -116,11 +117,11 @@ export default function Subscribe() {
       footer={
         <StickyFooter>
           <View style={{ flex: 1 }}>
-            <Text variant="small">{interval === "monthly" ? "Per month" : "Per year"}</Text>
+            <Text variant="small">{interval === "monthly" ? t("Per month") : t("Per year")}</Text>
             <Text variant="price">{aed(price)}</Text>
           </View>
           <Button
-            title={step < 3 ? "Continue" : `Subscribe & pay ${aed(price)}`}
+            title={step < 3 ? t("Continue") : t("Subscribe & pay {0}", { 0: aed(price) })}
             onPress={() => (step < 3 ? setStep(step + 1) : submit())}
             disabled={!canContinue}
             loading={busy}
@@ -131,18 +132,18 @@ export default function Subscribe() {
     >
       <Stack.Screen
         options={{
-          title: plan.name,
+          title: t(plan.name),
           headerLeft:
             step > 0
               ? () => (
-                  <Text onPress={() => setStep(step - 1)} style={{ fontSize: 30, paddingRight: space(3) }} accessibilityLabel="Previous step">
+                  <Text onPress={() => setStep(step - 1)} style={{ fontSize: 30, paddingRight: space(3) }} accessibilityLabel={t("Previous step")}>
                     ‹
                   </Text>
                 )
               : undefined,
         }}
       />
-      <StepBar steps={STEPS} current={step} />
+      <StepBar steps={STEPS.map((x) => t(x))} current={step} />
 
       {step === 0 ? (
         <>
@@ -150,36 +151,36 @@ export default function Subscribe() {
             <Row>
               <ServiceIcon name={plan.service.key} size={48} tile={false} />
               <View style={{ flex: 1 }}>
-                <Text variant="heading">{plan.name}</Text>
+                <Text variant="heading">{t(plan.name)}</Text>
                 <Text variant="small">
-                  {plan.service.name} · {plan.visitsPerMonth} visit{plan.visitsPerMonth > 1 ? "s" : ""} a month
+                  {plan.service.name} · {plan.visitsPerMonth}{" "}{t("visit")}{plan.visitsPerMonth > 1 ? "s" : ""}{" "}{t("a month")}
                 </Text>
               </View>
             </Row>
-            {plan.description ? <Text style={{ fontSize: 14 }}>{plan.description}</Text> : null}
+            {plan.description ? <Text style={{ fontSize: 14 }}>{t(plan.description)}</Text> : null}
           </Card>
-          <Text variant="heading">Billing</Text>
+          <Text variant="heading">{t("Billing")}</Text>
           {plan.priceMonthlyAed != null ? (
-            <OptionCard selected={interval === "monthly"} onPress={() => setInterval("monthly")} title={`Monthly · ${aed(plan.priceMonthlyAed)}`} subtitle={`${plan.visitsPerMonth} visits included each month`} />
+            <OptionCard selected={interval === "monthly"} onPress={() => setInterval("monthly")} title={t("Monthly · {0}", { 0: aed(plan.priceMonthlyAed) })} subtitle={t("{0} visits included each month", { 0: plan.visitsPerMonth })} />
           ) : null}
           {plan.priceYearlyAed != null ? (
             <OptionCard
               selected={interval === "yearly"}
               onPress={() => setInterval("yearly")}
-              title={`Yearly · ${aed(plan.priceYearlyAed)}`}
-              subtitle={`${plan.visitsPerMonth * 12} visits included over 12 months`}
-              right={plan.priceMonthlyAed ? <Text style={{ color: colors.success, fontFamily: fonts.bold, fontSize: 13 }}>Save {aed(plan.priceMonthlyAed * 12 - plan.priceYearlyAed)}</Text> : undefined}
+              title={t("Yearly · {0}", { 0: aed(plan.priceYearlyAed) })}
+              subtitle={t("{0} visits included over 12 months", { 0: plan.visitsPerMonth * 12 })}
+              right={plan.priceMonthlyAed ? <Text style={{ color: colors.success, fontFamily: fonts.bold, fontSize: 13 }}>{t("Save")}{" "}{aed(plan.priceMonthlyAed * 12 - plan.priceYearlyAed)}</Text> : undefined}
             />
           ) : null}
-          <Text variant="heading">Property type</Text>
+          <Text variant="heading">{t("Property type")}</Text>
           <Row style={{ gap: space(2) }}>
-            {PROPERTY.map(([t, label, icon]) => (
-              <View key={t} style={{ flex: 1 }}>
-                <Chip icon={<LineIcon name={icon} size={24} color={iconColor(icon)} />} label={label} selected={type === t} onPress={() => setType(t)} />
+            {PROPERTY.map(([k, label, icon]) => (
+              <View key={k} style={{ flex: 1 }}>
+                <Chip icon={<LineIcon name={icon} size={24} color={iconColor(icon)} />} label={t(label)} selected={type === k} onPress={() => setType(k)} />
               </View>
             ))}
           </Row>
-          <Text variant="heading">Size</Text>
+          <Text variant="heading">{t("Size")}</Text>
           <Row style={{ flexWrap: "wrap", gap: space(2) }}>
             {sizes.map((s) => (
               <Chip key={s.key} label={SIZE_LABEL[s.key] ?? s.label} selected={size === s.key} onPress={() => setSize(s.key)} />
@@ -191,19 +192,18 @@ export default function Subscribe() {
       {step === 1 ? (
         <>
           <Card tone="gold">
-            <Text style={{ fontFamily: fonts.bold }}>Plan your month</Text>
+            <Text style={{ fontFamily: fonts.bold }}>{t("Plan your month")}</Text>
             <Text style={{ fontSize: 14, lineHeight: 20 }}>
-              Your plan includes {plan.visitsPerMonth} visit{plan.visitsPerMonth > 1 ? "s" : ""} a month. Tap the days you want; the first one is paid now and the rest are booked
-              automatically as soon as the payment goes through. You can add or change visits later from My subscriptions.
+              {t("Your plan includes")}{" "}{plan.visitsPerMonth}{" "}{t("visit")}{plan.visitsPerMonth > 1 ? "s" : ""}{" "}{t("a month. Tap the days you want; the first one is paid now and the rest are booked automatically as soon as the payment goes through. You can add or change visits later from My subscriptions.")}
             </Text>
           </Card>
-          <MonthCalendar selected={picked} onChange={setPicked} max={plan.visitsPerMonth} until={until} hour={hour} onHour={setHour} firstLabel="PAID" />
+          <MonthCalendar selected={picked} onChange={setPicked} max={plan.visitsPerMonth} until={until} hour={hour} onHour={setHour} firstLabel={t("PAID")} />
         </>
       ) : null}
 
       {step === 2 ? (
         <>
-          <Text variant="heading">Where should we come?</Text>
+          <Text variant="heading">{t("Where should we come?")}</Text>
           {saved.data?.map((a) => (
             <OptionCard
               key={a.id}
@@ -212,35 +212,35 @@ export default function Subscribe() {
                 setAdding(false);
                 setAddressId(a.id);
               }}
-              title={`${a.label} · ${a.area}`}
+              title={`${t(a.label)} · ${t(a.area)}`}
               subtitle={[a.unit, a.building].filter(Boolean).join(", ") || undefined}
             />
           ))}
-          {saved.data?.length ? <OptionCard selected={adding} onPress={() => setAdding(true)} title="+ Add a new address" /> : null}
+          {saved.data?.length ? <OptionCard selected={adding} onPress={() => setAdding(true)} title={t("+ Add a new address")} /> : null}
           {adding ? (
             <Card>
               <AddressPicker value={draft} onChange={setDraft} />
             </Card>
           ) : null}
-          <Input label="Notes for the team (optional)" value={notes} onChangeText={setNotes} placeholder="Parking, pets, access code…" multiline style={{ minHeight: 70, textAlignVertical: "top" }} />
+          <Input label={t("Notes for the team (optional)")} value={notes} onChangeText={setNotes} placeholder={t("Parking, pets, access code…")} multiline style={{ minHeight: 70, textAlignVertical: "top" }} />
         </>
       ) : null}
 
       {step === 3 ? (
         <Card>
-          <Text variant="heading">Summary</Text>
-          <Line label="Plan" value={`${plan.name} · ${interval}`} />
-          <Line label="Included visits" value={`${visits} ${interval === "monthly" ? "this month" : "over 12 months"}`} />
-          <Line label="Property" value={`${type} · ${SIZE_LABEL[size] ?? size}`} />
-          <Line label={visitDays.length > 1 ? `Visits (${visitDays.length})` : "Visit"} value={`${visitDays.map(shortDay).join("\n")}\nat ${hour != null ? hourLabel(hour) : ""}`} />
-          <Line label="Address" value={adding ? (draft.area ?? "") : `${selectedAddress?.label ?? ""} · ${selectedAddress?.area ?? ""}`} />
+          <Text variant="heading">{t("Summary")}</Text>
+          <Line label={t("Plan")} value={`${t(plan.name)} · ${interval}`} />
+          <Line label={t("Included visits")} value={`${visits} ${interval === "monthly" ? t("this month") : t("over 12 months")}`} />
+          <Line label={t("Property")} value={`${type} · ${SIZE_LABEL[size] ?? size}`} />
+          <Line label={visitDays.length > 1 ? t("Visits ({0})", { 0: visitDays.length }) : t("Visit")} value={`${visitDays.map(shortDay).join("\n")}\nat ${hour != null ? hourLabel(hour) : ""}`} />
+          <Line label={t("Address")} value={adding ? (draft.area ?? "") : `${selectedAddress?.label ?? ""} · ${selectedAddress?.area ?? ""}`} />
           <Divider />
           <Row style={{ justifyContent: "space-between" }}>
-            <Text style={{ fontFamily: fonts.bold }}>Total today</Text>
+            <Text style={{ fontFamily: fonts.bold }}>{t("Total today")}</Text>
             <Text variant="price">{aed(price)}</Text>
           </Row>
           <Text variant="small">
-            Paid securely with your first visit. Your {interval === "monthly" ? "month" : "year"} starts when the payment goes through. No automatic charges: renew from My subscriptions when it ends.
+            {t("Paid securely with your first visit. Your")}{" "}{interval === "monthly" ? "month" : "year"}{" "}{t("starts when the payment goes through. No automatic charges: renew from My subscriptions when it ends.")}
           </Text>
           <ErrorText error={error} />
         </Card>
@@ -253,7 +253,7 @@ function Line({ label, value }: { label: string; value: string }) {
   return (
     <Row style={{ justifyContent: "space-between", gap: space(3) }}>
       <Text variant="small">{label}</Text>
-      <Text style={{ fontFamily: fonts.semibold, flexShrink: 1, textAlign: "right", textTransform: label === "Property" ? "capitalize" : "none" }}>{value}</Text>
+      <Text style={{ fontFamily: fonts.semibold, flexShrink: 1, textAlign: isRTL() ? "left" : "right", textTransform: label === "Property" ? "capitalize" : "none" }}>{value}</Text>
     </Row>
   );
 }

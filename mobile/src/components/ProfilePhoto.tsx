@@ -4,6 +4,7 @@ import { Avatar } from "./ui";
 import { pickAndUploadAvatar, removeAvatar } from "@/lib/avatar";
 import { useAuth } from "@/lib/auth";
 import { colors, fonts } from "../lib/theme";
+import { t } from "@/lib/i18n";
 
 /** The customer's photo with a camera badge; tap to take, choose or remove a photo. */
 export function ProfilePhoto({ size = 72, light = false }: { size?: number; light?: boolean }) {
@@ -15,24 +16,24 @@ export function ProfilePhoto({ size = 72, light = false }: { size?: number; ligh
     try {
       if (await fn()) await refreshUser();
     } catch (e) {
-      Alert.alert("Could not update your photo", e instanceof Error ? e.message : "Please try again");
+      Alert.alert(t("Could not update your photo"), e instanceof Error ? e.message : t("Please try again"));
     } finally {
       setBusy(false);
     }
   }
 
   function choose() {
-    const options = ["Take photo", "Choose from library", ...(user?.avatarUrl ? ["Remove photo"] : []), "Cancel"];
+    const options = [t("Take photo"), t("Choose from library"), ...(user?.avatarUrl ? [t("Remove photo")] : []), t("Cancel")];
     const act = (i: number) => {
       if (options[i] === "Take photo") void run(() => pickAndUploadAvatar("camera"));
       if (options[i] === "Choose from library") void run(() => pickAndUploadAvatar("library"));
       if (options[i] === "Remove photo") void run(removeAvatar);
     };
-    Alert.alert("Profile photo", undefined, options.map((text, i) => ({ text, style: text === "Cancel" ? "cancel" : text === "Remove photo" ? "destructive" : "default", onPress: () => act(i) })));
+    Alert.alert(t("Profile photo"), undefined, options.map((text, i) => ({ text, style: text === "Cancel" ? "cancel" : text === "Remove photo" ? "destructive" : "default", onPress: () => act(i) })));
   }
 
   return (
-    <Pressable onPress={busy ? undefined : choose} accessibilityRole="button" accessibilityLabel={user?.avatarUrl ? "Change profile photo" : "Add profile photo"} style={{ width: size, height: size }}>
+    <Pressable onPress={busy ? undefined : choose} accessibilityRole="button" accessibilityLabel={user?.avatarUrl ? t("Change profile photo") : t("Add profile photo")} style={{ width: size, height: size }}>
       <Avatar name={user?.fullName} uri={user?.avatarUrl} size={size} />
       {busy ? (
         <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: size / 2, backgroundColor: "rgba(0,0,0,0.45)", alignItems: "center", justifyContent: "center" }}>

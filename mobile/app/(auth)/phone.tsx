@@ -5,6 +5,7 @@ import { Button, ErrorText, Input, Notice, Screen, StickyFooter, Text } from "@/
 import { useAuth } from "@/lib/auth";
 import { DEMO } from "@/lib/demo";
 import { colors, fonts, space } from "@/lib/theme";
+import { t } from "@/lib/i18n";
 
 export default function Phone() {
   const { requestCode } = useAuth();
@@ -19,7 +20,7 @@ export default function Phone() {
       const res = await requestCode(phone);
       router.push({ pathname: "/(auth)/otp", params: { phone: res.phone } });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not send the code");
+      setError(e instanceof Error ? e.message : t("Could not send the code"));
     } finally {
       setBusy(false);
     }
@@ -29,15 +30,15 @@ export default function Phone() {
     <Screen
       footer={
         <StickyFooter>
-          <Button title="Send code" onPress={submit} loading={busy} disabled={phone.replace(/\D/g, "").length < 9} style={{ flex: 1 }} />
+          <Button title={t("Send code")} onPress={submit} loading={busy} disabled={phone.replace(/\D/g, "").length < 9} style={{ flex: 1 }} />
         </StickyFooter>
       }
     >
-      <Text onPress={() => router.back()} style={{ fontSize: 26 }} accessibilityLabel="Back">
+      <Text onPress={() => router.back()} style={{ fontSize: 26 }} accessibilityLabel={t("Back")}>
         ‹
       </Text>
-      <Text variant="title">What's your mobile number?</Text>
-      <Text variant="muted">We'll text you a 6-digit code to verify it.</Text>
+      <Text variant="title">{t("What's your mobile number?")}</Text>
+      <Text variant="muted">{t("We'll text you a 6-digit code to verify it.")}</Text>
       <Input
         value={phone}
         onChangeText={setPhone}
@@ -54,7 +55,7 @@ export default function Phone() {
         }
       />
       <ErrorText error={error} />
-      {DEMO ? <Notice>Demo build: any number works. Use 050 000 0002 to see the staff app.</Notice> : null}
+      {DEMO ? <Notice>{t("Demo build: any number works. Use 050 000 0002 to see the staff app.")}</Notice> : null}
     </Screen>
   );
 }

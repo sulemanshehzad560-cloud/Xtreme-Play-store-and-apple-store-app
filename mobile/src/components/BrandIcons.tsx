@@ -1,6 +1,7 @@
 import { Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { fonts } from "../lib/theme";
+import { t } from "@/lib/i18n";
 
 export function GoogleIcon({ size = 20 }: { size?: number }) {
   return (
@@ -32,7 +33,7 @@ export function AppleIcon({ size = 20, color = "#fff" }: { size?: number; color?
 export function TamaraBadge() {
   return (
     <View style={{ backgroundColor: "#F6D6C3", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3 }}>
-      <Text style={{ fontFamily: fonts.extrabold, fontSize: 11, color: "#1A1A1A" }}>tamara</Text>
+      <Text style={{ fontFamily: fonts.extrabold, fontSize: 11, color: "#1A1A1A" }}>{t("tamara")}</Text>
     </View>
   );
 }

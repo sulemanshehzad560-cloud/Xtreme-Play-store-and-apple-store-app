@@ -1,3 +1,4 @@
+import { t } from "./i18n";
 import * as SecureStore from "expo-secure-store";
 import { API_URL } from "./config";
 import { DEMO, DemoError, demoApi } from "./demo";
@@ -53,7 +54,7 @@ async function request(url: string, init: RequestInit): Promise<Response> {
   try {
     return await fetch(url, { ...init, signal: controller.signal });
   } catch {
-    throw new ApiError(0, "network", "Can't reach Xtreme right now. Check your internet connection and try again.");
+    throw new ApiError(0, "network", t("Can't reach Xtreme right now. Check your internet connection and try again."));
   } finally {
     clearTimeout(timer);
   }
@@ -114,7 +115,7 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const err = (data as { error?: { code?: string; message?: string } }).error;
-    throw new ApiError(res.status, err?.code ?? "error", err?.message ?? "Something went wrong");
+    throw new ApiError(res.status, err?.code ?? "error", t(err?.message ?? "Something went wrong"));
   }
   return data as T;
 }

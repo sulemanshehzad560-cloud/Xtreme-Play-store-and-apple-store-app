@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { OUTSIDE_ZONE_MESSAGE, inServiceZone } from "@/lib/serviceZone";
 import { colors, fonts, space } from "@/lib/theme";
 import { useApi } from "@/lib/useApi";
+import { t } from "@/lib/i18n";
 
 interface Address extends NewAddress {
   id: string;
@@ -24,7 +25,7 @@ export default function Addresses() {
 
   async function save() {
     const full = completeAddress(draft);
-    if (!full) return setError(draft.lat != null && draft.lng != null && !inServiceZone(draft.lat, draft.lng) ? OUTSIDE_ZONE_MESSAGE : "Choose an area or use your location.");
+    if (!full) return setError(draft.lat != null && draft.lng != null && !inServiceZone(draft.lat, draft.lng) ? OUTSIDE_ZONE_MESSAGE : t("Choose an area or use your location."));
     setBusy(true);
     setError(null);
     try {
@@ -33,7 +34,7 @@ export default function Addresses() {
       setDraft({ label: "Home" });
       await reload();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not save");
+      setError(e instanceof Error ? e.message : t("Could not save"));
     } finally {
       setBusy(false);
     }
@@ -44,10 +45,10 @@ export default function Addresses() {
     await reload();
   };
   const remove = (a: Address) =>
-    Alert.alert("Delete this address?", `${a.label} · ${a.area}`, [
-      { text: "Keep", style: "cancel" },
+    Alert.alert(t("Delete this address?"), `${t(a.label)} · ${t(a.area)}`, [
+      { text: t("Keep"), style: "cancel" },
       {
-        text: "Delete",
+        text: t("Delete"),
         style: "destructive",
         onPress: async () => {
           await api(`/me/addresses/${a.id}`, { method: "DELETE" });
@@ -63,21 +64,21 @@ export default function Addresses() {
         <StickyFooter>
           {adding ? (
             <>
-              <Button title="Cancel" variant="secondary" onPress={() => setAdding(false)} style={{ flex: 1 }} />
-              <Button title="Save address" onPress={save} loading={busy} style={{ flex: 1.4 }} />
+              <Button title={t("Cancel")} variant="secondary" onPress={() => setAdding(false)} style={{ flex: 1 }} />
+              <Button title={t("Save address")} onPress={save} loading={busy} style={{ flex: 1.4 }} />
             </>
           ) : (
-            <Button title="+ Add new address" onPress={() => setAdding(true)} style={{ flex: 1 }} />
+            <Button title={t("+ Add new address")} onPress={() => setAdding(true)} style={{ flex: 1 }} />
           )}
         </StickyFooter>
       }
     >
       {adding ? (
         <>
-          <Text variant="heading">New address</Text>
+          <Text variant="heading">{t("New address")}</Text>
           <Row style={{ gap: space(2), flexWrap: "wrap" }}>
             {LABELS.map((l) => (
-              <Chip key={l} label={l} selected={draft.label === l} onPress={() => setDraft({ ...draft, label: l })} />
+              <Chip key={l} label={t(l)} selected={draft.label === l} onPress={() => setDraft({ ...draft, label: l })} />
             ))}
           </Row>
           <AddressPicker value={draft} onChange={setDraft} />
@@ -85,7 +86,7 @@ export default function Addresses() {
         </>
       ) : (
         <>
-          {data?.length === 0 ? <Text variant="muted">No saved addresses yet. Add one to book faster.</Text> : null}
+          {data?.length === 0 ? <Text variant="muted">{t("No saved addresses yet. Add one to book faster.")}</Text> : null}
           {data?.map((a, i) => (
             <FadeIn key={a.id} delay={i * 40}>
               <Card>
@@ -95,24 +96,24 @@ export default function Addresses() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Row style={{ gap: space(2) }}>
-                      <Text style={{ fontFamily: fonts.bold }}>{a.label}</Text>
+                      <Text style={{ fontFamily: fonts.bold }}>{t(a.label)}</Text>
                       {a.isDefault ? (
                         <View style={{ backgroundColor: colors.ink, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 }}>
-                          <RNText style={{ color: colors.goldBright, fontFamily: fonts.bold, fontSize: 10 }}>DEFAULT</RNText>
+                          <RNText style={{ color: colors.goldBright, fontFamily: fonts.bold, fontSize: 10 }}>{t("DEFAULT")}</RNText>
                         </View>
                       ) : null}
                     </Row>
-                    <Text variant="small">{[a.unit, a.building, a.area].filter(Boolean).join(", ")}</Text>
+                    <Text variant="small">{[a.unit, a.building, a.area && t(a.area)].filter(Boolean).join(", ")}</Text>
                   </View>
                 </Row>
                 <Row style={{ gap: space(4), marginTop: space(1) }}>
                   {!a.isDefault ? (
                     <Pressable onPress={() => makeDefault(a.id)}>
-                      <Text style={{ color: colors.gold, fontFamily: fonts.bold, fontSize: 14 }}>Set as default</Text>
+                      <Text style={{ color: colors.gold, fontFamily: fonts.bold, fontSize: 14 }}>{t("Set as default")}</Text>
                     </Pressable>
                   ) : null}
                   <Pressable onPress={() => remove(a)}>
-                    <Text style={{ color: colors.danger, fontFamily: fonts.bold, fontSize: 14 }}>Delete</Text>
+                    <Text style={{ color: colors.danger, fontFamily: fonts.bold, fontSize: 14 }}>{t("Delete")}</Text>
                   </Pressable>
                 </Row>
               </Card>

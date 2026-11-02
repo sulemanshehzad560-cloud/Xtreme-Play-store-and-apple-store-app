@@ -5,6 +5,7 @@ import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import Svg, { Circle, Path } from "react-native-svg";
 import { OsmAttribution, OsmTiles, fitZoom, project, unproject } from "./OsmMap";
 import { colors, fonts } from "../lib/theme";
+import { t } from "@/lib/i18n";
 
 type LatLng = { lat: number; lng: number };
 
@@ -180,16 +181,16 @@ function MapControls({ onZoom, onRecenter }: { onZoom: (delta: number) => void; 
   return (
     <View style={{ position: "absolute", right: 14, top: 120, gap: 10, alignItems: "flex-end" }}>
       <View style={{ borderRadius: 12, overflow: "hidden", shadowColor: "#000", shadowOpacity: 0.18, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 4, backgroundColor: colors.surface }}>
-        <Pressable onPress={() => onZoom(1)} accessibilityRole="button" accessibilityLabel="Zoom in" style={btn}>
+        <Pressable onPress={() => onZoom(1)} accessibilityRole="button" accessibilityLabel={t("Zoom in")} style={btn}>
           <RNText style={{ fontSize: 22, fontFamily: fonts.bold, color: colors.text }}>+</RNText>
         </Pressable>
         <View style={{ height: 1, backgroundColor: colors.border }} />
-        <Pressable onPress={() => onZoom(-1)} accessibilityRole="button" accessibilityLabel="Zoom out" style={btn}>
+        <Pressable onPress={() => onZoom(-1)} accessibilityRole="button" accessibilityLabel={t("Zoom out")} style={btn}>
           <RNText style={{ fontSize: 22, fontFamily: fonts.bold, color: colors.text }}>−</RNText>
         </Pressable>
       </View>
       {onRecenter ? (
-        <Pressable onPress={onRecenter} accessibilityRole="button" accessibilityLabel="Re-centre the map on the team" style={{ ...btn, borderRadius: 22, shadowColor: "#000", shadowOpacity: 0.18, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 4 }}>
+        <Pressable onPress={onRecenter} accessibilityRole="button" accessibilityLabel={t("Re-centre the map on the team")} style={{ ...btn, borderRadius: 22, shadowColor: "#000", shadowOpacity: 0.18, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 4 }}>
           <Svg width={22} height={22} viewBox="0 0 24 24">
             <Circle cx={12} cy={12} r={4} fill={colors.gold} />
             <Circle cx={12} cy={12} r={8} stroke={colors.text} strokeWidth={2} fill="none" />

@@ -8,12 +8,16 @@ import {
   PlusJakartaSans_700Bold,
   PlusJakartaSans_800ExtraBold,
 } from "@expo-google-fonts/plus-jakarta-sans";
+import { Tajawal_400Regular, Tajawal_500Medium, Tajawal_700Bold, Tajawal_800ExtraBold } from "@expo-google-fonts/tajawal";
+import { View } from "react-native";
 import { Stack, router } from "expo-router";
 import * as Notifications from "expo-notifications";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StripeProvider } from "@stripe/stripe-react-native";
 import { BrandIntro } from "@/components/BrandIntro";
+import { LanguagePicker } from "@/components/LanguagePicker";
+import { LanguageProvider, useLanguage } from "@/lib/i18n";
 import { Loading } from "@/components/ui";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { DEMO } from "@/lib/demo";
@@ -28,6 +32,7 @@ SplashScreen.preventAutoHideAsync().catch(() => undefined);
 function Gate() {
   const { ready, user } = useAuth();
   const { dark } = useThemeMode();
+  const { lang, chosen } = useLanguage();
   const [introDone, setIntroDone] = useState(false);
 
   useEffect(() => {
@@ -53,13 +58,16 @@ function Gate() {
 
   // 3-second brand intro; the mop loader only appears if start-up is still loading after it.
   if (!introDone) return <BrandIntro onDone={() => setIntroDone(true)} />;
+  if (!chosen) return <LanguagePicker />;
   if (!ready) return <Loading />;
   const isStaff = user?.role === "staff";
   // Phone sign-ins start without a name: ask for name and date of birth before anything else.
   const needsProfile = !!user && !isStaff && !user.fullName?.trim();
-  // Screens read the palette when they render, so a theme change remounts the navigator.
+  // Screens read the palette and language when they render, so changing either remounts the navigator.
+  // Arabic lays the whole app out right-to-left.
   return (
-    <Stack key={dark ? "dark" : "light"} screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
+    <View style={{ flex: 1, direction: lang === "ar" ? "rtl" : "ltr" }}>
+    <Stack key={`${dark ? "dark" : "light"}-${lang}`} screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
       <Stack.Protected guard={!user}>
         <Stack.Screen name="(auth)" />
       </Stack.Protected>
@@ -73,6 +81,7 @@ function Gate() {
         <Stack.Screen name="(staff)" />
       </Stack.Protected>
     </Stack>
+    </View>
   );
 }
 
@@ -98,6 +107,10 @@ export default function RootLayout() {
     PlusJakartaSans_600SemiBold,
     PlusJakartaSans_700Bold,
     PlusJakartaSans_800ExtraBold,
+    Tajawal_400Regular,
+    Tajawal_500Medium,
+    Tajawal_700Bold,
+    Tajawal_800ExtraBold,
   });
   // The native logo splash stays up until the fonts are ready, so text never flashes in a fallback font.
   if (!fontsLoaded && !fontError) return null;
@@ -105,10 +118,12 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <Payments>
         <AuthProvider>
-          <ThemeProvider>
-            <ThemedStatusBar />
-            <Gate />
-          </ThemeProvider>
+          <LanguageProvider>
+            <ThemeProvider>
+              <ThemedStatusBar />
+              <Gate />
+            </ThemeProvider>
+          </LanguageProvider>
         </AuthProvider>
       </Payments>
     </SafeAreaProvider>

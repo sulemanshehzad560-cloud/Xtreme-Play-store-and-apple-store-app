@@ -519,7 +519,6 @@ export async function demoApi(path: string, method: string, body: Json | undefin
         ],
       };
     }
-    if (action === "invoice" && seg[3] === "email") return { sent: true };
     if (action === "invoice") {
       if (b.paymentStatus !== "paid" || b.priceAed == null) throw new DemoError(409, "not_paid", "The invoice is available once the booking is paid");
       const vat = Math.round((b.priceAed - b.priceAed / 1.05) * 100) / 100;

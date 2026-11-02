@@ -8,6 +8,7 @@ import { OsmPicker } from "./OsmMap";
 import { Button, Chip, Input, Row, Text } from "./ui";
 import { OUTSIDE_ZONE_MESSAGE, SERVICE_ZONE_NAME, inServiceZone } from "../lib/serviceZone";
 import { colors, radius, shadow, space } from "../lib/theme";
+import { t } from "@/lib/i18n";
 
 // Approximate area centres, used when a customer picks an area instead of a map pin.
 export const AREAS: [string, number, number][] = [
@@ -47,10 +48,10 @@ export function AddressPicker({ value, onChange }: { value: Partial<NewAddress>;
   async function locate() {
     setError(null);
     const perm = await Location.requestForegroundPermissionsAsync();
-    if (!perm.granted) return setError("Location permission is off. Choose your area instead.");
+    if (!perm.granted) return setError(t("Location permission is off. Choose your area instead."));
     const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
     const [place] = await Location.reverseGeocodeAsync(pos.coords).catch(() => []);
-    set({ lat: pos.coords.latitude, lng: pos.coords.longitude, area: place?.district ?? place?.subregion ?? place?.city ?? "Current location" });
+    set({ lat: pos.coords.latitude, lng: pos.coords.longitude, area: place?.district ?? place?.subregion ?? place?.city ?? t("Current location") });
   }
 
   return (
@@ -68,13 +69,13 @@ export function AddressPicker({ value, onChange }: { value: Partial<NewAddress>;
             <RNText style={{ fontSize: 32 }}>📍</RNText>
           </View>
           <View style={{ position: "absolute", left: space(3), bottom: space(3), backgroundColor: colors.surface, borderRadius: radius.pill, paddingHorizontal: space(3), paddingVertical: space(1) }}>
-            <Text variant="small">Move the map to your building</Text>
+            <Text variant="small">{t("Move the map to your building")}</Text>
           </View>
         </View>
       ) : (
         <View style={{ gap: space(1) }}>
           <OsmPicker value={{ lat: value.lat ?? 24.4539, lng: value.lng ?? 54.3773 }} onChange={(p) => set({ lat: p.lat, lng: p.lng })} />
-          <Text variant="small">Drag the map so the pin is on your building.</Text>
+          <Text variant="small">{t("Drag the map so the pin is on your building.")}</Text>
         </View>
       )}
       {outside ? (
@@ -82,19 +83,19 @@ export function AddressPicker({ value, onChange }: { value: Partial<NewAddress>;
           <Text variant="small" style={{ color: colors.danger }}>{OUTSIDE_ZONE_MESSAGE}</Text>
         </View>
       ) : (
-        <Text variant="small">We serve {SERVICE_ZONE_NAME}.</Text>
+        <Text variant="small">{t("We serve")}{" "}{SERVICE_ZONE_NAME}.</Text>
       )}
-      <Button title="📍  Use my current location" variant="secondary" onPress={locate} />
+      <Button title={t("📍  Use my current location")} variant="secondary" onPress={locate} />
       {error ? <Text variant="small" style={{ color: colors.danger }}>{error}</Text> : null}
-      <Text variant="label">Area</Text>
+      <Text variant="label">{t("Area")}</Text>
       <Row style={{ flexWrap: "wrap", gap: space(2) }}>
         {AREAS.map(([a, lat, lng]) => (
-          <Chip key={a} label={a} selected={value.area === a} onPress={() => set({ area: a, lat, lng })} />
+          <Chip key={a} label={t(a)} selected={value.area === a} onPress={() => set({ area: a, lat, lng })} />
         ))}
       </Row>
       {value.area && !AREAS.some(([a]) => a === value.area) ? <Text variant="small">📍 {value.area}</Text> : null}
-      <Input label="Building / villa name" value={value.building ?? ""} onChangeText={(t) => set({ building: t })} placeholder="e.g. Sky Tower" />
-      <Input label="Flat / villa number" value={value.unit ?? ""} onChangeText={(t) => set({ unit: t })} placeholder="e.g. 1204" />
+      <Input label={t("Building / villa name")} value={value.building ?? ""} onChangeText={(t) => set({ building: t })} placeholder={t("e.g. Sky Tower")} />
+      <Input label={t("Flat / villa number")} value={value.unit ?? ""} onChangeText={(t) => set({ unit: t })} placeholder="e.g. 1204" />
     </View>
   );
 }

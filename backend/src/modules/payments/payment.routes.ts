@@ -45,20 +45,6 @@ export async function paymentRoutes(app: FastifyInstance, c: Container) {
     async (req) => c.payments.invoice(req.params.id, req.user),
   );
 
-  // The VAT tax invoice is sent by email (the app shows a simple receipt).
-  r.post(
-    "/bookings/:id/invoice/email",
-    {
-      preHandler: requireAuth(c, "customer"),
-      config: { rateLimit: { max: 3, timeWindow: "10 minutes" } },
-      schema: { tags, summary: "Email me the VAT tax invoice for my paid booking", params: uuidParam },
-    },
-    async (req) => {
-      await c.payments.invoice(req.params.id, req.user); // own, paid booking only
-      return c.invoices.resend(req.params.id);
-    },
-  );
-
   r.get(
     "/bookings/:id/payments",
     { preHandler: requireAuth(c, "customer", "admin"), schema: { tags, summary: "Payments for a booking", params: uuidParam } },

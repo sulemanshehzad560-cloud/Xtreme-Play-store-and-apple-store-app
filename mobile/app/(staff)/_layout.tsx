@@ -1,5 +1,6 @@
 import { Stack } from "expo-router";
 import { colors, fonts } from "@/lib/theme";
+import { t } from "@/lib/i18n";
 
 export default function StaffLayout() {
   return (
@@ -14,7 +15,7 @@ export default function StaffLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="job/[id]" options={{ title: "Job" }} />
+      <Stack.Screen name="job/[id]" options={{ title: t("Job") }} />
     </Stack>
   );
 }

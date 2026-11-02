@@ -4,6 +4,7 @@ import * as Haptics from "expo-haptics";
 import { SuccessBurst } from "./art/Motion";
 import { Button } from "./ui";
 import { colors, fonts, radius, space } from "@/lib/theme";
+import { isRTL, t } from "@/lib/i18n";
 
 const CONFETTI = ["#E2C170", "#B98F35", "#1E9E5A", "#3B82F6", "#EC4899", "#F59E0B", "#FFFFFF"];
 
@@ -41,7 +42,7 @@ export function Celebration({ visible, title, message, onClose }: { visible: boo
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
-      <View style={{ flex: 1, backgroundColor: "rgba(10,8,5,0.72)", alignItems: "center", justifyContent: "center", padding: space(6) }}>
+      <View style={{ flex: 1, direction: isRTL() ? "rtl" : "ltr", backgroundColor: "rgba(10,8,5,0.72)", alignItems: "center", justifyContent: "center", padding: space(6) }}>
         <View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, overflow: "hidden" }}>
           {pieces.map((p, i) => {
             const t = fall.interpolate({ inputRange: [p.delay, 1], outputRange: [0, 1], extrapolate: "clamp" });
@@ -84,10 +85,10 @@ export function Celebration({ visible, title, message, onClose }: { visible: boo
           }}
         >
           <SuccessBurst size={130} />
-          <RNText style={{ color: colors.gold, fontFamily: fonts.extrabold, fontSize: 12, letterSpacing: 1.4 }}>PAID & CONFIRMED</RNText>
+          <RNText style={{ color: colors.gold, fontFamily: fonts.extrabold, fontSize: 12, letterSpacing: 1.4 }}>{t("PAID & CONFIRMED")}</RNText>
           <RNText style={{ color: colors.text, fontFamily: fonts.extrabold, fontSize: 24, textAlign: "center" }}>{title}</RNText>
           <RNText style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 15, lineHeight: 21, textAlign: "center" }}>{message}</RNText>
-          <Button title="Awesome!" variant="gold" onPress={onClose} style={{ alignSelf: "stretch", marginTop: space(3) }} />
+          <Button title={t("Awesome!")} variant="gold" onPress={onClose} style={{ alignSelf: "stretch", marginTop: space(3) }} />
         </Animated.View>
       </View>
     </Modal>

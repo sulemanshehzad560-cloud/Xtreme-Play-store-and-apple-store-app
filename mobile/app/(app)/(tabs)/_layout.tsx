@@ -1,6 +1,7 @@
 import { Tabs } from "expo-router";
 import { TabIcon } from "@/components/TabIcon";
 import { colors, fonts } from "@/lib/theme";
+import { t } from "@/lib/i18n";
 
 export default function TabsLayout() {
   const icon = (name: "home" | "bookings" | "account") => ({ color }: { color: string }) => <TabIcon name={name} color={color} />;
@@ -14,9 +15,9 @@ export default function TabsLayout() {
         tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border, height: 64, paddingTop: 6, paddingBottom: 8 },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: "Home", tabBarIcon: icon("home") as never }} />
-      <Tabs.Screen name="bookings" options={{ title: "Bookings", tabBarIcon: icon("bookings") as never }} />
-      <Tabs.Screen name="account" options={{ title: "Account", tabBarIcon: icon("account") as never }} />
+      <Tabs.Screen name="index" options={{ title: t("Home"), tabBarIcon: icon("home") as never }} />
+      <Tabs.Screen name="bookings" options={{ title: t("Bookings"), tabBarIcon: icon("bookings") as never }} />
+      <Tabs.Screen name="account" options={{ title: t("Account"), tabBarIcon: icon("account") as never }} />
     </Tabs>
   );
 }

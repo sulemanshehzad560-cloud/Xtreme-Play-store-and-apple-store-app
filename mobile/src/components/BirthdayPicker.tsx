@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Modal, Pressable, ScrollView, Text as RNText, View } from "react-native";
 import { Button, Text } from "./ui";
 import { colors, fonts, radius, space } from "../lib/theme";
+import { dateLocale, isRTL, t } from "@/lib/i18n";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const WEEK = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
@@ -11,14 +12,14 @@ const pad = (n: number) => String(n).padStart(2, "0");
 export const formatDob = (iso: string | null | undefined) => {
   if (!iso) return "";
   const [y, m, d] = iso.split("-").map(Number);
-  return `${d} ${new Date(y!, m! - 1, d!).toLocaleDateString("en-GB", { month: "long" })} ${y}`;
+  return `${d} ${new Date(y!, m! - 1, d!).toLocaleDateString(dateLocale(), { month: "long" })} ${y}`;
 };
 
 /**
  * Date-of-birth field: opens a calendar where the customer jumps to the year and month,
  * then taps the day. Value is "YYYY-MM-DD".
  */
-export function BirthdayPicker({ value, onChange, label = "Date of birth" }: { value: string | null; onChange: (iso: string) => void; label?: string }) {
+export function BirthdayPicker({ value, onChange, label = t("Date of birth") }: { value: string | null; onChange: (iso: string) => void; label?: string }) {
   const latest = useMemo(() => {
     const d = new Date();
     d.setFullYear(d.getFullYear() - MIN_AGE);
@@ -56,22 +57,22 @@ export function BirthdayPicker({ value, onChange, label = "Date of birth" }: { v
           setOpen(true);
         }}
         accessibilityRole="button"
-        accessibilityLabel={value ? `${label}: ${formatDob(value)}` : `Choose your ${label.toLowerCase()}`}
+        accessibilityLabel={value ? `${label}: ${formatDob(value)}` : t("Choose your {0}", { 0: label.toLowerCase() })}
         style={{ flexDirection: "row", alignItems: "center", gap: space(3), borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.bg, borderRadius: radius.md, paddingHorizontal: space(4), height: 52 }}
       >
         <RNText style={{ fontSize: 18 }}>🎂</RNText>
-        <RNText style={{ flex: 1, fontFamily: value ? fonts.semibold : fonts.medium, fontSize: 15.5, color: value ? colors.text : colors.faint }}>{value ? formatDob(value) : "Choose on the calendar"}</RNText>
+        <RNText style={{ flex: 1, fontFamily: value ? fonts.semibold : fonts.medium, fontSize: 15.5, color: value ? colors.text : colors.faint }}>{value ? formatDob(value) : t("Choose on the calendar")}</RNText>
         <RNText style={{ color: colors.gold, fontFamily: fonts.bold, fontSize: 14 }}>📅</RNText>
       </Pressable>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-        <View style={{ flex: 1, backgroundColor: "rgba(10,8,5,0.55)", justifyContent: "center", padding: space(5) }}>
+        <View style={{ flex: 1, direction: isRTL() ? "rtl" : "ltr", backgroundColor: "rgba(10,8,5,0.55)", justifyContent: "center", padding: space(5) }}>
           <View style={{ backgroundColor: colors.surface, borderRadius: radius.xl, padding: space(4), gap: space(3) }}>
             <Text variant="heading">{label}</Text>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
               {mode === "day" ? <Nav label="‹" onPress={() => step(-1)} /> : <View style={{ width: 40 }} />}
               <View style={{ flexDirection: "row", gap: space(2) }}>
-                <Pill label={MONTHS[month]!} active={mode === "month"} onPress={() => setMode(mode === "month" ? "day" : "month")} />
+                <Pill label={t(MONTHS[month]!)} active={mode === "month"} onPress={() => setMode(mode === "month" ? "day" : "month")} />
                 <Pill label={String(year)} active={mode === "year"} onPress={() => setMode(mode === "year" ? "day" : "year")} />
               </View>
               {mode === "day" ? <Nav label="›" onPress={() => step(1)} /> : <View style={{ width: 40 }} />}
@@ -86,7 +87,7 @@ export function BirthdayPicker({ value, onChange, label = "Date of birth" }: { v
             ) : mode === "month" ? (
               <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
                 {MONTHS.map((m, i) => (
-                  <Cell key={m} label={m} width="33.33%" selected={i === month} disabled={new Date(year, i, 1) > latest} onPress={() => (setMonth(i), setMode("day"))} />
+                  <Cell key={m} label={t(m)} width="33.33%" selected={i === month} disabled={new Date(year, i, 1) > latest} onPress={() => (setMonth(i), setMode("day"))} />
                 ))}
               </View>
             ) : (
@@ -94,7 +95,7 @@ export function BirthdayPicker({ value, onChange, label = "Date of birth" }: { v
                 <View style={{ flexDirection: "row" }}>
                   {WEEK.map((w) => (
                     <RNText key={w} style={{ width: `${100 / 7}%`, textAlign: "center", color: colors.faint, fontFamily: fonts.semibold, fontSize: 12 }}>
-                      {w}
+                      {t(w)}
                     </RNText>
                   ))}
                 </View>
@@ -119,12 +120,12 @@ export function BirthdayPicker({ value, onChange, label = "Date of birth" }: { v
             )}
 
             <Text variant="small" style={{ textAlign: "center" }}>
-              {picked ? formatDob(picked) : mode === "year" ? "Start with the year you were born" : "Tap the day"}
+              {picked ? formatDob(picked) : mode === "year" ? t("Start with the year you were born") : t("Tap the day")}
             </Text>
             <View style={{ flexDirection: "row", gap: space(2) }}>
-              <Button title="Cancel" variant="secondary" style={{ flex: 1 }} onPress={() => setOpen(false)} />
+              <Button title={t("Cancel")} variant="secondary" style={{ flex: 1 }} onPress={() => setOpen(false)} />
               <Button
-                title="Done"
+                title={t("Done")}
                 style={{ flex: 1 }}
                 disabled={!picked}
                 onPress={() => {

@@ -10,6 +10,7 @@ import { aed, when } from "@/lib/format";
 import { colors, fonts, radius, space } from "@/lib/theme";
 import type { Booking, Subscription } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
+import { dateLocale, t } from "@/lib/i18n";
 
 const STATUS: Record<Subscription["status"], { label: string; color: string; bg: string }> = {
   pending_payment: { label: "Awaiting payment", color: colors.warning, bg: colors.warningSoft },
@@ -17,23 +18,23 @@ const STATUS: Record<Subscription["status"], { label: string; color: string; bg:
   expired: { label: "Ended", color: colors.muted, bg: colors.divider },
   cancelled: { label: "Cancelled", color: colors.danger, bg: colors.dangerSoft },
 };
-const day = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—");
+const day = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString(dateLocale(), { day: "numeric", month: "short", year: "numeric" }) : "—");
 
 export default function MySubscriptions() {
   const subs = useApi<Subscription[]>("/me/subscriptions");
 
   return (
     <Screen edges={["left", "right"]}>
-      {!subs.data ? <InlineLoader label="Loading your plans…" /> : null}
+      {!subs.data ? <InlineLoader label={t("Loading your plans…")} /> : null}
       {subs.data?.length === 0 ? (
         <Card tone="gold">
-          <Text variant="heading">No plan yet</Text>
-          <Text variant="small">Regular cleaning on a monthly or yearly plan, with the same trusted team.</Text>
-          <Button title="See cleaning plans" onPress={() => router.push("/plans")} />
+          <Text variant="heading">{t("No plan yet")}</Text>
+          <Text variant="small">{t("Regular cleaning on a monthly or yearly plan, with the same trusted team.")}</Text>
+          <Button title={t("See cleaning plans")} onPress={() => router.push("/plans")} />
         </Card>
       ) : null}
       {subs.data?.map((s) => <SubscriptionCard key={s.id} sub={s} onChange={subs.reload} />)}
-      {subs.data?.length ? <Button title="Browse all plans" variant="secondary" onPress={() => router.push("/plans")} /> : null}
+      {subs.data?.length ? <Button title={t("Browse all plans")} variant="secondary" onPress={() => router.push("/plans")} /> : null}
     </Screen>
   );
 }
@@ -52,8 +53,8 @@ function SubscriptionCard({ sub, onChange }: { sub: Subscription; onChange: () =
   const used = sub.visitsPerPeriod ? sub.visitsUsed / sub.visitsPerPeriod : 0;
 
   async function confirm() {
-    if (!picked.length) return setError("Tap the days you want");
-    if (hour == null) return setError("Pick a start time");
+    if (!picked.length) return setError(t("Tap the days you want"));
+    if (hour == null) return setError(t("Pick a start time"));
     const times = [...picked].sort().map((k) => abuDhabiTime(fromKey(k), hour));
     setBusy(true);
     setError(null);
@@ -63,7 +64,7 @@ function SubscriptionCard({ sub, onChange }: { sub: Subscription; onChange: () =
         setMode("none");
         setPicked([]);
         onChange();
-        Alert.alert(booked.length > 1 ? `${booked.length} visits booked` : "Visit booked", "You'll find them in your calendar and in Bookings.");
+        Alert.alert(booked.length > 1 ? t("{0} visits booked", { 0: booked.length }) : t("Visit booked"), t("You'll find them in your calendar and in Bookings."));
       } else {
         const r = await api<{ paymentBookingId: string }>(`/subscriptions/${sub.id}/renew`, { body: { firstVisitAt: times[0], moreVisits: times.slice(1) } });
         setMode("none");
@@ -71,17 +72,17 @@ function SubscriptionCard({ sub, onChange }: { sub: Subscription; onChange: () =
         router.push(`/booking/${r.paymentBookingId}/pay`);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong");
+      setError(e instanceof Error ? e.message : t("Something went wrong"));
     } finally {
       setBusy(false);
     }
   }
 
   function cancel() {
-    Alert.alert("Cancel this plan?", "It has not been paid yet, so nothing is charged.", [
-      { text: "Keep" },
+    Alert.alert(t("Cancel this plan?"), t("It has not been paid yet, so nothing is charged."), [
+      { text: t("Keep") },
       {
-        text: "Cancel plan",
+        text: t("Cancel plan"),
         style: "destructive",
         onPress: () => api(`/subscriptions/${sub.id}/cancel`, { body: {} }).then(onChange, (e: Error) => Alert.alert("Could not cancel", e.message)),
       },
@@ -95,13 +96,13 @@ function SubscriptionCard({ sub, onChange }: { sub: Subscription; onChange: () =
           <ServiceIcon name={sub.service.key} size={40} tile={false} />
         </View>
         <View style={{ flex: 1, gap: 2 }}>
-          <Text variant="heading">{sub.planName}</Text>
+          <Text variant="heading">{t(sub.planName)}</Text>
           <Text variant="small">
-            {sub.reference} · {aed(sub.priceAed)} {sub.interval === "monthly" ? "a month" : "a year"}
+            {sub.reference} · {aed(sub.priceAed)} {sub.interval === "monthly" ? t("a month") : t("a year")}
           </Text>
         </View>
         <View style={{ backgroundColor: st.bg, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 }}>
-          <Text style={{ color: st.color, fontFamily: fonts.bold, fontSize: 12 }}>{st.label}</Text>
+          <Text style={{ color: st.color, fontFamily: fonts.bold, fontSize: 12 }}>{t(st.label)}</Text>
         </View>
       </Row>
 
@@ -109,32 +110,32 @@ function SubscriptionCard({ sub, onChange }: { sub: Subscription; onChange: () =
         <>
           <Row style={{ justifyContent: "space-between" }}>
             <Text variant="small">
-              Visits used: <Text style={{ fontFamily: fonts.bold }}>{sub.visitsUsed}</Text> of {sub.visitsPerPeriod}
+              {t("Visits used:")}{" "}<Text style={{ fontFamily: fonts.bold }}>{sub.visitsUsed}</Text>{" "}{t("of")}{" "}{sub.visitsPerPeriod}
             </Text>
-            <Text variant="small">Until {day(sub.currentPeriodEnd)}</Text>
+            <Text variant="small">{t("Until")}{" "}{day(sub.currentPeriodEnd)}</Text>
           </Row>
           <View style={{ height: 8, borderRadius: 4, backgroundColor: colors.divider, overflow: "hidden" }}>
             <View style={{ width: `${Math.min(100, used * 100)}%`, height: "100%", backgroundColor: colors.goldBright }} />
           </View>
         </>
       ) : null}
-      {sub.status === "expired" ? <Text variant="small">Your plan ended on {day(sub.currentPeriodEnd)}. Renew to keep your regular visits.</Text> : null}
+      {sub.status === "expired" ? <Text variant="small">{t("Your plan ended on")}{" "}{day(sub.currentPeriodEnd)}{t(". Renew to keep your regular visits.")}</Text> : null}
       <Text variant="small">
-        {[sub.address.unit, sub.address.building, sub.address.area].filter(Boolean).join(", ")}
+        {[sub.address.unit, sub.address.building, sub.address.area && t(sub.address.area)].filter(Boolean).join(", ")}
       </Text>
 
-      {sub.paymentBookingId ? <Button title="Pay to activate" variant="gold" onPress={() => router.push(`/booking/${sub.paymentBookingId}/pay`)} /> : null}
+      {sub.paymentBookingId ? <Button title={t("Pay to activate")} variant="gold" onPress={() => router.push(`/booking/${sub.paymentBookingId}/pay`)} /> : null}
       {mode === "none" ? (
         <Row style={{ gap: space(2) }}>
-          {sub.canBookVisit ? <Button title={sub.visitsLeft > 1 ? "Plan visits" : "Book a visit"} style={{ flex: 1 }} onPress={() => setMode("visit")} /> : null}
-          {sub.canRenew && sub.status !== "pending_payment" ? <Button title={sub.status === "active" ? "Pay next period" : "Renew"} variant="secondary" style={{ flex: 1 }} onPress={() => setMode("renew")} /> : null}
-          {sub.canCancel ? <Button title="Cancel" variant="secondary" style={{ flex: 1 }} onPress={cancel} /> : null}
+          {sub.canBookVisit ? <Button title={sub.visitsLeft > 1 ? t("Plan visits") : t("Book a visit")} style={{ flex: 1 }} onPress={() => setMode("visit")} /> : null}
+          {sub.canRenew && sub.status !== "pending_payment" ? <Button title={sub.status === "active" ? t("Pay next period") : t("Renew")} variant="secondary" style={{ flex: 1 }} onPress={() => setMode("renew")} /> : null}
+          {sub.canCancel ? <Button title={t("Cancel")} variant="secondary" style={{ flex: 1 }} onPress={cancel} /> : null}
         </Row>
       ) : (
         <View style={{ gap: space(3) }}>
           <Divider />
           <Text style={{ fontFamily: fonts.bold }}>
-            {mode === "visit" ? `Pick your visits (${sub.visitsLeft} left until ${day(sub.currentPeriodEnd)})` : `Plan your next ${sub.interval === "monthly" ? "month" : "period"}: the first visit is paid now`}
+            {mode === "visit" ? t("Pick your visits ({0} left until {1})", { 0: sub.visitsLeft, 1: day(sub.currentPeriodEnd) }) : t("Plan your next {0}: the first visit is paid now", { 0: sub.interval === "monthly" ? "month" : "period" })}
           </Text>
           <MonthCalendar
             selected={picked}
@@ -144,13 +145,13 @@ function SubscriptionCard({ sub, onChange }: { sub: Subscription; onChange: () =
             hour={hour}
             onHour={setHour}
             booked={booked}
-            firstLabel={mode === "renew" ? "PAID" : undefined}
+            firstLabel={mode === "renew" ? t("PAID") : undefined}
           />
           <ErrorText error={error} />
           <Row style={{ gap: space(2) }}>
-            <Button title="Back" variant="secondary" style={{ flex: 1 }} onPress={() => setMode("none")} />
+            <Button title={t("Back")} variant="secondary" style={{ flex: 1 }} onPress={() => setMode("none")} />
             <Button
-              title={mode === "visit" ? `Book ${picked.length || ""} visit${picked.length === 1 ? "" : "s"}`.replace("  ", " ") : `Renew · ${aed(sub.priceAed)}`}
+              title={mode === "visit" ? t("Book {0} visit{1}", { 0: picked.length || "", 1: picked.length === 1 ? "" : "s" }).replace("  ", " ") : t("Renew · {0}", { 0: aed(sub.priceAed) })}
               style={{ flex: 1.4 }}
               loading={busy}
               disabled={!picked.length || hour == null}
@@ -162,19 +163,19 @@ function SubscriptionCard({ sub, onChange }: { sub: Subscription; onChange: () =
 
       {sub.plannedVisits?.length ? (
         <Text variant="small">
-          {sub.plannedVisits.length} more visit{sub.plannedVisits.length > 1 ? "s" : ""} planned (
-          {sub.plannedVisits.map((iso) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" })).join(", ")}); booked as soon as you pay.
+          {sub.plannedVisits.length}{" "}{t("more visit")}{sub.plannedVisits.length > 1 ? "s" : ""}{" "}{t("planned (")}
+          {sub.plannedVisits.map((iso) => new Date(iso).toLocaleDateString(dateLocale(), { day: "numeric", month: "short" })).join(", ")}{t("); booked as soon as you pay.")}
         </Text>
       ) : null}
       {upcoming.length ? (
         <>
           <Divider />
-          <Text variant="label">YOUR VISITS</Text>
+          <Text variant="label">{t("YOUR VISITS")}</Text>
           {upcoming.map((v) => (
             <Row key={v.id} style={{ justifyContent: "space-between" }}>
               <Text style={{ fontSize: 14, flex: 1 }} onPress={() => router.push(`/booking/${v.id}`)}>
                 {when(v.scheduledAt)}
-                {v.included ? "" : " · paid visit"}
+                {v.included ? "" : t(" · paid visit")}
               </Text>
               <StatusPill status={v.status} />
             </Row>
