@@ -94,7 +94,6 @@ const config: ExpoConfig = {
         clientToken: env.FACEBOOK_CLIENT_TOKEN ?? "placeholder",
         displayName: "Xtreme-Cleaning Partner",
         scheme: `fb${env.FACEBOOK_APP_ID ?? "2305248043660220"}`,
-        // Without a real app id (e.g. demo builds) the SDK must not start on launch.
         isAutoInitEnabled: true,
         advertiserIDCollectionEnabled: false,
         autoLogAppEventsEnabled: false,
