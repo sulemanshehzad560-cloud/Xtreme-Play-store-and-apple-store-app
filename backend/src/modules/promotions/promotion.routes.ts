@@ -28,6 +28,9 @@ const promoFields = z.object({
   endsAt: when.nullish(),
   usageLimit: z.number().int().min(1).max(1_000_000).nullish(),
   active: z.boolean(),
+  notifyCustomers: z.boolean().optional(),
+  message: z.string().trim().max(300).nullish(),
+  messageAr: z.string().trim().max(300).nullish(),
 });
 
 export async function promotionRoutes(app: FastifyInstance, c: Container) {
@@ -63,5 +66,15 @@ export async function promotionRoutes(app: FastifyInstance, c: Container) {
     "/admin/promotions/:id",
     { preHandler: admin, schema: { tags, summary: "Edit, pause or end a promotion", params: uuidParam, body: promoFields.partial() } },
     async (req) => c.promotions.update(req.params.id, req.body),
+  );
+
+  r.post(
+    "/admin/promotions/:id/announce",
+    {
+      preHandler: admin,
+      config: { rateLimit: { max: 5, timeWindow: "10 minutes" } },
+      schema: { tags, summary: "Send the offer notification to customers again", params: uuidParam },
+    },
+    async (req) => ({ sent: await c.promotions.announce(req.params.id) }),
   );
 }

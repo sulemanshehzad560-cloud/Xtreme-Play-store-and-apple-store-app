@@ -12,6 +12,7 @@ export interface User {
   avatarUrl: string | null;
   dateOfBirth?: string | null;
   locale: string;
+  marketingOptIn?: boolean;
   signInMethods: string[];
 }
 

@@ -26,11 +26,12 @@ import { closeSocket } from "@/lib/realtime";
 import { colors } from "@/lib/theme";
 import { ThemeProvider, useThemeMode } from "@/lib/themeMode";
 import "@/lib/staff-location"; // registers the background task at startup
+import { api } from "@/lib/api";
 
 // Hand over from the static native splash to the animated brand intro as soon as JS is up.
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 function Gate() {
-  const { ready, user } = useAuth();
+  const { ready, user, refreshUser } = useAuth();
   const { dark } = useThemeMode();
   const { lang, chosen } = useLanguage();
   const [introDone, setIntroDone] = useState(false);
@@ -38,6 +39,14 @@ function Gate() {
   useEffect(() => {
     SplashScreen.hideAsync().catch(() => undefined);
   }, []);
+
+  // Keep the server in step with the app language, so notifications arrive in it too.
+  useEffect(() => {
+    if (!user || DEMO || user.locale === lang) return;
+    api("/me", { method: "PATCH", body: { locale: lang } })
+      .then(() => refreshUser())
+      .catch(() => undefined);
+  }, [user?.id, user?.locale, lang]);
 
   useEffect(() => {
     if (user) registerPush().catch(() => undefined);
@@ -48,6 +57,7 @@ function Gate() {
     if (!user || DEMO) return;
     const sub = Notifications.addNotificationResponseReceivedListener((res) => {
       const data = res.notification.request.content.data as { bookingId?: string; type?: string };
+      if (data?.type === "offer") return router.push("/");
       if (!data?.bookingId) return;
       // A new-order alert is for awareness; staff open job details once the office assigns them.
       if (user.role === "staff" && data.type === "new_order") return router.push("/");

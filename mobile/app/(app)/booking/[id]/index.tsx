@@ -77,8 +77,8 @@ export default function BookingDetail() {
     <Screen edges={["left", "right"]}>
       <Celebration
         visible={celebrate}
-        title={t("Your clean is booked!")}
-        message={t("{0} · {1}\nPayment received and your booking is confirmed. We'll notify you at every step.", { 0: t(b.service.name), 1: when(b.scheduledAt) })}
+        title={t("You're all set! ✨")}
+        message={t("{0} · {1}\nYour home is about to sparkle. Our team will arrive ready to make it shine, and we'll keep you posted every step of the way.", { 0: t(b.service.name), 1: when(b.scheduledAt) })}
         onClose={() => setCelebrate(false)}
       />
       {paid || (isNew && !b.awaitingPayment) ? (

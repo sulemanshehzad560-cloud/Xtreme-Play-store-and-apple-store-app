@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from "react";
-import { Alert, Image, Linking, Platform, Pressable, Text as RNText, View } from "react-native";
+import { useEffect, useState, type ReactNode } from "react";
+import { Alert, Image, Linking, Platform, Pressable, Switch, Text as RNText, View } from "react-native";
 import { router } from "expo-router";
 import * as AppleAuthentication from "expo-apple-authentication";
 import * as Crypto from "expo-crypto";
@@ -20,6 +20,7 @@ import type { Booking, Company } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { useThemeMode, type ThemeMode } from "@/lib/themeMode";
 import { t, useLanguage, type Lang } from "@/lib/i18n";
+import { setOffersOptIn } from "@/components/OffersOptIn";
 
 const METHOD_LABEL: Record<string, string> = { phone: "Mobile", google: "Google", facebook: "Facebook", apple: "Apple" };
 
@@ -153,6 +154,10 @@ export default function Account() {
         <Item icon="calendar" title={t("My subscriptions")} subtitle={t("Regular cleaning plans and your visit calendar")} onPress={() => router.push("/subscriptions")} />
         <Item icon="receipt" title={t("Bookings & invoices")} subtitle={t("Past services and receipts")} onPress={() => router.push("/bookings")} />
         <Item icon="bell" title={t("Notifications")} subtitle={t("Booking updates and offers")} onPress={() => router.push("/notifications")} />
+        <OffersRow on={!!user.marketingOptIn} onChange={async (v) => {
+          await setOffersOptIn(v);
+          await refreshUser();
+        }} />
         <Item icon="key" title={t("Sign-in methods")} subtitle={user.signInMethods.map((m) => t(METHOD_LABEL[m] ?? m)).join(", ") || "—"} last={!missing.length} />
         {missing.length ? (
           <Row style={{ flexWrap: "wrap", gap: space(2), paddingHorizontal: space(4), paddingBottom: space(3) }}>
@@ -277,6 +282,41 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
         {title.toUpperCase()}
       </Text>
       <View style={{ backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, overflow: "hidden", ...shadow.card }}>{children}</View>
+    </View>
+  );
+}
+
+function OffersRow({ on, onChange }: { on: boolean; onChange: (v: boolean) => Promise<void> }) {
+  const [value, setValue] = useState(on);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => setValue(on), [on]);
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: space(3), paddingHorizontal: space(4), paddingVertical: space(3.5), borderBottomWidth: 1, borderBottomColor: colors.divider }}>
+      <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: iconSoft("tag"), alignItems: "center", justifyContent: "center" }}>
+        <LineIcon name="tag" size={20} color={iconColor("tag")} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontFamily: fonts.semibold }}>{t("Offers & seasonal deals")}</Text>
+        <Text variant="small">{t("Phone alerts for Eid, National Day and other offers")}</Text>
+      </View>
+      <Switch
+        value={value}
+        disabled={busy}
+        onValueChange={async (v) => {
+          setValue(v);
+          setBusy(true);
+          try {
+            await onChange(v);
+          } catch {
+            setValue(!v);
+          } finally {
+            setBusy(false);
+          }
+        }}
+        trackColor={{ true: colors.gold, false: colors.border }}
+        thumbColor="#fff"
+        accessibilityLabel={t("Offers & seasonal deals")}
+      />
     </View>
   );
 }

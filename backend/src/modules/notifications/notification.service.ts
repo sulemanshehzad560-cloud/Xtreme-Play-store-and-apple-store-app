@@ -23,7 +23,7 @@ export class NotificationService {
    * Saves an in-app notification, pushes it to the user's devices and the open app.
    * Never throws: a failed notification must not fail the booking action behind it.
    */
-  async notify(userIds: string[], input: NotificationInput): Promise<void> {
+  async notify(userIds: string[], input: NotificationInput, opts: { pushTo?: string[] } = {}): Promise<void> {
     const ids = [...new Set(userIds)];
     if (ids.length === 0) return;
     try {
@@ -33,7 +33,10 @@ export class NotificationService {
         .returning();
       for (const row of rows) this.hub.emit(rooms.user(row.userId), "notification", serialize(row));
 
-      const tokens = await this.db.select().from(pushTokens).where(inArray(pushTokens.userId, ids));
+      // Marketing messages go to everyone's in-app inbox but only to the phones of people who opted in.
+      const pushIds = opts.pushTo ? ids.filter((id) => opts.pushTo!.includes(id)) : ids;
+      if (pushIds.length === 0) return;
+      const tokens = await this.db.select().from(pushTokens).where(inArray(pushTokens.userId, pushIds));
       if (tokens.length === 0) return;
       const { invalidTokens } = await this.push.send(
         tokens.map((t) => ({ to: t.token, title: input.title, body: input.body, data: input.data })),

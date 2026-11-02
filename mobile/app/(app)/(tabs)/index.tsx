@@ -20,6 +20,7 @@ import { colors, fonts, radius, shadow, space } from "@/lib/theme";
 import type { Booking, Company, Service } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { t } from "@/lib/i18n";
+import { OffersOptInCard } from "@/components/OffersOptIn";
 
 interface Availability {
   onDuty: number;
@@ -346,6 +347,8 @@ export default function Home() {
               ))}
             </Row>
           </View>
+
+          <OffersOptInCard />
 
           <PlanPromo />
 

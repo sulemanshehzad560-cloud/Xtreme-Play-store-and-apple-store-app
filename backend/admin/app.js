@@ -844,8 +844,8 @@ function renderPromotions() {
             <td>${esc(promoValue(p))}</td><td class="meta">${esc(rules.join(" · "))}</td>
             <td class="meta">${p.startsAt || p.endsAt ? `${day(p.startsAt)} → ${p.endsAt ? day(p.endsAt) : "no end"}` : "Always"}</td>
             <td>${p.usedCount}${p.usageLimit ? ` / ${p.usageLimit}` : ""}</td>
-            <td><span class="pill ${cls}">${label}</span></td>
-            <td class="actions-cell"><button class="btn outline small" data-promo="${p.id}">Edit</button><button class="btn ${p.active ? "danger" : "gold"} small" data-promo-toggle="${p.id}">${p.active ? "Pause" : "Resume"}</button></td></tr>`;
+            <td><span class="pill ${cls}">${label}</span>${p.announcedAt ? `<div class="meta">📣 Sent ${day(p.announcedAt)}</div>` : p.notifyCustomers ? '<div class="meta">📣 Sends when live</div>' : '<div class="meta">🔕 No announcement</div>'}</td>
+            <td class="actions-cell"><button class="btn outline small" data-promo="${p.id}">Edit</button>${label === "Live" ? `<button class="btn outline small" data-promo-announce="${p.id}">Notify customers</button>` : ""}<button class="btn ${p.active ? "danger" : "gold"} small" data-promo-toggle="${p.id}">${p.active ? "Pause" : "Resume"}</button></td></tr>`;
         })
         .join("")}`
     : `<tr><td class="empty">No promotions yet. Start with <b>+ First-booking offer</b>: it applies automatically to every new customer's first payment.</td></tr>`;
@@ -855,7 +855,7 @@ const dateInput = (iso) => (iso ? new Date(new Date(iso).getTime() + 4 * 3_600_0
 const fromDateInput = (v) => (v ? new Date(`${v}:00+04:00`).toISOString() : null);
 
 function promoForm(p, preset = {}) {
-  const v = { name: "", code: "", kind: "percent", value: 10, autoApply: false, firstBookingOnly: false, active: true, serviceKeys: [], ...preset, ...(p ?? {}) };
+  const v = { name: "", code: "", kind: "percent", value: 10, autoApply: false, firstBookingOnly: false, active: true, serviceKeys: [], notifyCustomers: true, message: "", messageAr: "", ...preset, ...(p ?? {}) };
   const services = subState.services
     .map((s) => `<label class="check"><input type="checkbox" name="svc" value="${esc(s.key)}" ${v.serviceKeys?.includes(s.key) ? "checked" : ""}/> ${esc(s.name)}</label>`)
     .join("");
@@ -867,7 +867,7 @@ function promoForm(p, preset = {}) {
        <label>Type<select name="kind"><option value="percent" ${v.kind === "percent" ? "selected" : ""}>Percentage off</option><option value="fixed" ${v.kind === "fixed" ? "selected" : ""}>Fixed AED off</option></select></label>
        <label>Value (% or AED)<input name="value" type="number" min="1" max="100000" required value="${v.value}" /></label>
        <label>Applies<select name="autoApply"><option value="true" ${v.autoApply ? "selected" : ""}>Automatically</option><option value="false" ${!v.autoApply ? "selected" : ""}>Only with the code</option></select></label>
-       <label>Promo code (optional for automatic)<input name="code" maxlength="24" pattern="[A-Za-z0-9_\-]{3,24}" value="${esc(v.code ?? "")}" placeholder="e.g. WELCOME20" /></label>
+       <label>Promo code (optional for automatic)<input name="code" maxlength="24" pattern="[A-Za-z0-9_\\-]{3,24}" value="${esc(v.code ?? "")}" placeholder="e.g. WELCOME20" /></label>
        <label>Who<select name="firstBookingOnly"><option value="true" ${v.firstBookingOnly ? "selected" : ""}>First booking only</option><option value="false" ${!v.firstBookingOnly ? "selected" : ""}>Any booking</option></select></label>
        <label>Max discount AED (optional)<input name="maxDiscountAed" type="number" min="1" value="${v.maxDiscountAed ?? ""}" /></label>
        <label>Min order AED (optional)<input name="minOrderAed" type="number" min="1" value="${v.minOrderAed ?? ""}" /></label>
@@ -876,6 +876,9 @@ function promoForm(p, preset = {}) {
        <label>Ends (optional)<input name="endsAt" type="datetime-local" value="${dateInput(v.endsAt)}" /></label>
        <label>Status<select name="active"><option value="true" ${v.active ? "selected" : ""}>Live</option><option value="false" ${!v.active ? "selected" : ""}>Paused</option></select></label>
        <fieldset class="full services"><legend>Services (none ticked = all services)</legend>${services}</fieldset>
+       <label class="check full"><input type="checkbox" name="notifyCustomers" ${v.notifyCustomers !== false ? "checked" : ""}/> Tell all customers when it goes live (app inbox, plus a phone alert for customers who turned on offers)</label>
+       <label class="full">Message to customers, English (optional)<textarea name="message" maxlength="300" rows="2" placeholder="Leave empty to write it from the offer, e.g. “20% off your booking · use code EID20 · until 12 Apr. Book now in the app.”">${esc(v.message ?? "")}</textarea></label>
+       <label class="full">Message to customers, Arabic (optional)<textarea name="messageAr" maxlength="300" rows="2" dir="rtl" placeholder="اتركه فارغاً ليُكتب تلقائياً من تفاصيل العرض">${esc(v.messageAr ?? "")}</textarea></label>
      </div>
      <div class="modal-actions"><button class="btn outline" value="cancel" formnovalidate>Close</button><button class="btn primary">${p ? "Save" : "Create promotion"}</button></div>`,
     async (form) => {
@@ -894,8 +897,18 @@ function promoForm(p, preset = {}) {
         endsAt: fromDateInput(form.get("endsAt")),
         serviceKeys: form.getAll("svc"),
         active: form.get("active") === "true",
+        notifyCustomers: form.get("notifyCustomers") === "on",
+        message: String(form.get("message") || "").trim() || null,
+        messageAr: String(form.get("messageAr") || "").trim() || null,
       };
-      if (body.active) await sure({ title: p ? "Save this promotion?" : "Start this promotion?", message: "It applies to customers' checkouts straight away.", confirm: p ? "Save" : "Start" });
+      const willAnnounce = body.active && body.notifyCustomers && !p?.announcedAt;
+      const startsLater = body.startsAt && new Date(body.startsAt).getTime() > Date.now();
+      if (body.active)
+        await sure({
+          title: p ? "Save this promotion?" : "Start this promotion?",
+          message: `It applies to customers' checkouts ${startsLater ? "from its start date" : "straight away"}.${willAnnounce ? ` All customers will be notified ${startsLater ? "when it starts" : "now"}.` : ""}`,
+          confirm: p ? "Save" : "Start",
+        });
       await api(p ? `/admin/promotions/${p.id}` : "/admin/promotions", { method: p ? "PATCH" : "POST", body });
       toast(p ? "Promotion saved" : "Promotion created. It applies in the app straight away.");
       await loadPromotions();
@@ -904,6 +917,41 @@ function promoForm(p, preset = {}) {
 }
 
 $("#add-promo").addEventListener("click", () => promoForm(null));
+// Ready-made seasonal offers. Dates are a starting point (Islamic dates follow the moon): check them before saving.
+const atUae = (y, m, d, h = 0) => new Date(Date.UTC(y, m - 1, d, h - 4)).toISOString();
+function nextYearFor(month, day) {
+  const now = new Date();
+  const y = now.getFullYear();
+  return new Date(y, month - 1, day) < now ? y + 1 : y;
+}
+function seasonPresets() {
+  const nd = nextYearFor(12, 3);
+  const ny = nextYearFor(1, 4);
+  const wf = nextYearFor(11, 30);
+  const su = nextYearFor(8, 31);
+  return [
+    { key: "national", label: "🇦🇪 UAE National Day (Eid Al Etihad)", name: "National Day: 25% off", code: `UAE${nd - 1971}`, value: 25, startsAt: atUae(nd, 11, 28), endsAt: atUae(nd, 12, 4), message: `Happy Eid Al Etihad! 25% off every cleaning service with code UAE${nd - 1971}. Book now in the app.`, messageAr: `عيد اتحاد سعيد! خصم 25% على جميع خدمات التنظيف بالرمز UAE${nd - 1971}. احجز الآن في التطبيق.` },
+    { key: "ramadan", label: "🌙 Ramadan", name: "Ramadan Kareem: 20% off", code: "RAMADAN20", value: 20, startsAt: atUae(2027, 2, 7), endsAt: atUae(2027, 3, 9), message: "Ramadan Kareem! Get your home ready with 20% off using code RAMADAN20.", messageAr: "رمضان كريم! جهّز منزلك مع خصم 20% بالرمز RAMADAN20." },
+    { key: "fitr", label: "🎉 Eid al-Fitr", name: "Eid Mubarak: 25% off", code: "EID25", value: 25, startsAt: atUae(2027, 3, 3), endsAt: atUae(2027, 3, 14), message: "Eid Mubarak! A spotless home for Eid: 25% off with code EID25.", messageAr: "عيد مبارك! منزل نظيف للعيد: خصم 25% بالرمز EID25." },
+    { key: "adha", label: "🐑 Eid al-Adha", name: "Eid al-Adha: 25% off", code: "ADHA25", value: 25, startsAt: atUae(2027, 5, 10), endsAt: atUae(2027, 5, 20), message: "Eid al-Adha Mubarak! 25% off every clean with code ADHA25.", messageAr: "عيد أضحى مبارك! خصم 25% على كل تنظيف بالرمز ADHA25." },
+    { key: "white", label: "🛍️ White Friday", name: "White Friday: 30% off", code: "WHITE30", value: 30, startsAt: atUae(wf, 11, 26), endsAt: atUae(wf, 12, 1), message: "White Friday deal: 30% off any cleaning service with code WHITE30. This weekend only!", messageAr: "عرض الجمعة البيضاء: خصم 30% على أي خدمة تنظيف بالرمز WHITE30. هذا الأسبوع فقط!" },
+    { key: "newyear", label: "🎆 New Year", name: "New Year fresh start: 20% off", code: `NY${String(ny).slice(2)}`, value: 20, startsAt: atUae(ny - 1, 12, 26), endsAt: atUae(ny, 1, 8), message: `Start ${ny} fresh! 20% off with code NY${String(ny).slice(2)}.`, messageAr: `ابدأ ${ny} بمنزل منتعش! خصم 20% بالرمز NY${String(ny).slice(2)}.` },
+    { key: "summer", label: "☀️ Summer / back to school", name: "Back to school: 15% off deep cleaning", code: "SCHOOL15", value: 15, startsAt: atUae(su, 8, 15), endsAt: atUae(su, 9, 7), serviceKeys: ["deep", "sofa", "carpet"], message: "Back from summer? 15% off deep, sofa and carpet cleaning with code SCHOOL15.", messageAr: "عدت من الصيف؟ خصم 15% على التنظيف العميق والكنب والسجاد بالرمز SCHOOL15." },
+  ];
+}
+$("#add-season-promo").addEventListener("click", () => {
+  const presets = seasonPresets();
+  modal(
+    `<h2>Seasonal offer</h2>
+     <p class="muted">Pick a season to fill in the offer. Every customer is notified when it starts. You can change anything on the next screen. Islamic dates follow the moon sighting, so check them before saving.</p>
+     <div class="form-grid"><label class="full">Season<select name="season">${presets.map((x) => `<option value="${x.key}">${esc(x.label)}</option>`).join("")}</select></label></div>
+     <div class="modal-actions"><button class="btn outline" value="cancel" formnovalidate>Close</button><button class="btn primary">Next</button></div>`,
+    async (form) => {
+      const { key, label, ...preset } = presets.find((x) => x.key === form.get("season"));
+      setTimeout(() => promoForm(null, { kind: "percent", autoApply: false, firstBookingOnly: false, maxDiscountAed: 150, ...preset }), 0);
+    },
+  );
+});
 $("#add-first-promo").addEventListener("click", () =>
   promoForm(null, { name: "Welcome: 15% off your first booking", kind: "percent", value: 15, autoApply: true, firstBookingOnly: true, maxDiscountAed: 150 }),
 );
@@ -911,6 +959,16 @@ $("#tab-promotions").addEventListener("click", (e) => {
   const t = e.target.closest("button");
   if (!t) return;
   if (t.dataset.promo) promoForm(promoState.list.find((p) => p.id === t.dataset.promo));
+  if (t.dataset.promoAnnounce) {
+    const p = promoState.list.find((x) => x.id === t.dataset.promoAnnounce);
+    act(async () => {
+      await sure({ title: "Notify all customers?", message: `Everyone gets “${p.name}” in their app inbox, and customers who turned on offers get a phone alert.`, confirm: "Send" });
+      const r = await api(`/admin/promotions/${p.id}/announce`, { method: "POST", body: {} });
+      toast(`Sent to ${r.sent} customer${r.sent === 1 ? "" : "s"}`);
+      await loadPromotions();
+    });
+    return;
+  }
   if (t.dataset.promoToggle) {
     const p = promoState.list.find((x) => x.id === t.dataset.promoToggle);
     act(async () => {

@@ -1,5 +1,5 @@
 import { randomInt } from "node:crypto";
-import { and, count, desc, eq, inArray, isNull, ne, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, gt, inArray, isNull, lte, ne, or, sql } from "drizzle-orm";
 import type { Database } from "../../db/client.js";
 import { bookings, promotions, referrals, users, type Booking, type Promotion } from "../../db/schema.js";
 import { pricing } from "../catalog/pricing.js";
@@ -29,6 +29,9 @@ export interface PromotionInput {
   endsAt?: Date | null | undefined;
   usageLimit?: number | null | undefined;
   active: boolean;
+  notifyCustomers?: boolean | undefined;
+  message?: string | null | undefined;
+  messageAr?: string | null | undefined;
 }
 
 export class PromotionService {
@@ -50,6 +53,7 @@ export class PromotionService {
     validate(input);
     try {
       const [row] = await this.db.insert(promotions).values(normalise(input)).returning();
+      this.announceSoon();
       return view(row!);
     } catch (err) {
       throw duplicateCode(err);
@@ -67,10 +71,92 @@ export class PromotionService {
         .set({ ...normalise(merged), updatedAt: new Date() })
         .where(eq(promotions.id, id))
         .returning();
+      this.announceSoon();
       return view(row!);
     } catch (err) {
       throw duplicateCode(err);
     }
+  }
+
+  // ------------------------------------------------------------ announcements
+
+  private announcing: Promise<number> | null = null;
+
+  /** Runs announceDue in the background (after a save, or from the scheduler). */
+  announceSoon() {
+    void this.announceDue().catch(() => undefined);
+  }
+
+  /**
+   * Tells customers about every live offer that hasn't been announced yet, including
+   * scheduled seasonal offers once their start time arrives. Each offer is announced once.
+   */
+  async announceDue(): Promise<number> {
+    if (this.announcing) return this.announcing;
+    this.announcing = (async () => {
+      const now = new Date();
+      const due = await this.db
+        .select()
+        .from(promotions)
+        .where(
+          and(
+            isNull(promotions.ownerId),
+            eq(promotions.active, true),
+            eq(promotions.notifyCustomers, true),
+            isNull(promotions.announcedAt),
+            or(isNull(promotions.startsAt), lte(promotions.startsAt, now)),
+            or(isNull(promotions.endsAt), gt(promotions.endsAt, now)),
+          ),
+        );
+      let sent = 0;
+      for (const promo of due) {
+        // Claim it first so two servers never send the same offer twice.
+        const [claimed] = await this.db
+          .update(promotions)
+          .set({ announcedAt: now })
+          .where(and(eq(promotions.id, promo.id), isNull(promotions.announcedAt)))
+          .returning();
+        if (claimed) sent += await this.broadcast(claimed);
+      }
+      return sent;
+    })().finally(() => {
+      this.announcing = null;
+    });
+    return this.announcing;
+  }
+
+  /** Sends the offer again (dashboard button). Returns how many customers were told. */
+  async announce(id: string): Promise<number> {
+    const [promo] = await this.db.select().from(promotions).where(and(eq(promotions.id, id), isNull(promotions.ownerId))).limit(1);
+    if (!promo) throw notFound("Promotion");
+    if (!promo.active || (promo.endsAt && promo.endsAt <= new Date())) throw badRequest("promotion_not_live", "Only a live promotion can be announced");
+    await this.db.update(promotions).set({ announcedAt: new Date() }).where(eq(promotions.id, id));
+    return this.broadcast(promo);
+  }
+
+  private async broadcast(promo: Promotion): Promise<number> {
+    if (!this.notifications) return 0;
+    let audience = await this.db
+      .select({ id: users.id, locale: users.locale, optIn: users.marketingOptIn })
+      .from(users)
+      .where(and(eq(users.role, "customer"), isNull(users.deletedAt), isNull(users.blockedAt)));
+    if (promo.firstBookingOnly) {
+      // A first-booking offer is only news to people who haven't paid for a booking yet.
+      const booked = await this.db
+        .selectDistinct({ id: bookings.customerId })
+        .from(bookings)
+        .where(inArray(bookings.paymentStatus, [...PAID]));
+      const has = new Set(booked.map((b) => b.id));
+      audience = audience.filter((u) => !has.has(u.id));
+    }
+    const optedIn = audience.filter((u) => u.optIn).map((u) => u.id);
+    const data = { type: "offer", promotionId: promo.id, code: promo.code };
+    for (const lang of ["en", "ar"] as const) {
+      const ids = audience.filter((u) => (u.locale === "ar" ? "ar" : "en") === lang).map((u) => u.id);
+      if (!ids.length) continue;
+      await this.notifications.notify(ids, { ...offerText(promo, lang), data }, { pushTo: optedIn });
+    }
+    return audience.length;
   }
 
   // ------------------------------------------------------------ customer
@@ -362,7 +448,35 @@ function normalise(p: PromotionInput) {
     endsAt: p.endsAt ? new Date(p.endsAt) : null,
     usageLimit: p.usageLimit ?? null,
     active: p.active,
+    notifyCustomers: p.notifyCustomers ?? true,
+    message: p.message?.trim() || null,
+    messageAr: p.messageAr?.trim() || null,
   };
+}
+
+const AR_DATE = new Intl.DateTimeFormat("ar-AE-u-nu-latn", { day: "numeric", month: "long", timeZone: "Asia/Dubai" });
+const EN_DATE = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "Asia/Dubai" });
+
+/** The notification customers see: the office's own words if given, otherwise written from the offer. */
+export function offerText(p: Pick<Promotion, "name" | "kind" | "value" | "maxDiscountAed" | "minOrderAed" | "code" | "autoApply" | "firstBookingOnly" | "endsAt" | "message" | "messageAr">, lang: "en" | "ar") {
+  if (lang === "ar") {
+    const off = p.kind === "percent" ? `خصم ${p.value}%` : `خصم ${p.value} درهم`;
+    const parts = [
+      `${off}${p.kind === "percent" && p.maxDiscountAed ? ` (حتى ${p.maxDiscountAed} درهم)` : ""}${p.firstBookingOnly ? " على أول حجز" : " على حجزك"}`,
+      p.code && !p.autoApply ? `استخدم الرمز ${p.code}` : "يُطبّق تلقائياً عند الدفع",
+      p.minOrderAed ? `للطلبات من ${p.minOrderAed} درهم` : null,
+      p.endsAt ? `حتى ${AR_DATE.format(p.endsAt)}` : null,
+    ].filter(Boolean);
+    return { title: `🎉 عرض جديد من Xtreme`, body: p.messageAr?.trim() || `${parts.join(" · ")}. احجز الآن في التطبيق.` };
+  }
+  const off = p.kind === "percent" ? `${p.value}% off` : `AED ${p.value} off`;
+  const parts = [
+    `${off}${p.kind === "percent" && p.maxDiscountAed ? ` (up to AED ${p.maxDiscountAed})` : ""}${p.firstBookingOnly ? " your first booking" : " your booking"}`,
+    p.code && !p.autoApply ? `use code ${p.code}` : "applied automatically at checkout",
+    p.minOrderAed ? `on orders from AED ${p.minOrderAed}` : null,
+    p.endsAt ? `until ${EN_DATE.format(p.endsAt)}` : null,
+  ].filter(Boolean);
+  return { title: `🎉 ${p.name}`, body: p.message?.trim() || `${parts.join(" · ")}. Book now in the app.` };
 }
 
 function duplicateCode(err: unknown) {
@@ -387,6 +501,10 @@ function view(p: Promotion) {
     usageLimit: p.usageLimit,
     usedCount: p.usedCount,
     active: p.active,
+    notifyCustomers: p.notifyCustomers,
+    message: p.message,
+    messageAr: p.messageAr,
+    announcedAt: p.announcedAt?.toISOString() ?? null,
     createdAt: p.createdAt.toISOString(),
   };
 }

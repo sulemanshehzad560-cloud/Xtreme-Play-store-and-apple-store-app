@@ -39,5 +39,11 @@ export function scheduleMaintenance(c: Container, log: FastifyBaseLogger): () =>
   const run = () => runMaintenance(c, log).catch((err) => log.error({ err }, "maintenance failed"));
   const timer = setInterval(run, 3_600_000);
   timer.unref();
-  return () => clearInterval(timer);
+  // Scheduled seasonal offers are announced within a few minutes of going live.
+  const offers = setInterval(() => void c.promotions.announceDue().catch((err) => log.error({ err }, "offer announcement failed")), 5 * 60_000);
+  offers.unref();
+  return () => {
+    clearInterval(timer);
+    clearInterval(offers);
+  };
 }

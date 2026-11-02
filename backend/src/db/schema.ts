@@ -337,6 +337,13 @@ export const promotions = pgTable(
     usedCount: integer("used_count").notNull().default(0),
     /** Personal promotions (e.g. referral rewards) only apply to this customer. */
     ownerId: uuid("owner_id").references(() => users.id, { onDelete: "cascade" }),
+    /** Tell every customer about the offer when it goes live (in-app; push for those who opted in to offers). */
+    notifyCustomers: boolean("notify_customers").notNull().default(true),
+    /** Optional announcement text; a message is written from the offer details when empty. */
+    message: text("message"),
+    messageAr: text("message_ar"),
+    /** When customers were told about it, so each offer is announced once. */
+    announcedAt: ts("announced_at"),
     active: boolean("active").notNull().default(true),
     createdAt: createdAt(),
     updatedAt: ts("updated_at").notNull().defaultNow(),
