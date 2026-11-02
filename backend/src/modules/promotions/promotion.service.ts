@@ -1,6 +1,9 @@
-import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
+import { randomInt } from "node:crypto";
+import { and, count, desc, eq, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import type { Database } from "../../db/client.js";
-import { bookings, promotions, type Booking, type Promotion } from "../../db/schema.js";
+import { bookings, promotions, referrals, users, type Booking, type Promotion } from "../../db/schema.js";
+import { pricing } from "../catalog/pricing.js";
+import type { NotificationService } from "../notifications/notification.service.js";
 import { badRequest, conflict, notFound } from "../../lib/errors.js";
 import type { Actor, BookingService } from "../bookings/booking.service.js";
 
@@ -29,12 +32,14 @@ export class PromotionService {
   constructor(
     private readonly db: Database,
     private readonly bookingsSvc: BookingService,
+    private readonly notifications?: NotificationService,
   ) {}
 
   // ------------------------------------------------------------ admin
 
   async list() {
-    const rows = await this.db.select().from(promotions).orderBy(desc(promotions.active), desc(promotions.createdAt));
+    // Personal rewards (refer a friend) are not office-managed promotions.
+    const rows = await this.db.select().from(promotions).where(isNull(promotions.ownerId)).orderBy(desc(promotions.active), desc(promotions.createdAt));
     return rows.map(view);
   }
 
@@ -74,7 +79,20 @@ export class PromotionService {
     this.assertOpen(booking);
     const normalised = code.trim().toUpperCase();
     const [promo] = await this.db.select().from(promotions).where(eq(promotions.code, normalised)).limit(1);
-    if (!promo) throw badRequest("invalid_code", "This code is not valid");
+    if (!promo) {
+      // A friend's invite code (refer a friend).
+      const referrer = await this.referrerFor(normalised);
+      if (!referrer) throw badRequest("invalid_code", "This code is not valid");
+      const why = await this.referralIneligible(referrer.id, booking);
+      if (why) throw badRequest("code_not_applicable", why);
+      await this.db.update(bookings).set({ promoCode: normalised, updatedAt: new Date() }).where(eq(bookings.id, booking.id));
+      const refreshed = await this.refresh(booking.id);
+      const better = refreshed.promotionId != null;
+      return {
+        ...(await this.bookingsSvc.get(booking.id, customer)),
+        promoMessage: better ? "You already have a better discount on this booking" : `${referrer.firstName}'s invite applied`,
+      };
+    }
     const why = await this.ineligible(promo, booking);
     if (why) throw badRequest("code_not_applicable", why);
     await this.db.update(bookings).set({ promoCode: normalised, updatedAt: new Date() }).where(eq(bookings.id, booking.id));
@@ -103,7 +121,7 @@ export class PromotionService {
     if (!booking) throw notFound("Booking");
     if (booking.paymentStatus !== "unpaid" && booking.paymentStatus !== "pending") return booking;
 
-    let best: { promo: Promotion; discount: number } | null = null;
+    let best: { promo: Promotion | null; discount: number } | null = null;
     if (booking.priceAed != null && booking.priceAed > MIN_CHARGE_AED) {
       const candidates = await this.db
         .select()
@@ -111,6 +129,7 @@ export class PromotionService {
         .where(
           and(
             eq(promotions.active, true),
+            or(isNull(promotions.ownerId), eq(promotions.ownerId, booking.customerId)),
             booking.promoCode ? sql`(${promotions.autoApply} or ${promotions.code} = ${booking.promoCode})` : eq(promotions.autoApply, true),
           ),
         );
@@ -119,9 +138,18 @@ export class PromotionService {
         const discount = discountFor(promo, booking.priceAed);
         if (discount > 0 && (!best || discount > best.discount)) best = { promo, discount };
       }
+      // A friend's invite code competes like any other discount.
+      const friendAed = pricing().referral.friendAed;
+      if (booking.promoCode && friendAed > 0) {
+        const referrer = await this.referrerFor(booking.promoCode);
+        if (referrer && !(await this.referralIneligible(referrer.id, booking))) {
+          const discount = discountFor({ kind: "fixed", value: friendAed, maxDiscountAed: null }, booking.priceAed);
+          if (discount > 0 && (!best || discount > best.discount)) best = { promo: null, discount };
+        }
+      }
     }
     const discountAed = best?.discount ?? 0;
-    const promotionId = best?.promo.id ?? null;
+    const promotionId = best?.promo?.id ?? null;
     if (discountAed === booking.discountAed && promotionId === booking.promotionId) return booking;
     const [updated] = await this.db
       .update(bookings)
@@ -134,6 +162,7 @@ export class PromotionService {
   /** Counts a use once the booking is paid. */
   async onBookingPaid(bookingId: string) {
     const [booking] = await this.db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
+    if (booking && !booking.promotionId && booking.discountAed > 0 && booking.promoCode) await this.rewardReferrer(booking);
     if (!booking?.promotionId || booking.discountAed <= 0) return;
     await this.db
       .update(promotions)
@@ -145,6 +174,7 @@ export class PromotionService {
   private async ineligible(promo: Promotion, booking: Booking): Promise<string | null> {
     const now = Date.now();
     if (!promo.active) return "This offer has ended";
+    if (promo.ownerId && promo.ownerId !== booking.customerId) return "This code belongs to another account";
     if (promo.startsAt && promo.startsAt.getTime() > now) return "This offer has not started yet";
     if (promo.endsAt && promo.endsAt.getTime() <= now) return "This offer has ended";
     // A booking already carrying this promotion keeps its place within the limit.
@@ -161,6 +191,101 @@ export class PromotionService {
       if (prior) return "This offer is for your first booking";
     }
     return null;
+  }
+
+  // ------------------------------------------------------------ refer a friend
+
+  /** The customer's invite code (created on first use), what friends get, and rewards earned. */
+  async myReferral(userId: string) {
+    const code = await this.ensureReferralCode(userId);
+    const [{ invited }] = (await this.db.select({ invited: count() }).from(referrals).where(eq(referrals.referrerId, userId))) as [{ invited: number }];
+    const rewards = await this.db
+      .select()
+      .from(promotions)
+      .where(and(eq(promotions.ownerId, userId), eq(promotions.active, true)));
+    const { friendAed, rewardAed } = pricing().referral;
+    return {
+      code,
+      enabled: friendAed > 0 || rewardAed > 0,
+      friendAed,
+      rewardAed,
+      invited,
+      rewardsAvailable: rewards.filter((r) => r.usageLimit == null || r.usedCount < r.usageLimit).map((r) => ({ id: r.id, name: r.name, valueAed: r.value })),
+    };
+  }
+
+  private async ensureReferralCode(userId: string): Promise<string> {
+    const [user] = await this.db.select({ code: users.referralCode, name: users.fullName }).from(users).where(eq(users.id, userId)).limit(1);
+    if (!user) throw notFound("Account");
+    if (user.code) return user.code;
+    const stem = (user.name ?? "").split(/\s+/)[0]!.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 6) || "XTREME";
+    const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    for (let i = 0; i < 6; i++) {
+      const code = stem + Array.from({ length: 4 }, () => alphabet[randomInt(alphabet.length)]).join("");
+      const taken = await this.db.select({ id: promotions.id }).from(promotions).where(eq(promotions.code, code)).limit(1);
+      if (taken.length) continue;
+      const [set] = await this.db
+        .update(users)
+        .set({ referralCode: code })
+        .where(and(eq(users.id, userId), isNull(users.referralCode)))
+        .returning({ code: users.referralCode })
+        .catch(() => []);
+      if (set?.code) return set.code;
+      const [again] = await this.db.select({ code: users.referralCode }).from(users).where(eq(users.id, userId)).limit(1);
+      if (again?.code) return again.code;
+    }
+    throw conflict("code_unavailable", "Could not create an invite code. Please try again.");
+  }
+
+  private async referrerFor(code: string) {
+    const [u] = await this.db
+      .select({ id: users.id, fullName: users.fullName })
+      .from(users)
+      .where(and(eq(users.referralCode, code.trim().toUpperCase()), isNull(users.deletedAt)))
+      .limit(1);
+    return u ? { id: u.id, firstName: (u.fullName ?? "Your friend").split(/\s+/)[0]! } : null;
+  }
+
+  /** Invite codes are for a new customer's first paid booking, from someone else. */
+  private async referralIneligible(referrerId: string, booking: Booking): Promise<string | null> {
+    if (pricing().referral.friendAed <= 0) return "Invite codes are not active right now";
+    if (referrerId === booking.customerId) return "You can't use your own invite code. Share it with friends!";
+    if (booking.priceAed == null) return "Codes can be used once your price is ready";
+    const [prior] = await this.db
+      .select({ id: bookings.id })
+      .from(bookings)
+      .where(and(eq(bookings.customerId, booking.customerId), ne(bookings.id, booking.id), inArray(bookings.paymentStatus, [...PAID])))
+      .limit(1);
+    if (prior) return "Invite codes are for your first booking";
+    const [already] = await this.db.select({ id: referrals.id }).from(referrals).where(eq(referrals.refereeId, booking.customerId)).limit(1);
+    if (already) return "You have already used an invite";
+    return null;
+  }
+
+  /** After a referred friend's first payment: record it and give the inviter a personal credit. */
+  private async rewardReferrer(booking: Booking) {
+    const referrer = await this.referrerFor(booking.promoCode!);
+    if (!referrer || referrer.id === booking.customerId) return;
+    const [row] = await this.db
+      .insert(referrals)
+      .values({ referrerId: referrer.id, refereeId: booking.customerId, bookingId: booking.id })
+      .onConflictDoNothing()
+      .returning();
+    if (!row) return;
+    const rewardAed = pricing().referral.rewardAed;
+    if (rewardAed <= 0) return;
+    const [friend] = await this.db.select({ name: users.fullName }).from(users).where(eq(users.id, booking.customerId)).limit(1);
+    const friendName = (friend?.name ?? "a friend").split(/\s+/)[0];
+    const [reward] = await this.db
+      .insert(promotions)
+      .values({ name: `Thanks for inviting ${friendName}`, kind: "fixed", value: rewardAed, autoApply: true, firstBookingOnly: false, usageLimit: 1, ownerId: referrer.id, active: true })
+      .returning();
+    await this.db.update(referrals).set({ rewardPromotionId: reward!.id }).where(eq(referrals.id, row.id));
+    void this.notifications?.notify([referrer.id], {
+      title: `You earned AED ${rewardAed}!`,
+      body: `${friendName} booked with your invite. AED ${rewardAed} comes off your next booking automatically.`,
+      data: { type: "referral" },
+    });
   }
 
   private assertOpen(booking: Booking) {

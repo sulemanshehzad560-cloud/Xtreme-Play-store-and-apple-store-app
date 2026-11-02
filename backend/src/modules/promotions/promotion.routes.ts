@@ -49,6 +49,10 @@ export async function promotionRoutes(app: FastifyInstance, c: Container) {
     c.promotions.removeCode(req.params.id, req.user),
   );
 
+  r.get("/me/referral", { preHandler: customer, schema: { tags, summary: "My invite code, what friends get and my rewards" } }, async (req) =>
+    c.promotions.myReferral(req.user.id),
+  );
+
   r.get("/admin/promotions", { preHandler: admin, schema: { tags, summary: "All promotions" } }, async () => c.promotions.list());
 
   r.post("/admin/promotions", { preHandler: admin, schema: { tags, summary: "Create a promotion", body: promoFields } }, async (req, reply) =>

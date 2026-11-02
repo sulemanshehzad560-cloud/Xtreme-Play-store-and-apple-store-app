@@ -77,6 +77,8 @@ export const users = pgTable(
     avatarUrl: text("avatar_url"),
     /** YYYY-MM-DD, asked when an account has no name (phone sign-in). */
     dateOfBirth: date("date_of_birth", { mode: "string" }),
+    /** Personal invite code friends enter at checkout (refer a friend). Created on first use. */
+    referralCode: text("referral_code"),
     locale: text("locale").notNull().default("en"),
     marketingOptIn: boolean("marketing_opt_in").notNull().default(false),
     stripeCustomerId: text("stripe_customer_id"),
@@ -87,6 +89,7 @@ export const users = pgTable(
   },
   (t) => [
     uniqueIndex("users_phone_unique").on(t.phone).where(sql`${t.deletedAt} is null`),
+    uniqueIndex("users_referral_code_unique").on(t.referralCode).where(sql`${t.referralCode} is not null`),
     index("users_email_idx").on(t.email),
   ],
 );
@@ -332,12 +335,31 @@ export const promotions = pgTable(
     endsAt: ts("ends_at"),
     usageLimit: integer("usage_limit"),
     usedCount: integer("used_count").notNull().default(0),
+    /** Personal promotions (e.g. referral rewards) only apply to this customer. */
+    ownerId: uuid("owner_id").references(() => users.id, { onDelete: "cascade" }),
     active: boolean("active").notNull().default(true),
     createdAt: createdAt(),
     updatedAt: ts("updated_at").notNull().defaultNow(),
   },
   (t) => [uniqueIndex("promotions_code_unique").on(t.code).where(sql`${t.code} is not null`)],
 );
+
+/** A friend who signed up with someone's invite code and paid their first booking. */
+export const referrals = pgTable(
+  "referrals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    referrerId: uuid("referrer_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    /** Each customer can be referred once. */
+    refereeId: uuid("referee_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    bookingId: uuid("booking_id").notNull().references(() => bookings.id, { onDelete: "cascade" }),
+    rewardPromotionId: uuid("reward_promotion_id").references(() => promotions.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("referrals_referee_unique").on(t.refereeId), index("referrals_referrer_idx").on(t.referrerId)],
+);
+
+export type Referral = typeof referrals.$inferSelect;
 
 /** Contract plans the office sells (e.g. "Home care: 4 regular cleans a month"). Prices are set by admins. */
 export const subscriptionPlans = pgTable("subscription_plans", {

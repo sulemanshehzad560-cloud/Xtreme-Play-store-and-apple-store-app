@@ -323,7 +323,13 @@ export async function demoApi(path: string, method: string, body: Json | undefin
       propertySizes: Object.fromEntries(Object.entries(PRICES).map(([t, sizes]) => [t, Object.keys(sizes).map((key) => ({ key, label: SIZE_LABELS[key] }))])),
       regularRates: REGULAR_RATES,
       payments: { tamaraFeePercent: 8, tamaraInstalments: 4 },
+      frequencyDiscountPercent: { weekly: 10, biweekly: 5 },
+      referral: { friendAed: 25, rewardAed: 25 },
     };
+  }
+  if (route === "/catalog/stats") return { rating: 4.9, reviewCount: 214, completedJobs: 1260 };
+  if (route === "/me/referral") {
+    return { code: "SARA7K2Q", enabled: true, friendAed: 25, rewardAed: 25, invited: 2, rewardsAvailable: [{ id: "r1", name: "Thanks for inviting Omar", valueAed: 25 }] };
   }
   if (route === "/catalog/quote") {
     const svc = SERVICES.find((s) => s.key === q.serviceKey);

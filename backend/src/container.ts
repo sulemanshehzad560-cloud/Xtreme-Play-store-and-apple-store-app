@@ -142,7 +142,7 @@ export function createContainer(env: Env, log: FastifyBaseLogger, overrides: Con
     if (booking.status === "completed") void invoices.sendIfDue(booking.id);
   });
   const subscriptions = new SubscriptionService(db, bookings, notifications);
-  const promotions = new PromotionService(db, bookings);
+  const promotions = new PromotionService(db, bookings, notifications);
   const support = new SupportService(db, notifications, hub, admin, {
     get tamaraFeePercent() {
       return pricing().tamaraFeePercent;

@@ -166,6 +166,10 @@ export default function Account() {
 
       <Appearance />
 
+      <Section title="Rewards">
+        <Item icon="tag" title="Invite friends" subtitle="Give your friends a discount, get credit for every booking" onPress={() => router.push("/invite")} last />
+      </Section>
+
       <Section title="Help & support">
         <Item icon="chat" title="Chat with us" subtitle="Instant answers, or reply from our team" onPress={() => router.push("/chat")} />
         <Item icon="chat" title="WhatsApp" subtitle={company.data?.phoneDisplay} onPress={() => company.data && open(company.data.whatsapp)} />

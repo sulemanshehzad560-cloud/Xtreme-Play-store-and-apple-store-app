@@ -23,6 +23,8 @@ export interface PricingConfig {
   serviceFeeAed: number;
   /** Discount on repeat regular cleaning, in percent of the one-time price. */
   frequencyDiscountPercent: { weekly: number; biweekly: number };
+  /** Refer a friend: the friend's first-booking discount and the inviter's reward, in AED (0 = off). */
+  referral: { friendAed: number; rewardAed: number };
 }
 
 const KEY = "pricing";
@@ -34,6 +36,7 @@ export function defaultPricing(tamaraFeePercent: number): PricingConfig {
     cardFeePercent: 0,
     serviceFeeAed: 0,
     frequencyDiscountPercent: { weekly: 0, biweekly: 0 },
+    referral: { friendAed: 25, rewardAed: 25 },
   };
 }
 
@@ -70,12 +73,14 @@ export function validatePricing(input: PricingConfig): PricingConfig {
     return Math.round(v * 100) / 100;
   };
   const freq = input.frequencyDiscountPercent ?? { weekly: 0, biweekly: 0 };
+  const ref = input.referral ?? { friendAed: 25, rewardAed: 25 };
   return {
     rates,
     tamaraFeePercent: pct(input.tamaraFeePercent, 20, "The Tamara fee (%)"),
     cardFeePercent: 0, // no card fees: the flat service fee is the only extra charge
     serviceFeeAed: pct(input.serviceFeeAed ?? 0, 1000, "The service fee (AED)"),
     frequencyDiscountPercent: { weekly: pct(freq.weekly ?? 0, 50, "The weekly discount (%)"), biweekly: pct(freq.biweekly ?? 0, 50, "The bi-weekly discount (%)") },
+    referral: { friendAed: Math.round(pct(ref.friendAed ?? 0, 500, "The friend's discount (AED)")), rewardAed: Math.round(pct(ref.rewardAed ?? 0, 500, "The referral reward (AED)")) },
   };
 }
 

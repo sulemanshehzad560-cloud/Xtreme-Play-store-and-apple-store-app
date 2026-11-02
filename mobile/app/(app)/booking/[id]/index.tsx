@@ -12,6 +12,7 @@ import { colors, fonts, radius, space } from "@/lib/theme";
 import type { Booking, BookingStatus, Company } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { LineIcon, iconColor } from "@/components/LineIcon";
+import * as StoreReview from "expo-store-review";
 
 const FLOW: [BookingStatus, string][] = [
   ["requested", "Booking received"],
@@ -223,13 +224,18 @@ export default function BookingDetail() {
             onPress={async () => {
               await api(`/bookings/${b.id}/review`, { body: { rating } });
               await reload();
+              // Happy customers are asked once by the store's own rating sheet (Apple / Google limit how often it shows).
+              if (rating >= 4 && (await StoreReview.isAvailableAsync().catch(() => false))) await StoreReview.requestReview().catch(() => undefined);
             }}
           />
         </Card>
       ) : null}
       {b.review ? <Text variant="small" style={{ textAlign: "center" }}>You rated this service {"★".repeat(b.review.rating)}</Text> : null}
 
-      {b.status === "completed" || b.status === "cancelled" ? <Button title="Book again" onPress={() => router.push(`/service/${b.service.key}`)} /> : null}
+      {b.status === "completed" || b.status === "cancelled" ? <Button
+          title="Book again"
+          onPress={() => router.push({ pathname: "/service/[key]", params: { key: b.service.key, type: b.property.type, size: b.property.size, ...(b.frequency && b.frequency !== "one_time" ? { frequency: b.frequency } : {}) } })}
+        /> : null}
       {b.canReschedule ? <Button title="Reschedule" icon={<LineIcon name="calendar" size={18} color={iconColor("calendar")} />} variant="secondary" onPress={() => setRescheduling(true)} /> : null}
       {b.canCancel ? <Button title="Cancel booking" variant="danger" onPress={cancel} /> : null}
       <RescheduleSheet

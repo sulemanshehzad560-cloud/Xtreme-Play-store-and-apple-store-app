@@ -71,6 +71,13 @@
       "when": 1793209620201,
       "tag": "0009_payment_fees",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793638806935,
+      "tag": "0010_referrals",
+      "breakpoints": true
     }
   ]
 }

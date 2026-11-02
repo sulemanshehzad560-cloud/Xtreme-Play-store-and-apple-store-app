@@ -77,7 +77,18 @@ export async function catalogRoutes(app: FastifyInstance, c: Container) {
         serviceFeeAed: pricing().serviceFeeAed,
       },
       frequencyDiscountPercent: pricing().frequencyDiscountPercent,
+      referral: pricing().referral,
     };
+  });
+
+  // Social proof for the home screen: real ratings and completed jobs.
+  r.get("/catalog/stats", { schema: { tags, summary: "Average rating, review count and completed cleans" } }, async (_req, reply) => {
+    reply.header("Cache-Control", "public, max-age=300");
+    const [rv] = await c.db
+      .select({ avg: sql<number | null>`round(avg(${reviews.rating})::numeric, 1)::float`, count: sql<number>`count(*)::int` })
+      .from(reviews);
+    const [done] = await c.db.select({ count: sql<number>`count(*)::int` }).from(bookings).where(eq(bookings.status, "completed"));
+    return { rating: rv?.avg ?? null, reviewCount: rv?.count ?? 0, completedJobs: done?.count ?? 0 };
   });
 
   r.get(

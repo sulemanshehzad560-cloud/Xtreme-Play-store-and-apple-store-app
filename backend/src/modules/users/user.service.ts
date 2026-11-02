@@ -49,7 +49,7 @@ export class UserService {
       await tx.update(addresses).set({ deletedAt: new Date() }).where(eq(addresses.userId, userId));
       await tx
         .update(users)
-        .set({ deletedAt: new Date(), fullName: null, email: null, phone: null, avatarUrl: null, dateOfBirth: null, updatedAt: new Date() })
+        .set({ deletedAt: new Date(), fullName: null, email: null, phone: null, avatarUrl: null, dateOfBirth: null, referralCode: null, updatedAt: new Date() })
         .where(eq(users.id, userId));
     });
     await this.tokens.revokeAllForUser(userId);

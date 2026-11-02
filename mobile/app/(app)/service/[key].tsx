@@ -63,15 +63,16 @@ const FREQUENCY: [Frequency, string, string][] = [
 const duration = (min: number) => (min < 60 ? `${min} min` : min % 60 ? `${Math.floor(min / 60)}½ hrs` : `${min / 60} hr${min > 60 ? "s" : ""}`);
 
 export default function BookService() {
-  const { key } = useLocalSearchParams<{ key: string }>();
+  // "Book again" passes the previous booking's property and frequency.
+  const { key, type: againType, size: againSize, frequency: againFrequency } = useLocalSearchParams<{ key: string; type?: PropertyType; size?: string; frequency?: Frequency }>();
   const catalog = useApi<Catalog>("/catalog/services");
   const saved = useApi<Address[]>("/me/addresses");
   const service = catalog.data?.services.find((s) => s.key === key);
 
   const [step, setStep] = useState(0);
-  const [type, setType] = useState<PropertyType>("apartment");
-  const [size, setSize] = useState("2bhk");
-  const [frequency, setFrequency] = useState<Frequency>("one_time");
+  const [type, setType] = useState<PropertyType>(againType ?? "apartment");
+  const [size, setSize] = useState(againSize ?? "2bhk");
+  const [frequency, setFrequency] = useState<Frequency>(againFrequency ?? "one_time");
   const days = useMemo(() => nextDays(14), []);
   const [day, setDay] = useState(() => firstOpenDay(days));
   const [hour, setHour] = useState<number | null>(null);

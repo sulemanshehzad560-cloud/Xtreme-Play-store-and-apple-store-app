@@ -108,7 +108,9 @@ const promos = (homeFrom: number | null, weeklySave: number): Promo[] => [
 
 export default function Home() {
   const { user } = useAuth();
-  const services = useApi<{ services: Service[]; frequencyDiscountPercent?: { weekly: number; biweekly: number } }>("/catalog/services");
+  const services = useApi<{ services: Service[]; frequencyDiscountPercent?: { weekly: number; biweekly: number }; referral?: { friendAed: number; rewardAed: number } }>("/catalog/services");
+  const stats = useApi<{ rating: number | null; reviewCount: number; completedJobs: number }>("/catalog/stats");
+  const referral = services.data?.referral;
   const homeFrom = services.data?.services.find((s) => s.key === "regular")?.startingFromAed ?? null;
   const weeklySave = services.data?.frequencyDiscountPercent?.weekly ?? 0;
   const active = useApi<Booking[]>("/bookings?scope=active&limit=3");
@@ -203,6 +205,14 @@ export default function Home() {
             <View style={{ gap: 2 }}>
               <RNText style={{ color: colors.goldBright, fontFamily: fonts.semibold, fontSize: 15 }}>Hi{first ? ` ${first}` : " there"},</RNText>
               <RNText style={{ color: "#fff", fontFamily: fonts.extrabold, fontSize: 26, lineHeight: 33, letterSpacing: -0.4 }}>What can we help you with today?</RNText>
+              {/* Social proof, shown once there are enough real reviews to be meaningful. */}
+              {stats.data?.rating && stats.data.reviewCount >= 5 ? (
+                <RNText style={{ color: "#E9E3D6", fontFamily: fonts.semibold, fontSize: 13, marginTop: 2 }}>
+                  <RNText style={{ color: colors.star }}>★ </RNText>
+                  {stats.data.rating.toFixed(1)} from {stats.data.reviewCount.toLocaleString("en")} reviews
+                  {stats.data.completedJobs >= 50 ? ` · ${(Math.floor(stats.data.completedJobs / 50) * 50).toLocaleString("en")}+ homes cleaned` : ""}
+                </RNText>
+              ) : null}
             </View>
             <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: space(2) }}>
               {/* Every booking includes cleaning materials at no cost. */}
@@ -382,6 +392,21 @@ export default function Home() {
           </ScrollView>
 
           <FreeMaterials />
+
+          {referral && referral.friendAed > 0 && referral.rewardAed > 0 ? (
+            <Pressable onPress={() => router.push("/invite")} accessibilityRole="button" style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: space(3), backgroundColor: colors.goldSoft, borderWidth: 1, borderColor: colors.goldLine, borderRadius: radius.lg, padding: space(4), opacity: pressed ? 0.85 : 1 })}>
+              <View style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: colors.goldBright, alignItems: "center", justifyContent: "center" }}>
+                <LineIcon name="tag" size={22} color="#16130E" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: fonts.extrabold, fontSize: 15 }}>
+                  Give AED {referral.friendAed}, get AED {referral.rewardAed}
+                </Text>
+                <Text variant="small">Invite friends. They save on their first clean, you get credit.</Text>
+              </View>
+              <RNText style={{ color: colors.gold, fontSize: 22 }}>›</RNText>
+            </Pressable>
+          ) : null}
 
           <WhyXtreme />
 

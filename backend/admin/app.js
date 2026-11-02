@@ -963,6 +963,8 @@ async function loadPricing() {
   $("#service-fee").value = pricingData.serviceFeeAed ?? 0;
   $("#weekly-discount").value = pricingData.frequencyDiscountPercent?.weekly ?? 0;
   $("#biweekly-discount").value = pricingData.frequencyDiscountPercent?.biweekly ?? 0;
+  $("#ref-friend").value = pricingData.referral?.friendAed ?? 25;
+  $("#ref-reward").value = pricingData.referral?.rewardAed ?? 25;
   $("#pricing-services").innerHTML = pricingData.services
     .map((svc) => {
       const fixed = Object.values(pricingData.rates[svc.key] ?? {}).reduce((n, bySize) => n + Object.keys(bySize).length, 0);
@@ -1001,6 +1003,7 @@ $("#save-pricing").addEventListener("click", async () => {
     tamaraFeePercent: n("#tamara-fee"),
     serviceFeeAed: n("#service-fee"),
     frequencyDiscountPercent: { weekly: n("#weekly-discount"), biweekly: n("#biweekly-discount") },
+    referral: { friendAed: n("#ref-friend"), rewardAed: n("#ref-reward") },
   };
   try {
     await sure({ title: "Save the new prices?", message: "New bookings and payments use them straight away. Bookings already made keep their price.", confirm: "Save prices" });
