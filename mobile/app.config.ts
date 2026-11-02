@@ -29,7 +29,7 @@ const config: ExpoConfig = {
   owner: env.EXPO_OWNER ?? EXPO_OWNER,
   platforms: ["ios", "android"],
   scheme: "xtreme",
-  version: "1.0.0",
+  version: "1.1.1",
   orientation: "portrait",
   icon: "./assets/icon.png",
   userInterfaceStyle: "automatic",
@@ -101,7 +101,7 @@ const config: ExpoConfig = {
     ],
     ["@stripe/stripe-react-native", { merchantIdentifier: APPLE_PAY ? "merchant.ae.xtremefm.app" : undefined, enableGooglePay: true }],
     // No plain-HTTP traffic in store builds; development builds may talk to a local server.
-    ["expo-build-properties", { android: { minSdkVersion: 26, usesCleartextTraffic: !(env.EXPO_PUBLIC_API_URL ?? "").startsWith("https://") } }],
+    ["expo-build-properties", { android: { minSdkVersion: 24, usesCleartextTraffic: !(env.EXPO_PUBLIC_API_URL ?? "").startsWith("https://") } }],
   ],
   experiments: { typedRoutes: true },
   extra: {
