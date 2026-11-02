@@ -7,6 +7,9 @@ import type { NotificationService } from "../notifications/notification.service.
 import { badRequest, conflict, notFound } from "../../lib/errors.js";
 import type { Actor, BookingService } from "../bookings/booking.service.js";
 
+/** Name of the personal promotion that holds a customer's wallet balance. */
+const WALLET = "Wallet credit";
+
 /** Card networks charge a minimum, so a discount always leaves at least this much to pay. */
 export const MIN_CHARGE_AED = 2;
 
@@ -159,11 +162,34 @@ export class PromotionService {
     return updated ?? booking;
   }
 
+  /**
+   * Refer a friend: the inviter's wallet credit is added once the friend's first booking has
+   * actually happened (completed), so a booking that is cancelled and refunded earns nothing.
+   * A cancelled booking that had used wallet credit gets that credit back.
+   */
+  async onBookingStatus(booking: Booking) {
+    if (booking.status === "completed" && !booking.promotionId && booking.discountAed > 0 && booking.promoCode && PAID.includes(booking.paymentStatus as (typeof PAID)[number])) {
+      await this.rewardReferrer(booking);
+    }
+    if (booking.status === "cancelled" && booking.promotionId && booking.discountAed > 0 && PAID.includes(booking.paymentStatus as (typeof PAID)[number])) {
+      const [promo] = await this.db.select().from(promotions).where(eq(promotions.id, booking.promotionId)).limit(1);
+      if (promo?.ownerId) await this.addToWallet(promo.ownerId, booking.discountAed);
+    }
+  }
+
   /** Counts a use once the booking is paid. */
   async onBookingPaid(bookingId: string) {
     const [booking] = await this.db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
-    if (booking && !booking.promotionId && booking.discountAed > 0 && booking.promoCode) await this.rewardReferrer(booking);
     if (!booking?.promotionId || booking.discountAed <= 0) return;
+    const [promo] = await this.db.select().from(promotions).where(eq(promotions.id, booking.promotionId)).limit(1);
+    if (promo?.ownerId) {
+      // Wallet credit: spend what this booking used and keep the rest for later.
+      await this.db
+        .update(promotions)
+        .set({ value: sql`greatest(${promotions.value} - ${booking.discountAed}, 0)`, active: sql`${promotions.value} - ${booking.discountAed} > 0`, updatedAt: new Date() })
+        .where(eq(promotions.id, promo.id));
+      return;
+    }
     await this.db
       .update(promotions)
       .set({ usedCount: sql`${promotions.usedCount} + 1` })
@@ -199,8 +225,8 @@ export class PromotionService {
   async myReferral(userId: string) {
     const code = await this.ensureReferralCode(userId);
     const [{ invited }] = (await this.db.select({ invited: count() }).from(referrals).where(eq(referrals.referrerId, userId))) as [{ invited: number }];
-    const rewards = await this.db
-      .select()
+    const credits = await this.db
+      .select({ value: promotions.value })
       .from(promotions)
       .where(and(eq(promotions.ownerId, userId), eq(promotions.active, true)));
     const { friendAed, rewardAed } = pricing().referral;
@@ -210,7 +236,7 @@ export class PromotionService {
       friendAed,
       rewardAed,
       invited,
-      rewardsAvailable: rewards.filter((r) => r.usageLimit == null || r.usedCount < r.usageLimit).map((r) => ({ id: r.id, name: r.name, valueAed: r.value })),
+      walletAed: credits.reduce((n, c) => n + c.value, 0),
     };
   }
 
@@ -276,16 +302,30 @@ export class PromotionService {
     if (rewardAed <= 0) return;
     const [friend] = await this.db.select({ name: users.fullName }).from(users).where(eq(users.id, booking.customerId)).limit(1);
     const friendName = (friend?.name ?? "a friend").split(/\s+/)[0];
-    const [reward] = await this.db
-      .insert(promotions)
-      .values({ name: `Thanks for inviting ${friendName}`, kind: "fixed", value: rewardAed, autoApply: true, firstBookingOnly: false, usageLimit: 1, ownerId: referrer.id, active: true })
-      .returning();
-    await this.db.update(referrals).set({ rewardPromotionId: reward!.id }).where(eq(referrals.id, row.id));
+    const walletId = await this.addToWallet(referrer.id, rewardAed);
+    await this.db.update(referrals).set({ rewardPromotionId: walletId }).where(eq(referrals.id, row.id));
     void this.notifications?.notify([referrer.id], {
-      title: `You earned AED ${rewardAed}!`,
-      body: `${friendName} booked with your invite. AED ${rewardAed} comes off your next booking automatically.`,
+      title: `AED ${rewardAed} added to your wallet`,
+      body: `${friendName}'s first clean is done. Your wallet credit comes off your next booking automatically.`,
       data: { type: "referral" },
     });
+  }
+
+  /** The customer's wallet is one personal, automatic credit whose value is the balance. */
+  private async addToWallet(userId: string, amountAed: number): Promise<string> {
+    const [wallet] = await this.db.select().from(promotions).where(and(eq(promotions.ownerId, userId), eq(promotions.name, WALLET))).limit(1);
+    if (wallet) {
+      await this.db
+        .update(promotions)
+        .set({ value: sql`${promotions.value} + ${amountAed}`, active: true, updatedAt: new Date() })
+        .where(eq(promotions.id, wallet.id));
+      return wallet.id;
+    }
+    const [created] = await this.db
+      .insert(promotions)
+      .values({ name: WALLET, kind: "fixed", value: amountAed, autoApply: true, firstBookingOnly: false, ownerId: userId, active: true })
+      .returning();
+    return created!.id;
   }
 
   private assertOpen(booking: Booking) {

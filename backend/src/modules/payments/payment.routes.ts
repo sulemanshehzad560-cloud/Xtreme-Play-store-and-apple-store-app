@@ -27,10 +27,16 @@ export async function paymentRoutes(app: FastifyInstance, c: Container) {
         tags,
         summary: "Start paying by card (Stripe PaymentSheet) or Tamara (hosted checkout)",
         params: uuidParam,
-        body: z.object({ method: z.enum(["card", "tamara"]), locale: z.enum(["en", "ar"]).optional() }),
+        body: z.object({
+          method: z.enum(["card", "tamara"]),
+          locale: z.enum(["en", "ar"]).optional(),
+          /** Optional tip for the team, in whole AED. */
+          tipAed: z.number().int().min(0).max(500).optional(),
+        }),
       },
     },
-    async (req, reply) => reply.status(201).send(await c.payments.start(req.params.id, req.user, req.body.method, { locale: req.body.locale })),
+    async (req, reply) =>
+      reply.status(201).send(await c.payments.start(req.params.id, req.user, req.body.method, { locale: req.body.locale, tipAed: req.body.tipAed })),
   );
 
   r.get(

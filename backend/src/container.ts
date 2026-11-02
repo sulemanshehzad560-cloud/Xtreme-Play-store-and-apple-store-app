@@ -152,6 +152,9 @@ export function createContainer(env: Env, log: FastifyBaseLogger, overrides: Con
     },
   });
   bookings.onPriced((bookingId) => promotions.refresh(bookingId));
+  bookings.onStatusChange(async (booking) => {
+    await promotions.onBookingStatus(booking).catch((err: unknown) => log.error({ err }, "referral / wallet update failed"));
+  });
   payments.onPaid((bookingId) => promotions.onBookingPaid(bookingId));
   payments.onPaid((bookingId) => subscriptions.onBookingPaid(bookingId));
   payments.onPaid((bookingId) => bookings.confirmPaid(bookingId));

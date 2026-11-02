@@ -483,6 +483,8 @@ export const payments = pgTable(
     feeMinor: integer("fee_minor").notNull().default(0),
     /** Part of feeMinor that is the flat service fee (the rest is the card or Tamara fee). */
     serviceFeeMinor: integer("service_fee_minor").notNull().default(0),
+    /** Optional tip for the cleaning team, passed on in full (not part of the VAT-able price). */
+    tipMinor: integer("tip_minor").notNull().default(0),
     refundedMinor: integer("refunded_minor").notNull().default(0),
     currency: text("currency").notNull().default("AED"),
     providerRef: text("provider_ref"),

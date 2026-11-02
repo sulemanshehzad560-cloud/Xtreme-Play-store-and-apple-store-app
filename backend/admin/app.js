@@ -963,8 +963,8 @@ async function loadPricing() {
   $("#service-fee").value = pricingData.serviceFeeAed ?? 0;
   $("#weekly-discount").value = pricingData.frequencyDiscountPercent?.weekly ?? 0;
   $("#biweekly-discount").value = pricingData.frequencyDiscountPercent?.biweekly ?? 0;
-  $("#ref-friend").value = pricingData.referral?.friendAed ?? 25;
-  $("#ref-reward").value = pricingData.referral?.rewardAed ?? 25;
+  $("#ref-friend").value = pricingData.referral?.friendAed ?? 20;
+  $("#ref-reward").value = pricingData.referral?.rewardAed ?? 20;
   $("#pricing-services").innerHTML = pricingData.services
     .map((svc) => {
       const fixed = Object.values(pricingData.rates[svc.key] ?? {}).reduce((n, bySize) => n + Object.keys(bySize).length, 0);

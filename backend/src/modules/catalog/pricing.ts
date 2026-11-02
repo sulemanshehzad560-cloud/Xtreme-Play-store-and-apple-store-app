@@ -36,7 +36,7 @@ export function defaultPricing(tamaraFeePercent: number): PricingConfig {
     cardFeePercent: 0,
     serviceFeeAed: 0,
     frequencyDiscountPercent: { weekly: 0, biweekly: 0 },
-    referral: { friendAed: 25, rewardAed: 25 },
+    referral: { friendAed: 20, rewardAed: 20 },
   };
 }
 
@@ -73,7 +73,7 @@ export function validatePricing(input: PricingConfig): PricingConfig {
     return Math.round(v * 100) / 100;
   };
   const freq = input.frequencyDiscountPercent ?? { weekly: 0, biweekly: 0 };
-  const ref = input.referral ?? { friendAed: 25, rewardAed: 25 };
+  const ref = input.referral ?? { friendAed: 20, rewardAed: 20 };
   return {
     rates,
     tamaraFeePercent: pct(input.tamaraFeePercent, 20, "The Tamara fee (%)"),

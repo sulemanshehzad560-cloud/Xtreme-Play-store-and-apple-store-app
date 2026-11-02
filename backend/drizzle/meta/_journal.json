@@ -78,6 +78,13 @@
       "when": 1793638806935,
       "tag": "0010_referrals",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1793639480665,
+      "tag": "0011_payment_tips",
+      "breakpoints": true
     }
   ]
 }

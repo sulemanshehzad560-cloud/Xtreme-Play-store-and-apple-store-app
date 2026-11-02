@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Text as RNText, View } from "react-native";
+import { Pressable, Text as RNText, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import Constants from "expo-constants";
 import * as WebBrowser from "expo-web-browser";
@@ -46,6 +46,8 @@ export default function Pay() {
   const [promoBusy, setPromoBusy] = useState(false);
   const [promoNote, setPromoNote] = useState<{ text: string; ok: boolean } | null>(null);
   const [method, setMethod] = useState<"card" | "tamara">(preselected ?? "card");
+  // Optional tip for the team, passed on in full.
+  const [tip, setTip] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -100,7 +102,7 @@ export default function Pay() {
   }
 
   async function payByCard() {
-    const start = await api<CardStart>(`/bookings/${id}/payments`, { body: { method: "card" } });
+    const start = await api<CardStart>(`/bookings/${id}/payments`, { body: { method: "card", ...(tip ? { tipAed: tip } : {}) } });
     if (!DEMO && start.hosted) {
       await WebBrowser.openAuthSessionAsync(start.hosted.url, start.hosted.returnUrlPrefix);
       return finish(start.paymentId);
@@ -128,7 +130,7 @@ export default function Pay() {
   }
 
   async function payByTamara() {
-    const start = await api<TamaraStart>(`/bookings/${id}/payments`, { body: { method: "tamara" } });
+    const start = await api<TamaraStart>(`/bookings/${id}/payments`, { body: { method: "tamara", ...(tip ? { tipAed: tip } : {}) } });
     if (!DEMO && start.tamara) await WebBrowser.openAuthSessionAsync(start.tamara.checkoutUrl, start.tamara.returnUrlPrefix);
     await finish(start.paymentId);
   }
@@ -151,7 +153,7 @@ export default function Pay() {
   const fee = chosen?.feeAed ?? 0;
   const serviceFee = options?.amount.serviceFeeAed ?? 0;
   const methodFee = Math.round((fee - serviceFee) * 100) / 100;
-  const total = chosen?.totalAed ?? options?.amount.totalAed;
+  const total = options ? (chosen?.totalAed ?? options.amount.totalAed) + tip : undefined;
   const available = (m: string) => options?.methods.find((x) => x.method === m)?.available ?? false;
 
   return (
@@ -184,6 +186,7 @@ export default function Pay() {
               <SummaryLine label={options.promoCode ? `Discount (${options.promoCode})` : "Discount"} value={`– ${aed(options.amount.discountAed)}`} accent />
             ) : null}
             <SummaryLine label="Cleaning materials" value="FREE" />
+            {tip ? <SummaryLine label="Tip for your team" value={aed(tip)} /> : null}
             {serviceFee > 0 ? <SummaryLine label="Service fee" value={aed(serviceFee)} /> : null}
             {methodFee > 0 ? <SummaryLine label={`${method === "tamara" ? "Tamara" : "Card"} fee (${chosen?.feePercent ?? 0}%)`} value={aed(methodFee)} /> : null}
             <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.12)" }} />
@@ -232,6 +235,27 @@ export default function Pay() {
             {promoNote ? <Text style={{ color: promoNote.ok ? colors.success : colors.danger, fontFamily: fonts.semibold, fontSize: 13.5 }}>{promoNote.text}</Text> : null}
           </Card>
 
+          <Card>
+            <Row style={{ gap: space(2) }}>
+              <LineIcon name="sparkle" size={20} color={iconColor("sparkle")} />
+              <Text style={{ fontFamily: fonts.bold, flex: 1 }}>Add a tip for your team?</Text>
+            </Row>
+            <Text variant="small">Optional. 100% goes to the cleaners who visit you.</Text>
+            <Row style={{ gap: space(2) }}>
+              {[0, 5, 10, 20].map((v) => (
+                <Pressable
+                  key={v}
+                  onPress={() => setTip(v)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: tip === v }}
+                  style={{ flex: 1, alignItems: "center", paddingVertical: space(2.5), borderRadius: 12, borderWidth: 1.5, borderColor: tip === v ? colors.gold : colors.border, backgroundColor: tip === v ? colors.goldSoft : colors.surface }}
+                >
+                  <RNText style={{ color: colors.text, fontFamily: tip === v ? fonts.extrabold : fonts.semibold, fontSize: 14 }}>{v ? `AED ${v}` : "No tip"}</RNText>
+                </Pressable>
+              ))}
+            </Row>
+          </Card>
+
           <Text variant="heading">Choose how to pay</Text>
           <OptionCard
             selected={method === "card"}
@@ -248,7 +272,7 @@ export default function Pay() {
             title="Pay in 4 with Tamara"
             subtitle={
               tamara?.totalAed
-                ? `4 payments of ${aed(Math.round((tamara.totalAed / 4) * 100) / 100)} · includes ${tamara.feePercent ?? 8}% Tamara fee`
+                ? `4 payments of ${aed(Math.round(((tamara.totalAed + tip) / 4) * 100) / 100)} · includes ${tamara.feePercent ?? 8}% Tamara fee`
                 : "Pay in instalments"
             }
             icon={<TamaraBadge />}

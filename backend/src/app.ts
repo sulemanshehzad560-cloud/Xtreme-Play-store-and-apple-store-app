@@ -94,10 +94,11 @@ export async function buildApp(env: Env, overrides: ContainerOverrides = {}): Pr
       useDefaults: false,
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "https://unpkg.com"],
-        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://unpkg.com"],
+        // Every script is served from this server (map library included): no third-party code.
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
-        imgSrc: ["'self'", "data:", "https://unpkg.com"],
+        imgSrc: ["'self'", "data:"],
         connectSrc: ["'self'", ...(env.NODE_ENV === "production" ? ["wss:"] : ["wss:", "ws:"])],
         frameAncestors: ["'none'"],
         objectSrc: ["'none'"],
@@ -106,8 +107,16 @@ export async function buildApp(env: Env, overrides: ContainerOverrides = {}): Pr
       },
     },
     strictTransportSecurity: { maxAge: 63_072_000, includeSubDomains: true, preload: true },
+    crossOriginOpenerPolicy: { policy: "same-origin" },
     referrerPolicy: { policy: "no-referrer" },
   });
+  // Personal data must never be kept by browsers or proxies; public catalog/legal routes set their own caching.
+  app.addHook("onSend", async (req, reply, payload) => {
+    if (req.url.startsWith("/v1/") && !reply.hasHeader("cache-control")) reply.header("cache-control", "no-store");
+    reply.header("permissions-policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()");
+    return payload;
+  });
+
   await app.register(cors, { origin: env.CORS_ORIGINS.length ? env.CORS_ORIGINS : env.NODE_ENV !== "production" });
   await app.register(rateLimit, { global: true, max: 300, timeWindow: "1 minute", allowList: () => env.NODE_ENV === "test" });
 

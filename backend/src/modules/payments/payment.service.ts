@@ -1,7 +1,7 @@
 import type { FastifyBaseLogger } from "fastify";
 import { and, desc, eq, inArray, ne } from "drizzle-orm";
 import type { Database } from "../../db/client.js";
-import { bookingEvents, bookings, paymentWebhookEvents, payments, users, type Booking, type Payment, type PaymentStatus } from "../../db/schema.js";
+import { bookingAssignments, bookingEvents, bookings, paymentWebhookEvents, payments, users, type Booking, type Payment, type PaymentStatus } from "../../db/schema.js";
 import { COMPANY } from "../../config/company.js";
 import { badRequest, conflict, notFound } from "../../lib/errors.js";
 import type { Actor, BookingService } from "../bookings/booking.service.js";
@@ -49,6 +49,7 @@ export class PaymentService {
   ) {
     bookingsSvc.onStatusChange(async (booking, _from) => {
       if (booking.status === "cancelled") await this.settleCancelledBooking(booking);
+      if (booking.status === "completed") await this.thankTeam(booking.id).catch((err: unknown) => this.log.error({ err }, "tip notification failed"));
     });
   }
 
@@ -101,7 +102,7 @@ export class PaymentService {
   }
 
   /** Starts (or restarts) paying for a booking with card or Tamara. */
-  async start(bookingId: string, customer: Actor, method: PayMethod, opts: { locale?: "en" | "ar" | undefined } = {}) {
+  async start(bookingId: string, customer: Actor, method: PayMethod, opts: { locale?: "en" | "ar" | undefined; tipAed?: number | undefined } = {}) {
     const booking = await this.payable(bookingId, customer);
     if (method === "card" && !this.cardAvailable) throw badRequest("method_unavailable", "Card payments are not available right now");
     if (method === "tamara" && !this.bnpl.configured) throw badRequest("method_unavailable", "Tamara is not available right now");
@@ -112,7 +113,8 @@ export class PaymentService {
 
     const serviceFeeMinor = this.serviceFeeMinor();
     const feeMinor = serviceFeeMinor + this.methodFeeMinor(method, dueMinor(booking));
-    const amountMinor = dueMinor(booking) + feeMinor;
+    const tipMinor = Math.max(0, Math.round((opts.tipAed ?? 0) * 100));
+    const amountMinor = dueMinor(booking) + feeMinor + tipMinor;
     const [payment] = await this.db
       .insert(payments)
       .values({
@@ -122,6 +124,7 @@ export class PaymentService {
         amountMinor,
         feeMinor,
         serviceFeeMinor,
+        tipMinor,
         currency: CURRENCY,
         instalments: method === "tamara" ? this.config.tamaraInstalments : null,
       })
@@ -264,11 +267,13 @@ export class PaymentService {
       .limit(1);
     const [customer] = await this.db.select().from(users).where(eq(users.id, booking.customerId)).limit(1);
     const totalMinor = paid?.amountMinor ?? dueMinor(booking);
+    const tipMinor = paid?.tipMinor ?? 0;
     const feeMinor = paid?.feeMinor ?? 0;
     const serviceFeeMinor = paid?.serviceFeeMinor ?? 0;
     const methodFeeMinor = feeMinor - serviceFeeMinor;
-    const discountMinor = booking.priceAed * 100 - (totalMinor - feeMinor);
-    const vatMinor = this.vatMinor(totalMinor);
+    const discountMinor = booking.priceAed * 100 - (totalMinor - feeMinor - tipMinor);
+    // The tip goes to the team in full and is not part of the VAT-able price.
+    const vatMinor = this.vatMinor(totalMinor - tipMinor);
     const a = booking.address;
     return {
       invoiceNumber: `INV-${booking.reference.replace(/^XT-/, "")}`,
@@ -298,10 +303,11 @@ export class PaymentService {
         ...(methodFeeMinor > 0
           ? [{ description: paid?.provider === "tamara" ? "Tamara instalment fee" : "Card processing fee", serviceDate: null, amountAed: methodFeeMinor / 100 }]
           : []),
+        ...(tipMinor > 0 ? [{ description: "Tip for your team (passed on in full, no VAT)", serviceDate: null, amountAed: tipMinor / 100 }] : []),
       ],
       currency: CURRENCY,
       vatRate: this.config.vatRate,
-      subtotalAed: (totalMinor - vatMinor) / 100,
+      subtotalAed: (totalMinor - tipMinor - vatMinor) / 100,
       vatAed: vatMinor / 100,
       totalAed: totalMinor / 100,
       refundedAed: (paid?.refundedMinor ?? 0) / 100,
@@ -498,9 +504,25 @@ export class PaymentService {
       body: `${amount} via ${payment.provider === "tamara" ? "Tamara" : "card"}`,
       data: { type: "booking", bookingId: payment.bookingId },
     });
+    // Tips paid after the job (e.g. a quote paid on completion) reach the team now; others when the job is done.
+    if (payment.tipMinor > 0 && booking?.status === "completed") await this.thankTeam(payment.bookingId);
     // A booking cancelled while the customer was still paying gets its money back.
     if (booking?.status === "cancelled") await this.settleCancelledBooking(booking);
     for (const listener of this.paidListeners) await listener(payment.bookingId).catch((err: unknown) => this.log.error({ err }, "paid listener failed"));
+  }
+
+  /** Tells the booking's team about the customer's tip (paid tips only). */
+  async thankTeam(bookingId: string) {
+    const rows = await this.db.select({ tip: payments.tipMinor }).from(payments).where(and(eq(payments.bookingId, bookingId), inArray(payments.status, SETTLED)));
+    const tipMinor = rows.reduce((n, r) => n + r.tip, 0);
+    if (tipMinor <= 0) return;
+    const team = await this.db.select({ id: bookingAssignments.staffId }).from(bookingAssignments).where(eq(bookingAssignments.bookingId, bookingId));
+    const [b] = await this.db.select({ reference: bookings.reference }).from(bookings).where(eq(bookings.id, bookingId)).limit(1);
+    if (!team.length) return;
+    await this.notifications.notify(
+      team.map((m) => m.id),
+      { title: `You got a ${CURRENCY} ${tipMinor / 100} tip!`, body: `Thank you from the customer for ${b?.reference ?? "your job"}.`, data: { type: "booking", bookingId } },
+    );
   }
 
   /** On cancellation: stop unfinished payments and refund what was paid. */
@@ -642,7 +664,8 @@ export class PaymentService {
       status: p.status,
       amountAed: p.amountMinor / 100,
       refundedAed: p.refundedMinor / 100,
-      vatAed: this.vatMinor(p.amountMinor) / 100,
+      vatAed: this.vatMinor(p.amountMinor - p.tipMinor) / 100,
+      tipAed: p.tipMinor / 100,
       currency: p.currency,
       instalments: p.instalments,
       failureReason: p.failureReason,

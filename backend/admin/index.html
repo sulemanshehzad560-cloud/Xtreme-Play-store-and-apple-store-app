@@ -6,7 +6,7 @@
   <title>Xtreme Dispatch</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
@@ -127,7 +127,7 @@
             <label>Weekly discount (%)<input id="weekly-discount" type="number" min="0" max="50" step="1" /><small>Regular cleaning, booked weekly.</small></label>
             <label>Bi-weekly discount (%)<input id="biweekly-discount" type="number" min="0" max="50" step="1" /><small>Regular cleaning, every two weeks.</small></label>
             <label>Refer a friend: friend gets (AED)<input id="ref-friend" type="number" min="0" max="500" step="1" /><small>Off their first booking. 0 = off.</small></label>
-            <label>Refer a friend: inviter gets (AED)<input id="ref-reward" type="number" min="0" max="500" step="1" /><small>Credit after the friend pays. 0 = off.</small></label>
+            <label>Refer a friend: inviter's wallet (AED)<input id="ref-reward" type="number" min="0" max="500" step="1" /><small>Wallet credit after the friend's first clean is completed. 0 = off.</small></label>
           </div>
           <div id="pricing-services"></div>
         </section>
@@ -158,7 +158,7 @@
   <dialog id="confirm-dialog" class="confirm-dialog"></dialog>
   <div id="toast" class="toast"></div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="vendor/leaflet/leaflet.js"></script>
   <script src="/realtime/socket.io.js"></script>
   <script type="module" src="./app.js"></script>
 </body>

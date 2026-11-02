@@ -52,6 +52,8 @@ const config: ExpoConfig = {
   },
   android: {
     package: "ae.xtremefm.app",
+    // Keep the app's data (sign-in, cached screens) out of cloud/device backups.
+    allowBackup: false,
     adaptiveIcon: { foregroundImage: "./assets/adaptive-icon.png", backgroundColor: "#030405" },
     ...(env.GOOGLE_MAPS_ANDROID_KEY ? { config: { googleMaps: { apiKey: env.GOOGLE_MAPS_ANDROID_KEY } } } : {}),
     permissions: [

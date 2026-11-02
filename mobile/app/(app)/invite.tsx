@@ -12,7 +12,7 @@ interface Referral {
   friendAed: number;
   rewardAed: number;
   invited: number;
-  rewardsAvailable: { id: string; name: string; valueAed: number }[];
+  walletAed: number;
 }
 
 const PLAY = "https://play.google.com/store/apps/details?id=ae.xtremefm.app";
@@ -45,7 +45,7 @@ export default function Invite() {
   const steps: [LineIconName, string, string][] = [
     ["share", "Share your code", "Send it to friends and family on WhatsApp or anywhere."],
     ["calendar", "They book their first clean", r.friendAed > 0 ? `They get AED ${r.friendAed} off when they enter your code.` : "They enter your code at checkout."],
-    ["tag", "You get a credit", r.rewardAed > 0 ? `AED ${r.rewardAed} comes off your next booking automatically.` : "We'll thank you with a special offer."],
+    ["tag", "AED in your wallet", r.rewardAed > 0 ? `Once their first clean is done, AED ${r.rewardAed} is added to your wallet and comes off your next booking.` : "We'll thank you with a special offer."],
   ];
 
   return (
@@ -56,7 +56,7 @@ export default function Invite() {
           {r.friendAed > 0 && r.rewardAed > 0 ? `Give AED ${r.friendAed},\nget AED ${r.rewardAed}` : "Share the clean"}
         </RNText>
         <RNText style={{ color: "#D9D2C4", fontFamily: fonts.medium, fontSize: 14, lineHeight: 20 }}>
-          Friends save on their first clean. You get a credit for every friend who books.
+          Friends save on their first clean. You get wallet credit for every friend whose first clean is done.
         </RNText>
         <Pressable onPress={copy} accessibilityRole="button" accessibilityLabel={`Copy your code ${r.code}`} style={{ marginTop: space(2), flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.goldBright, borderRadius: radius.lg, paddingHorizontal: space(4), paddingVertical: space(3.5) }}>
           <View>
@@ -70,19 +70,12 @@ export default function Invite() {
 
       <Row style={{ gap: space(3) }}>
         <Stat value={String(r.invited)} label="Friends joined" />
-        <Stat value={`AED ${r.rewardsAvailable.reduce((n, x) => n + x.valueAed, 0)}`} label="Credit ready to use" />
+        <Stat value={`AED ${r.walletAed}`} label="Wallet balance" />
       </Row>
-
-      {r.rewardsAvailable.length ? (
+      {r.walletAed > 0 ? (
         <Card tone="gold">
-          <Text variant="label">YOUR CREDITS</Text>
-          {r.rewardsAvailable.map((x) => (
-            <Row key={x.id} style={{ justifyContent: "space-between" }}>
-              <Text style={{ flex: 1 }}>{x.name}</Text>
-              <Text style={{ fontFamily: fonts.extrabold, color: colors.gold }}>AED {x.valueAed}</Text>
-            </Row>
-          ))}
-          <Text variant="small">Credits come off your next booking automatically. No code needed.</Text>
+          <Text style={{ fontFamily: fonts.bold }}>AED {r.walletAed} wallet credit ready</Text>
+          <Text variant="small">It comes off your next booking automatically. Whatever isn't used stays in your wallet.</Text>
         </Card>
       ) : null}
 
@@ -101,7 +94,7 @@ export default function Invite() {
         </Row>
       ))}
       <Text variant="small" style={{ textAlign: "center", marginTop: space(2) }}>
-        Codes work on a friend's first paid booking. Credits can't be exchanged for cash.
+        Codes work on a friend's first booking. Wallet credit is added after that clean is completed and can't be exchanged for cash.
       </Text>
     </Screen>
   );
