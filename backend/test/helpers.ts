@@ -34,7 +34,7 @@ export const testEnv = (extra: Record<string, string> = {}) =>
     ...extra,
   });
 
-export async function createTestApp(extra: Record<string, string> = {}): Promise<TestContext> {
+export async function createTestApp(extra: Record<string, string> = {}, overrides: Partial<Parameters<typeof buildApp>[1]> = {}): Promise<TestContext> {
   const sms = new ConsoleSms();
   const push = new NoopPush();
   const card = new FakeCard();
@@ -47,6 +47,7 @@ export async function createTestApp(extra: Record<string, string> = {}): Promise
     card,
     bnpl: tamara,
     verifiers: { google: new FakeVerifier("google"), facebook: new FakeVerifier("facebook"), apple: new FakeVerifier("apple") },
+    ...overrides,
   });
   await app.ready();
   return { app, c: app.container, sms, push, card, tamara, mail };

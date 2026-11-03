@@ -4,6 +4,9 @@ import { otpChallenges } from "../../db/schema.js";
 import { hmac, randomDigits, safeEqual } from "../../lib/crypto.js";
 import { badRequest, tooManyRequests } from "../../lib/errors.js";
 import type { SmsSender } from "./sms.js";
+import type { CodeSender } from "./whatsapp.js";
+
+export type CodeChannel = "whatsapp" | "sms";
 
 export interface OtpConfig {
   pepper: string;
@@ -23,6 +26,8 @@ export class OtpService {
     private readonly db: Database,
     private readonly sms: SmsSender,
     private readonly config: OtpConfig,
+    private readonly whatsapp?: CodeSender,
+    private readonly log?: { warn: (obj: object, msg: string) => void },
   ) {}
 
   private hash(phone: string, code: string) {
@@ -33,7 +38,15 @@ export class OtpService {
     return Boolean(this.config.reviewCode) && this.config.reviewPhones.includes(phone);
   }
 
-  async request(phone: string, ip?: string): Promise<{ expiresIn: number; resendIn: number }> {
+  /**
+   * Sends a new code. WhatsApp is tried first when it's set up (cheaper and reliable in the UAE);
+   * if WhatsApp can't send, or the customer asks for SMS, the code goes by text message.
+   */
+  async request(
+    phone: string,
+    ip?: string,
+    opts: { channel?: CodeChannel | undefined; locale?: string | undefined } = {},
+  ): Promise<{ expiresIn: number; resendIn: number; channel: CodeChannel }> {
     const hourAgo = new Date(Date.now() - 3_600_000);
     const recent = await this.db
       .select({ createdAt: otpChallenges.createdAt })
@@ -65,11 +78,22 @@ export class OtpService {
       ip,
     });
 
+    let channel: CodeChannel = this.whatsapp && opts.channel !== "sms" ? "whatsapp" : "sms";
     if (!review) {
-      const minutes = Math.round(this.config.ttlSeconds / 60);
-      await this.sms.send(phone, `${code} is your Xtreme-Cleaning Partner verification code. It expires in ${minutes} minutes. Never share it.`);
+      if (channel === "whatsapp") {
+        try {
+          await this.whatsapp!.sendCode(phone, code, opts.locale);
+        } catch (err) {
+          this.log?.warn({ err }, "WhatsApp code failed, sending by SMS");
+          channel = "sms";
+        }
+      }
+      if (channel === "sms") {
+        const minutes = Math.round(this.config.ttlSeconds / 60);
+        await this.sms.send(phone, `${code} is your Xtreme-Cleaning Partner verification code. It expires in ${minutes} minutes. Never share it.`);
+      }
     }
-    return { expiresIn: this.config.ttlSeconds, resendIn: this.config.resendCooldownSeconds };
+    return { expiresIn: this.config.ttlSeconds, resendIn: this.config.resendCooldownSeconds, channel };
   }
 
   /** Throws unless `code` is the live code for `phone`. Each code works once. */

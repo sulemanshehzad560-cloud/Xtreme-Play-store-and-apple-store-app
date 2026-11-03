@@ -18,10 +18,17 @@ export async function authRoutes(app: FastifyInstance, c: Container) {
 
   r.post(
     "/auth/otp/request",
-    { ...strict, schema: { tags, summary: "Text a 6-digit code to a mobile number", body: z.object({ phone: phoneInput }) } },
+    {
+      ...strict,
+      schema: {
+        tags,
+        summary: "Send a 6-digit code to a mobile number (WhatsApp first, or SMS)",
+        body: z.object({ phone: phoneInput, channel: z.enum(["whatsapp", "sms"]).optional(), locale: z.enum(["en", "ar"]).optional() }),
+      },
+    },
     async (req) => {
       const phone = normalizePhone(req.body.phone, c.env.OTP_DEFAULT_REGION);
-      return { phone, ...(await c.otp.request(phone, req.ip)) };
+      return { phone, ...(await c.otp.request(phone, req.ip, { channel: req.body.channel, locale: req.body.locale })) };
     },
   );
 

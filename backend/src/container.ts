@@ -11,6 +11,7 @@ import { FacebookVerifier } from "./modules/auth/providers/facebook.js";
 import { GoogleVerifier } from "./modules/auth/providers/google.js";
 import type { SocialProvider, SocialVerifier } from "./modules/auth/providers/types.js";
 import { createSmsSender, type SmsSender } from "./modules/auth/sms.js";
+import { WhatsAppOtp, type CodeSender } from "./modules/auth/whatsapp.js";
 import { TokenService } from "./modules/auth/tokens.js";
 import { BookingService, DEFAULT_RULES, type BookingRules } from "./modules/bookings/booking.service.js";
 import { NotificationService } from "./modules/notifications/notification.service.js";
@@ -61,6 +62,7 @@ export interface Container {
 
 export interface ContainerOverrides {
   sms?: SmsSender;
+  whatsapp?: CodeSender;
   push?: PushSender;
   verifiers?: Partial<Record<SocialProvider, SocialVerifier>>;
   bookingRules?: Partial<BookingRules>;
@@ -86,13 +88,25 @@ export function createContainer(env: Env, log: FastifyBaseLogger, overrides: Con
     accessTtlSeconds: env.ACCESS_TOKEN_TTL_SECONDS,
     refreshTtlDays: env.REFRESH_TOKEN_TTL_DAYS,
   });
+  // WhatsApp sign-in codes when Meta's WhatsApp Cloud API is set up; SMS otherwise and as the fallback.
+  const whatsapp =
+    overrides.whatsapp ??
+    (env.WHATSAPP_TOKEN && env.WHATSAPP_PHONE_NUMBER_ID
+      ? new WhatsAppOtp({
+          token: env.WHATSAPP_TOKEN,
+          phoneNumberId: env.WHATSAPP_PHONE_NUMBER_ID,
+          template: env.WHATSAPP_OTP_TEMPLATE,
+          languages: { en: env.WHATSAPP_OTP_LANG, ar: env.WHATSAPP_OTP_LANG_AR },
+          apiVersion: env.WHATSAPP_API_VERSION,
+        })
+      : undefined);
   const otp = new OtpService(db, sms, {
     pepper: env.OTP_PEPPER,
     ttlSeconds: env.OTP_TTL_SECONDS,
     reviewPhones: env.OTP_REVIEW_PHONES,
     reviewCode: env.OTP_REVIEW_CODE,
     resendCooldownSeconds: env.OTP_RESEND_COOLDOWN_SECONDS,
-  });
+  }, whatsapp, log);
   const auth = new AuthService(db, tokens, otp, verifiers);
   const notifications = new NotificationService(db, push, hub, log);
   const bookings = new BookingService(db, notifications, hub, {

@@ -1,3 +1,4 @@
+import { lang } from "./i18n";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { Platform } from "react-native";
 import * as AppleAuthentication from "expo-apple-authentication";
@@ -15,7 +16,7 @@ if (!DEMO) GoogleSignin.configure({ webClientId: GOOGLE_WEB_CLIENT_ID, iosClient
 interface AuthState {
   ready: boolean;
   user: User | null;
-  requestCode(phone: string): Promise<{ phone: string; resendIn: number }>;
+  requestCode(phone: string, channel?: "whatsapp" | "sms"): Promise<{ phone: string; resendIn: number; channel?: "whatsapp" | "sms" }>;
   verifyCode(phone: string, code: string, fullName?: string): Promise<Session>;
   signInStaff(staffId: string, password: string): Promise<Session>;
   signInWithGoogle(): Promise<Session | null>;
@@ -57,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value: AuthState = {
     ready,
     user,
-    requestCode: (phone) => api("/auth/otp/request", { body: { phone } }),
+    requestCode: (phone, channel) => api("/auth/otp/request", { body: { phone, locale: lang(), ...(channel ? { channel } : {}) } }),
     verifyCode: (phone, code, fullName) => start("/auth/otp/verify", { phone, code, fullName }),
     signInStaff: (staffId, password) => start("/auth/staff/login", { staffId, password }),
 

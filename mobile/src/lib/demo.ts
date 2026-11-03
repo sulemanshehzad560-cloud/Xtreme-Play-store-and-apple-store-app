@@ -290,7 +290,7 @@ export async function demoApi(path: string, method: string, body: Json | undefin
   const seg = route!.split("/").filter(Boolean);
 
   // auth
-  if (route === "/auth/otp/request") return { phone: normalize(body!.phone), expiresIn: 300, resendIn: 30 };
+  if (route === "/auth/otp/request") return { phone: normalize(body!.phone), expiresIn: 300, resendIn: 30, channel: body?.channel === "sms" ? "sms" : "whatsapp" };
   if (route === "/auth/otp/verify") {
     if (!/^\d{6}$/.test(body!.code)) throw new DemoError(400, "invalid_code", "Enter any 6 digits in demo mode");
     const phone = normalize(body!.phone);

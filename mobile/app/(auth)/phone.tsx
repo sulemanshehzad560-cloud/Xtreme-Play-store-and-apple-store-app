@@ -18,7 +18,7 @@ export default function Phone() {
     setError(null);
     try {
       const res = await requestCode(phone);
-      router.push({ pathname: "/(auth)/otp", params: { phone: res.phone } });
+      router.push({ pathname: "/(auth)/otp", params: { phone: res.phone, channel: res.channel ?? "sms" } });
     } catch (e) {
       setError(e instanceof Error ? e.message : t("Could not send the code"));
     } finally {
@@ -38,7 +38,7 @@ export default function Phone() {
         ‹
       </Text>
       <Text variant="title">{t("What's your mobile number?")}</Text>
-      <Text variant="muted">{t("We'll text you a 6-digit code to verify it.")}</Text>
+      <Text variant="muted">{t("We'll send a 6-digit code by WhatsApp or SMS to verify it.")}</Text>
       <Input
         value={phone}
         onChangeText={setPhone}
