@@ -48,7 +48,7 @@ const EnvSchema = z.object({
   WHATSAPP_OTP_TEMPLATE: z.string().default("login_code"),
   WHATSAPP_OTP_LANG: z.string().default("en"),
   WHATSAPP_OTP_LANG_AR: z.string().optional(),
-  WHATSAPP_API_VERSION: z.string().default("v21.0"),
+  WHATSAPP_API_VERSION: z.string().default("v25.0"),
   // Test servers only (e.g. the free Render blueprint): allow SMS_PROVIDER=console in production.
   // Sign-in codes then appear in the server log instead of being texted. Never set on the live server.
   ALLOW_CONSOLE_SMS: bool,
