@@ -63,3 +63,36 @@ describe("sign-in codes on WhatsApp", () => {
     });
   });
 });
+
+describe("WhatsApp login template from the dashboard", () => {
+  it("creates an Authentication template with copy code, security note and 5-minute expiry", async () => {
+    const { WhatsAppTemplates } = await import("../src/modules/auth/whatsapp.js");
+    const calls: { url: string; init?: RequestInit }[] = [];
+    const http = (async (url: string, init?: RequestInit) => {
+      calls.push({ url, init });
+      if (init?.method === "POST") return new Response(JSON.stringify({ id: "1", status: "PENDING" }), { status: 200 });
+      return new Response(JSON.stringify({ data: [{ name: "login_code", language: "en", status: "APPROVED", rejected_reason: "NONE" }] }), { status: 200 });
+    }) as unknown as typeof fetch;
+    const t = new WhatsAppTemplates({ token: "t", businessAccountId: "999", template: "login_code", apiVersion: "v25.0" }, http);
+    expect(await t.status()).toEqual([{ language: "en", status: "APPROVED", reason: null }]);
+    expect(await t.create("ar")).toEqual({ language: "ar", status: "PENDING" });
+    const body = JSON.parse(String(calls[1]!.init!.body));
+    expect(calls[1]!.url).toBe("https://graph.facebook.com/v25.0/999/message_templates");
+    expect(body).toMatchObject({
+      name: "login_code",
+      language: "ar",
+      category: "AUTHENTICATION",
+      components: [{ type: "BODY", add_security_recommendation: true }, { type: "FOOTER", code_expiration_minutes: 5 }, { type: "BUTTONS", buttons: [{ type: "OTP", otp_type: "COPY_CODE" }] }],
+    });
+  });
+
+  it("tells the office what's missing when WhatsApp isn't set up", async () => {
+    const { signInAs } = await import("./helpers.js");
+    wa.fail = true; // the test sign-in reads its code from the SMS outbox
+    const admin = await signInAs(t, "admin");
+    const status = (await t.app.inject({ method: "GET", url: "/v1/admin/whatsapp", headers: admin.auth })).json();
+    expect(status).toMatchObject({ sending: false, canManageTemplate: false, template: "login_code", languages: ["en"] });
+    const res = await t.app.inject({ method: "POST", url: "/v1/admin/whatsapp/login-template", headers: admin.auth, payload: {} });
+    expect(res.json().error.code).toBe("whatsapp_not_configured");
+  });
+});

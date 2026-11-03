@@ -553,8 +553,39 @@ $("#deploy-now").addEventListener("click", async () => {
   }
 });
 
+const WA_STATUS = { APPROVED: ["Approved", "completed"], PENDING: ["Waiting for Meta", "assigned"], REJECTED: ["Rejected", "cancelled"], PAUSED: ["Paused", "cancelled"], DISABLED: ["Disabled", "cancelled"] };
+
+async function loadWhatsApp() {
+  const w = await api("/admin/whatsapp");
+  const lines = [];
+  lines.push(w.sending ? "✅ Sending is set up (token and phone number ID are on the server)." : "⚠️ Not sending yet: add <code>WHATSAPP_TOKEN</code> and <code>WHATSAPP_PHONE_NUMBER_ID</code> on Render. Codes go by SMS until then.");
+  if (!w.canManageTemplate) lines.push("To create the template from here, also add <code>WHATSAPP_BUSINESS_ACCOUNT_ID</code> (WhatsApp Manager → account ID) on Render.");
+  if (w.error) lines.push(`⚠️ Meta said: ${esc(w.error)}`);
+  for (const lang of w.languages) {
+    const t = w.templates.find((x) => x.language === lang);
+    const [label, cls] = t ? WA_STATUS[t.status] ?? [t.status, "assigned"] : ["Not created yet", "cancelled"];
+    lines.push(`Template <code>${esc(w.template)}</code> (${esc(lang)}): <span class="pill ${cls}">${label}</span>${t?.reason ? ` · ${esc(t.reason)}` : ""}`);
+  }
+  $("#wa-status").innerHTML = lines.map((l) => `<div>${l}</div>`).join("");
+  const allThere = w.languages.every((l) => w.templates.some((t) => t.language === l));
+  $("#wa-create").disabled = !w.canManageTemplate || allThere;
+}
+
+$("#wa-refresh").addEventListener("click", () => loadWhatsApp().catch((e) => toast(e.message)));
+$("#wa-create").addEventListener("click", async () => {
+  try {
+    await sure({ title: "Create the WhatsApp login template?", message: "Meta reviews it, usually within minutes. Codes keep going by SMS until it's approved.", confirm: "Create" });
+    await api("/admin/whatsapp/login-template", { body: {} });
+    toast("Template sent to Meta for approval");
+    await loadWhatsApp();
+  } catch (e) {
+    toast(e.message);
+  }
+});
+
 async function loadAdminTab() {
   loadDeploy().catch((e) => toast(e.message));
+  loadWhatsApp().catch((e) => toast(e.message));
   const [admins, company, system, audit] = await Promise.all([api("/admin/admins"), api("/admin/settings/company"), api("/admin/system"), api("/admin/audit?limit=80")]);
   $("#admins-table").innerHTML = `<tr><th>Name</th><th>Mobile</th><th>Since</th><th></th></tr>${admins
     .map(

@@ -45,6 +45,8 @@ const EnvSchema = z.object({
   // and fall back to SMS if WhatsApp can't send. Customers can also ask for SMS instead.
   WHATSAPP_TOKEN: z.string().optional(),
   WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),
+  // WhatsApp Business Account ID (WhatsApp Manager). Lets the dashboard create the login template.
+  WHATSAPP_BUSINESS_ACCOUNT_ID: z.string().optional(),
   WHATSAPP_OTP_TEMPLATE: z.string().default("login_code"),
   WHATSAPP_OTP_LANG: z.string().default("en"),
   WHATSAPP_OTP_LANG_AR: z.string().optional(),

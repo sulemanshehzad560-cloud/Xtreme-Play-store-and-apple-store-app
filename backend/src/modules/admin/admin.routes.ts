@@ -6,6 +6,7 @@ import { z } from "zod";
 import type { Container } from "../../container.js";
 import { bookingStatus, bookings, paymentStatus, payments, users } from "../../db/schema.js";
 import { badRequest, notFound } from "../../lib/errors.js";
+import { WhatsAppTemplates } from "../auth/whatsapp.js";
 import { normalizePhone } from "../../lib/phone.js";
 import { isoDate, phoneInput, uuidParam } from "../../lib/schemas.js";
 import { requireAuth } from "../../plugins/auth.js";
@@ -378,6 +379,59 @@ export async function adminRoutes(app: FastifyInstance, c: Container) {
       if (!res.ok) throw badRequest("deploy_failed", `Render did not accept the deploy (${res.status})`);
       await c.admin.audit(req.user.id, "server.deploy_triggered", "deploy", body.deploy?.id ?? null);
       return { ok: true, deployId: body.deploy?.id ?? null };
+    },
+  );
+
+  // WhatsApp sign-in codes: check and create the login template from the dashboard.
+  const waTemplates = () =>
+    c.env.WHATSAPP_TOKEN && c.env.WHATSAPP_BUSINESS_ACCOUNT_ID
+      ? new WhatsAppTemplates({
+          token: c.env.WHATSAPP_TOKEN,
+          businessAccountId: c.env.WHATSAPP_BUSINESS_ACCOUNT_ID,
+          template: c.env.WHATSAPP_OTP_TEMPLATE,
+          apiVersion: c.env.WHATSAPP_API_VERSION,
+        })
+      : null;
+  const waLanguages = () => [c.env.WHATSAPP_OTP_LANG, ...(c.env.WHATSAPP_OTP_LANG_AR ? [c.env.WHATSAPP_OTP_LANG_AR] : [])];
+
+  r.get("/admin/whatsapp", { schema: { tags, summary: "WhatsApp sign-in code setup and template status" } }, async () => {
+    const t = waTemplates();
+    const base = {
+      sending: Boolean(c.env.WHATSAPP_TOKEN && c.env.WHATSAPP_PHONE_NUMBER_ID),
+      canManageTemplate: Boolean(t),
+      template: c.env.WHATSAPP_OTP_TEMPLATE,
+      languages: waLanguages(),
+    };
+    if (!t) return { ...base, templates: [], error: null };
+    try {
+      return { ...base, templates: await t.status(), error: null };
+    } catch (err) {
+      return { ...base, templates: [], error: (err as Error).message };
+    }
+  });
+
+  r.post(
+    "/admin/whatsapp/login-template",
+    { config: { rateLimit: { max: 5, timeWindow: "10 minutes" } }, schema: { tags, summary: "Create the WhatsApp sign-in code template" } },
+    async (req) => {
+      const t = waTemplates();
+      if (!t) throw badRequest("whatsapp_not_configured", "Add WHATSAPP_TOKEN and WHATSAPP_BUSINESS_ACCOUNT_ID on Render first");
+      const existing = await t.status().catch(() => []);
+      const results = [];
+      for (const language of waLanguages()) {
+        const found = existing.find((x) => x.language === language);
+        if (found) {
+          results.push(found);
+          continue;
+        }
+        try {
+          results.push(await t.create(language));
+        } catch (err) {
+          throw badRequest("whatsapp_template_failed", `Meta refused the ${language} template: ${(err as Error).message}`);
+        }
+      }
+      await c.admin.audit(req.user.id, "whatsapp.template_created", "whatsapp", c.env.WHATSAPP_OTP_TEMPLATE);
+      return { templates: results };
     },
   );
 
