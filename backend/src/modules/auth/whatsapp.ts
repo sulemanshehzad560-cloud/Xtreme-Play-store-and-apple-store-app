@@ -78,6 +78,16 @@ export class WhatsAppTemplates {
     return body;
   }
 
+  /** What Meta says about the WhatsApp account itself (review status, ownership…), for troubleshooting. */
+  async account(): Promise<Record<string, unknown>> {
+    const fields = "name,account_review_status,business_verification_status,ownership_type,status";
+    const body = (await this.call(
+      `https://graph.facebook.com/${this.config.apiVersion}/${this.config.businessAccountId}?fields=${fields}`,
+    )) as Record<string, unknown>;
+    delete body.id;
+    return body;
+  }
+
   /** Status of the login template in each language (APPROVED, PENDING, REJECTED…). */
   async status(): Promise<TemplateState[]> {
     const body = await this.call(this.url(`?name=${encodeURIComponent(this.config.template)}&fields=name,language,status,rejected_reason&limit=20`));

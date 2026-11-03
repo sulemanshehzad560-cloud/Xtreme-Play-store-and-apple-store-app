@@ -561,6 +561,14 @@ async function loadWhatsApp() {
   lines.push(w.sending ? "✅ Sending is set up (token and phone number ID are on the server)." : "⚠️ Not sending yet: add <code>WHATSAPP_TOKEN</code> and <code>WHATSAPP_PHONE_NUMBER_ID</code> on Render. Codes go by SMS until then.");
   if (!w.canManageTemplate) lines.push("To create the template from here, also add <code>WHATSAPP_BUSINESS_ACCOUNT_ID</code> (WhatsApp Manager → account ID) on Render.");
   if (w.error) lines.push(`⚠️ Meta said: ${esc(w.error)}`);
+  if (w.account) {
+    const a = w.account;
+    if (a.error) lines.push(`⚠️ Couldn't read the WhatsApp account: ${esc(a.error)}`);
+    else
+      lines.push(
+        `WhatsApp account <b>${esc(a.name ?? "")}</b>: review <code>${esc(a.account_review_status ?? "?")}</code> · verification <code>${esc(a.business_verification_status ?? "?")}</code> · ownership <code>${esc(a.ownership_type ?? "?")}</code>${a.status ? ` · status <code>${esc(a.status)}</code>` : ""}`,
+      );
+  }
   for (const lang of w.languages) {
     const t = w.templates.find((x) => x.language === lang);
     const [label, cls] = t ? WA_STATUS[t.status] ?? [t.status, "assigned"] : ["Not created yet", "cancelled"];

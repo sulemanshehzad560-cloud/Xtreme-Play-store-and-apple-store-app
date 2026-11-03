@@ -402,11 +402,12 @@ export async function adminRoutes(app: FastifyInstance, c: Container) {
       template: c.env.WHATSAPP_OTP_TEMPLATE,
       languages: waLanguages(),
     };
-    if (!t) return { ...base, templates: [], error: null };
+    if (!t) return { ...base, templates: [], account: null, error: null };
+    const account = await t.account().catch((err: Error) => ({ error: err.message }));
     try {
-      return { ...base, templates: await t.status(), error: null };
+      return { ...base, templates: await t.status(), account, error: null };
     } catch (err) {
-      return { ...base, templates: [], error: (err as Error).message };
+      return { ...base, templates: [], account, error: (err as Error).message };
     }
   });
 
