@@ -55,7 +55,7 @@ export default function Job() {
   /** Puts the staff member on duty and starts location sharing, so the customer can follow them. */
   async function goOnDuty(): Promise<boolean> {
     if (!(await startSharingLocation())) {
-      Alert.alert(t("Location needed"), t("Allow location 'Always' so the customer can see you arriving. You can change this in Settings."));
+      Alert.alert(t("Location needed"), t("Allow location “Always” so the customer can see you arriving. You can change this in Settings."));
       return false;
     }
     try {
@@ -112,7 +112,7 @@ export default function Job() {
     try {
       // The customer follows the team on the map, so setting off starts location sharing (and puts you on duty).
       if (next.to === "en_route" && !(await startSharingLocation())) {
-        Alert.alert(t("Location needed"), t("Allow location 'Always' so the customer can see you arriving. You can change this in Settings."));
+        Alert.alert(t("Location needed"), t("Allow location “Always” so the customer can see you arriving. You can change this in Settings."));
         return false;
       }
       setData(await api<Booking>(`/staff/jobs/${job!.id}/status`, { body: { status: next.to } }));

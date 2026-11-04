@@ -34,7 +34,7 @@ export default function StaffHome() {
       if (status === "available") {
         const ok = await startSharingLocation();
         if (!ok) {
-          Alert.alert(t("Location needed"), t("Allow location 'Always' so customers can see you arriving. You can change this in Settings."));
+          Alert.alert(t("Location needed"), t("Allow location “Always” so customers can see you arriving. You can change this in Settings."));
           return;
         }
       }
@@ -143,7 +143,7 @@ export default function StaffHome() {
             </Row>
           </Card>
         ))}
-        <Button title={t("Sign out (goes off duty)")} variant="ghost" onPress={() => void signOutStaff()} />
+        <Button title={t("Sign out (you'll go off duty)")} variant="ghost" onPress={() => void signOutStaff()} />
         <Button title={lang === "ar" ? "English" : "العربية"} variant="ghost" size="sm" onPress={() => setLang(lang === "ar" ? "en" : "ar")} />
       </Screen>
     </View>

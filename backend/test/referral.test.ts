@@ -99,6 +99,6 @@ describe("tipping the team", () => {
     await inject("POST", `/v1/admin/bookings/${booking.id}/assign`, admin.auth, { staffIds: [staff.user.id] });
     for (const status of ["en_route", "arrived", "in_progress", "completed"]) await inject("POST", `/v1/staff/jobs/${booking.id}/status`, staff.auth, { status });
     const staffInbox = (await inject("GET", "/v1/me/notifications", staff.auth)).json();
-    expect(staffInbox.some((n: { title: string }) => n.title === "You got a AED 10 tip!")).toBe(true);
+    expect(staffInbox.some((n: { title: string }) => n.title === "You got an AED 10 tip!")).toBe(true);
   });
 });

@@ -524,7 +524,7 @@ export class PaymentService {
     if (!team.length) return;
     await this.notifications.notify(
       team.map((m) => m.id),
-      { title: `You got a ${CURRENCY} ${tipMinor / 100} tip!`, body: `Thank you from the customer for ${b?.reference ?? "your job"}.`, data: { type: "booking", bookingId } },
+      { title: `You got an ${CURRENCY} ${tipMinor / 100} tip!`, body: `Thank you from the customer for ${b?.reference ?? "your job"}.`, data: { type: "booking", bookingId } },
     );
   }
 

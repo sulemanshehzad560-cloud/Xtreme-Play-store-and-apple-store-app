@@ -53,7 +53,7 @@ export function OffersOptInCard() {
         <View style={{ flex: 1, gap: 2 }}>
           <RNText style={{ color: "#fff", fontFamily: fonts.extrabold, fontSize: 16 }}>{t("Never miss a deal")}</RNText>
           <RNText style={{ color: "#D9D2C4", fontFamily: fonts.medium, fontSize: 13.5, lineHeight: 19 }}>
-            {t("Get Eid, National Day and seasonal offers as a notification on your phone. Turn off any time in Account.")}
+            {t("Get Eid, National Day and seasonal offers as a notification on your phone. Turn them off any time in Account.")}
           </RNText>
         </View>
       </View>

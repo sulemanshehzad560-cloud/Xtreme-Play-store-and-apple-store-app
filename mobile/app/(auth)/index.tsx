@@ -84,7 +84,7 @@ export default function Welcome() {
           </RNText>
         </Pressable>
         <Text variant="small" style={{ textAlign: "center", marginTop: "auto" }}>
-          {t("By continuing you agree to our Terms of Service and Privacy Policy.")}
+          {t("By continuing, you agree to our Terms of Service and Privacy Policy.")}
         </Text>
       </SafeAreaView>
     </View>

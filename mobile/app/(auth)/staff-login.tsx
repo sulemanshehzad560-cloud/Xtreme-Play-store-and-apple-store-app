@@ -41,7 +41,7 @@ export default function StaffLogin() {
         <View style={{ gap: space(1) }}>
           <RNText style={{ color: colors.goldBright, fontFamily: fonts.bold, fontSize: 14, letterSpacing: 1.5 }}>{t("XTREME STAFF")}</RNText>
           <RNText style={{ color: "#fff", fontFamily: fonts.extrabold, fontSize: 30, letterSpacing: -0.5 }}>{t("Staff sign in")}</RNText>
-          <RNText style={{ color: "#BDB4A3", fontFamily: fonts.medium, fontSize: 14, lineHeight: 20 }}>{t("Use the Staff ID and password from the Xtreme office. You'll get new order alerts and your jobs here.")}</RNText>
+          <RNText style={{ color: "#BDB4A3", fontFamily: fonts.medium, fontSize: 14, lineHeight: 20 }}>{t("Use the Staff ID and password from the Xtreme office. You'll get new-order alerts and your jobs here.")}</RNText>
         </View>
       </SafeAreaView>
 

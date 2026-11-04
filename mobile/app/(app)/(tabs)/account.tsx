@@ -1,3 +1,4 @@
+import Constants from "expo-constants";
 import { useEffect, useState, type ReactNode } from "react";
 import { Alert, Image, Linking, Platform, Pressable, Switch, Text as RNText, View } from "react-native";
 import { router } from "expo-router";
@@ -175,11 +176,11 @@ export default function Account() {
       <Appearance />
 
       <Section title={t("Rewards")}>
-        <Item icon="tag" title={t("Invite friends")} subtitle={t("Give your friends a discount, get credit for every booking")} onPress={() => router.push("/invite")} last />
+        <Item icon="tag" title={t("Invite friends")} subtitle={t("Give friends a discount, get credit when they book their first clean")} onPress={() => router.push("/invite")} last />
       </Section>
 
       <Section title={t("Help & support")}>
-        <Item icon="chat" title={t("Chat with us")} subtitle={t("Instant answers, or reply from our team")} onPress={() => router.push("/chat")} />
+        <Item icon="chat" title={t("Chat with us")} subtitle={t("Instant answers, or a reply from our team")} onPress={() => router.push("/chat")} />
         <Item icon="chat" title={t("WhatsApp")} subtitle={company.data?.phoneDisplay} onPress={() => company.data && open(company.data.whatsapp)} />
         <Item icon="call" title={t("Call us")} subtitle="+971 2 675 6844" onPress={() => company.data && open(`tel:${company.data.phone}`)} />
         <Item icon="mail" title={t("Email")} subtitle={company.data?.email} onPress={() => company.data && open(`mailto:${company.data.email}`)} last />
@@ -200,7 +201,7 @@ export default function Account() {
         <Image source={require("../../../assets/logo-mark.png")} style={{ width: 52, height: 40, opacity: 0.9 }} resizeMode="contain" />
         <Text style={{ fontFamily: fonts.bold, fontSize: 13 }}>{t("Xtreme Facilities Management")}</Text>
         <Text variant="small" style={{ textAlign: "center" }}>
-          {t("Mazyad Offices T-1, Abu Dhabi · Version 1.0.0")}{DEMO ? t(" · demo") : ""}
+          {t("Mazyad Offices T-1, Abu Dhabi · Version {0}", { 0: Constants.expoConfig?.version ?? "" })}{DEMO ? t(" · demo") : ""}
         </Text>
       </View>
     </Screen>

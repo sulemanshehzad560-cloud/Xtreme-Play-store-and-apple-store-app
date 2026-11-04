@@ -76,7 +76,7 @@ const promos = (homeFrom: number | null, weeklySave: number): Promo[] => [
     key: "deep",
     tag: t("FREE SITE VISIT"),
     title: t("Deep cleaning, every corner"),
-    body: t("Homes and offices, move-in ready. Priced on a free visit."),
+    body: t("Homes and offices, move-in ready. Priced after a free site visit."),
     cta: t("Book a visit"),
     service: "deep",
     photo: require("../../../assets/promos/office-clean.jpg"),
@@ -90,9 +90,10 @@ const promos = (homeFrom: number | null, weeklySave: number): Promo[] => [
     body: t("Deep extraction lifts dust and allergens. Dry in hours."),
     cta: t("Book sofa cleaning"),
     service: "sofa",
-    art: "carpet",
-    colors: ["#3A1730", "#7A2E5B"],
-    accent: "#F7A8D0",
+    photo: require("../../../assets/promos/sofa-cleaned.jpg"),
+    align: "left",
+    colors: ["#1E1A14", "#3A3326"],
+    accent: "#E2C170",
   },
   {
     key: "tamara",
@@ -450,7 +451,7 @@ function WhyXtreme() {
   };
   const blocks: [LineIconName, string, string, Tone][] = [
     ["shield", t("Vetted pros"), t("Background-checked, uniformed and insured teams"), tones.ink],
-    ["check", t("Satisfaction guarantee"), t("Not happy? We come back and make it right"), tones.gold],
+    ["check", t("Satisfaction guarantee"), t("Not happy? We'll come back and make it right"), tones.gold],
     ["bottle", t("Materials free"), t("All materials and equipment included, every time"), tones.green],
     ["lock", t("Secure payments"), t("Card, Apple Pay, Google Pay or Tamara, encrypted and secure"), tones.blue],
   ];

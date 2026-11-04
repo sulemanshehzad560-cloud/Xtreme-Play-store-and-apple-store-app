@@ -173,7 +173,7 @@ export default function BookService() {
   }
 
   const selectedAddress = saved.data?.find((a) => a.id === addressId);
-  const totalLabel = q === undefined ? "…" : fixed ? aed(step === 3 ? payTotal : price!) : t("On site visit");
+  const totalLabel = q === undefined ? "…" : fixed ? aed(step === 3 ? payTotal : price!) : t("On-site visit");
   const cta = step < 3 ? t("Continue") : fixed ? t("Pay {0}", { 0: aed(payTotal) }) : t("Book site visit");
 
   return (
@@ -278,7 +278,7 @@ export default function BookService() {
               </Row>
               {frequency !== "one_time" ? (
                 <Text variant="small">
-                  {t("After each visit we set up the next one")}{" "}{frequency === "weekly" ? t("a week") : t("two weeks")}{" "}{t("later at the same time. You pay each visit in the app, and can skip or stop any time.")}
+                  {t("After each visit, we set up the next one")}{" "}{frequency === "weekly" ? t("a week") : t("two weeks")}{" "}{t("later at the same time. You pay for each visit in the app and can skip or stop at any time.")}
                 </Text>
               ) : null}
               <PlanPromo />
@@ -310,7 +310,7 @@ export default function BookService() {
           hour={hour}
           onHour={setHour}
           title={fixed ? t("Pick a day") : t("When can we visit?")}
-          note={fixed ? undefined : t("This is the time for the site visit. The schedule for the work is agreed with you once the quotation is finalized.")}
+          note={fixed ? undefined : t("This is the time for the site visit. The schedule for the work is agreed with you once the quotation is finalised.")}
         />
       ) : null}
 
@@ -373,7 +373,7 @@ export default function BookService() {
             </>
           ) : (
             <Card tone="gold">
-              <Text style={{ fontSize: 14 }}>{t("Nothing to pay now. Our team inspects on the visit and sends your quote to the app; you pay by card or Tamara once you accept it.")}</Text>
+              <Text style={{ fontSize: 14 }}>{t("Nothing to pay now. Our team inspects the job during the visit and sends your quote to the app; you pay by card or Tamara once you accept it.")}</Text>
             </Card>
           )}
 
