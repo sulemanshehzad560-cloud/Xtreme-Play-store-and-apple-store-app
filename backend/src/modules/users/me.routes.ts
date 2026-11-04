@@ -10,7 +10,7 @@ const tags = ["me"];
 
 export async function meRoutes(app: FastifyInstance, c: Container) {
   const r = app.withTypeProvider<ZodTypeProvider>();
-  r.addHook("preHandler", requireAuth(c));
+  r.addHook("onRequest", requireAuth(c));
 
   r.get("/me", { schema: { tags, summary: "My profile" } }, async (req) => c.auth.publicUser(req.user.id));
 

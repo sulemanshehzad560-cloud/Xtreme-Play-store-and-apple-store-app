@@ -14,14 +14,14 @@ export async function paymentRoutes(app: FastifyInstance, c: Container) {
 
   r.get(
     "/bookings/:id/payment-options",
-    { preHandler: customer, schema: { tags, summary: "Ways to pay for this booking (card or Tamara)", params: uuidParam } },
+    { onRequest: customer, schema: { tags, summary: "Ways to pay for this booking (card or Tamara)", params: uuidParam } },
     async (req) => c.payments.options(req.params.id, req.user),
   );
 
   r.post(
     "/bookings/:id/payments",
     {
-      preHandler: customer,
+      onRequest: customer,
       config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
       schema: {
         tags,
@@ -41,19 +41,19 @@ export async function paymentRoutes(app: FastifyInstance, c: Container) {
 
   r.get(
     "/bookings/:id/invoice",
-    { preHandler: requireAuth(c, "customer", "admin"), schema: { tags, summary: "Tax invoice for a paid booking (VAT breakdown)", params: uuidParam } },
+    { onRequest: requireAuth(c, "customer", "admin"), schema: { tags, summary: "Tax invoice for a paid booking (VAT breakdown)", params: uuidParam } },
     async (req) => c.payments.invoice(req.params.id, req.user),
   );
 
   r.get(
     "/bookings/:id/payments",
-    { preHandler: requireAuth(c, "customer", "admin"), schema: { tags, summary: "Payments for a booking", params: uuidParam } },
+    { onRequest: requireAuth(c, "customer", "admin"), schema: { tags, summary: "Payments for a booking", params: uuidParam } },
     async (req) => c.payments.listForBooking(req.params.id, req.user),
   );
 
   r.post(
     "/payments/:id/sync",
-    { preHandler: requireAuth(c, "customer", "admin"), schema: { tags, summary: "Refresh a payment's status from the provider", params: uuidParam } },
+    { onRequest: requireAuth(c, "customer", "admin"), schema: { tags, summary: "Refresh a payment's status from the provider", params: uuidParam } },
     async (req) => c.payments.sync(req.params.id, req.user),
   );
 

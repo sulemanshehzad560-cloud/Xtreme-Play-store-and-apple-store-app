@@ -19,7 +19,7 @@ const tags = ["admin"];
 /** Back-office API for the dispatch dashboard. Admin role only. */
 export async function adminRoutes(app: FastifyInstance, c: Container) {
   const r = app.withTypeProvider<ZodTypeProvider>();
-  r.addHook("preHandler", requireAuth(c, "admin"));
+  r.addHook("onRequest", requireAuth(c, "admin"));
 
   r.get("/admin/dashboard", { schema: { tags, summary: "Today at a glance" } }, async () => {
     const start = new Date();

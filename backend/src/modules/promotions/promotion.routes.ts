@@ -41,37 +41,37 @@ export async function promotionRoutes(app: FastifyInstance, c: Container) {
   r.post(
     "/bookings/:id/promo",
     {
-      preHandler: customer,
+      onRequest: customer,
       config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
       schema: { tags, summary: "Apply a promo code to an unpaid booking", params: uuidParam, body: z.object({ code: z.string().trim().min(2).max(40) }) },
     },
     async (req) => c.promotions.applyCode(req.params.id, req.user, req.body.code),
   );
 
-  r.delete("/bookings/:id/promo", { preHandler: customer, schema: { tags, summary: "Remove the promo code", params: uuidParam } }, async (req) =>
+  r.delete("/bookings/:id/promo", { onRequest: customer, schema: { tags, summary: "Remove the promo code", params: uuidParam } }, async (req) =>
     c.promotions.removeCode(req.params.id, req.user),
   );
 
-  r.get("/me/referral", { preHandler: customer, schema: { tags, summary: "My invite code, what friends get and my rewards" } }, async (req) =>
+  r.get("/me/referral", { onRequest: customer, schema: { tags, summary: "My invite code, what friends get and my rewards" } }, async (req) =>
     c.promotions.myReferral(req.user.id),
   );
 
-  r.get("/admin/promotions", { preHandler: admin, schema: { tags, summary: "All promotions" } }, async () => c.promotions.list());
+  r.get("/admin/promotions", { onRequest: admin, schema: { tags, summary: "All promotions" } }, async () => c.promotions.list());
 
-  r.post("/admin/promotions", { preHandler: admin, schema: { tags, summary: "Create a promotion", body: promoFields } }, async (req, reply) =>
+  r.post("/admin/promotions", { onRequest: admin, schema: { tags, summary: "Create a promotion", body: promoFields } }, async (req, reply) =>
     reply.status(201).send(await c.promotions.create(req.body)),
   );
 
   r.patch(
     "/admin/promotions/:id",
-    { preHandler: admin, schema: { tags, summary: "Edit, pause or end a promotion", params: uuidParam, body: promoFields.partial() } },
+    { onRequest: admin, schema: { tags, summary: "Edit, pause or end a promotion", params: uuidParam, body: promoFields.partial() } },
     async (req) => c.promotions.update(req.params.id, req.body),
   );
 
   r.post(
     "/admin/promotions/:id/announce",
     {
-      preHandler: admin,
+      onRequest: admin,
       config: { rateLimit: { max: 5, timeWindow: "10 minutes" } },
       schema: { tags, summary: "Send the offer notification to customers again", params: uuidParam },
     },

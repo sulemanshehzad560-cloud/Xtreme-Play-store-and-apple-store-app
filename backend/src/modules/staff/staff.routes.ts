@@ -19,7 +19,7 @@ export const pingSchema = z.object({
 
 export async function staffRoutes(app: FastifyInstance, c: Container) {
   const r = app.withTypeProvider<ZodTypeProvider>();
-  r.addHook("preHandler", requireAuth(c, "staff"));
+  r.addHook("onRequest", requireAuth(c, "staff"));
 
   r.get("/staff/me", { schema: { tags, summary: "My staff profile and duty status" } }, async (req) =>
     adminStaffView(await c.staff.profile(req.user.id)),

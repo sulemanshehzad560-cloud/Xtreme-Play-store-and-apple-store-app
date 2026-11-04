@@ -31,12 +31,12 @@ export async function subscriptionRoutes(app: FastifyInstance, c: Container) {
     return c.subscriptions.plans();
   });
 
-  r.get("/me/subscriptions", { preHandler: customer, schema: { tags, summary: "My subscriptions" } }, async (req) => c.subscriptions.mine(req.user));
+  r.get("/me/subscriptions", { onRequest: customer, schema: { tags, summary: "My subscriptions" } }, async (req) => c.subscriptions.mine(req.user));
 
   r.post(
     "/subscriptions",
     {
-      preHandler: customer,
+      onRequest: customer,
       schema: {
         tags,
         summary: "Subscribe to a plan; returns the first visit to pay for",
@@ -59,14 +59,14 @@ export async function subscriptionRoutes(app: FastifyInstance, c: Container) {
     async (req, reply) => reply.status(201).send(await c.subscriptions.subscribe(req.user, req.body)),
   );
 
-  r.get("/subscriptions/:id", { preHandler: customer, schema: { tags, summary: "A subscription", params: uuidParam } }, async (req) =>
+  r.get("/subscriptions/:id", { onRequest: customer, schema: { tags, summary: "A subscription", params: uuidParam } }, async (req) =>
     c.subscriptions.get(req.params.id, req.user),
   );
 
   r.post(
     "/subscriptions/:id/visits",
     {
-      preHandler: customer,
+      onRequest: customer,
       schema: { tags, summary: "Book an included visit", params: uuidParam, body: z.object({ scheduledAt: isoDate, notes: z.string().trim().max(1000).optional() }) },
     },
     async (req, reply) => reply.status(201).send(await c.subscriptions.requestVisit(req.params.id, req.user, req.body.scheduledAt, req.body.notes)),
@@ -75,7 +75,7 @@ export async function subscriptionRoutes(app: FastifyInstance, c: Container) {
   r.post(
     "/subscriptions/:id/schedule",
     {
-      preHandler: customer,
+      onRequest: customer,
       schema: { tags, summary: "Book several included visits at once (calendar)", params: uuidParam, body: z.object({ visits: z.array(isoDate).min(1).max(31) }) },
     },
     async (req, reply) => reply.status(201).send(await c.subscriptions.scheduleVisits(req.params.id, req.user, req.body.visits)),
@@ -83,30 +83,30 @@ export async function subscriptionRoutes(app: FastifyInstance, c: Container) {
 
   r.post(
     "/subscriptions/:id/renew",
-    { preHandler: customer, schema: { tags, summary: "Start the next paid period", params: uuidParam, body: z.object({ firstVisitAt: isoDate, moreVisits: z.array(isoDate).max(30).optional() }) } },
+    { onRequest: customer, schema: { tags, summary: "Start the next paid period", params: uuidParam, body: z.object({ firstVisitAt: isoDate, moreVisits: z.array(isoDate).max(30).optional() }) } },
     async (req) => c.subscriptions.renew(req.params.id, req.user, req.body.firstVisitAt, req.body.moreVisits),
   );
 
-  r.post("/subscriptions/:id/cancel", { preHandler: customer, schema: { tags, summary: "Cancel an unpaid subscription", params: uuidParam } }, async (req) =>
+  r.post("/subscriptions/:id/cancel", { onRequest: customer, schema: { tags, summary: "Cancel an unpaid subscription", params: uuidParam } }, async (req) =>
     c.subscriptions.cancel(req.params.id, req.user),
   );
 
   // ------------------------------------------------------------ office
-  r.get("/admin/subscription-plans", { preHandler: admin, schema: { tags, summary: "All plans, including hidden ones" } }, async () =>
+  r.get("/admin/subscription-plans", { onRequest: admin, schema: { tags, summary: "All plans, including hidden ones" } }, async () =>
     c.subscriptions.plans({ includeInactive: true }),
   );
-  r.post("/admin/subscription-plans", { preHandler: admin, schema: { tags, summary: "Create a plan", body: planFields } }, async (req, reply) =>
+  r.post("/admin/subscription-plans", { onRequest: admin, schema: { tags, summary: "Create a plan", body: planFields } }, async (req, reply) =>
     reply.status(201).send(await c.subscriptions.createPlan(req.body)),
   );
   r.patch(
     "/admin/subscription-plans/:id",
-    { preHandler: admin, schema: { tags, summary: "Change a plan's prices or details (running subscriptions keep their price)", params: uuidParam, body: planFields.partial() } },
+    { onRequest: admin, schema: { tags, summary: "Change a plan's prices or details (running subscriptions keep their price)", params: uuidParam, body: planFields.partial() } },
     async (req) => c.subscriptions.updatePlan(req.params.id, req.body),
   );
   r.get(
     "/admin/subscriptions",
     {
-      preHandler: admin,
+      onRequest: admin,
       schema: {
         tags,
         summary: "Subscriptions",
@@ -121,14 +121,14 @@ export async function subscriptionRoutes(app: FastifyInstance, c: Container) {
   r.post(
     "/admin/subscriptions/:id/visits",
     {
-      preHandler: admin,
+      onRequest: admin,
       schema: { tags, summary: "Book an included visit for a subscriber", params: uuidParam, body: z.object({ scheduledAt: isoDate, notes: z.string().trim().max(1000).optional() }) },
     },
     async (req, reply) => reply.status(201).send(await c.subscriptions.requestVisit(req.params.id, req.user, req.body.scheduledAt, req.body.notes)),
   );
   r.post(
     "/admin/subscriptions/:id/cancel",
-    { preHandler: admin, schema: { tags, summary: "Cancel a subscription", params: uuidParam, body: z.object({ reason: z.string().trim().max(300).optional() }) } },
+    { onRequest: admin, schema: { tags, summary: "Cancel a subscription", params: uuidParam, body: z.object({ reason: z.string().trim().max(300).optional() }) } },
     async (req) => c.subscriptions.cancel(req.params.id, req.user, req.body.reason),
   );
 }

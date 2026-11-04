@@ -32,7 +32,7 @@ export class ConsoleMailer implements Mailer {
 /** Zoho Mail (or any SMTP server) over TLS, signed in as the sending mailbox. */
 export class SmtpMailer implements Mailer {
   readonly configured = true;
-  private readonly transport: nodemailer.Transporter;
+  private readonly transport: ReturnType<typeof nodemailer.createTransport>;
   constructor(
     readonly from: string,
     opts: { host: string; port: number; user: string; pass: string; replyTo?: string | undefined; bcc?: string | undefined },

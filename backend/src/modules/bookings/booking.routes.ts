@@ -15,7 +15,7 @@ export async function bookingRoutes(app: FastifyInstance, c: Container) {
   r.post(
     "/bookings",
     {
-      preHandler: customer,
+      onRequest: customer,
       schema: {
         tags,
         summary: "Book a service",
@@ -48,20 +48,20 @@ export async function bookingRoutes(app: FastifyInstance, c: Container) {
   r.get(
     "/bookings",
     {
-      preHandler: customer,
+      onRequest: customer,
       schema: { tags, summary: "My bookings", querystring: pageQuery.extend({ scope: z.enum(["active", "past", "all"]).default("all") }) },
     },
     async (req) => c.bookings.listForCustomer(req.user.id, req.query),
   );
 
-  r.get("/bookings/:id", { preHandler: anyone, schema: { tags, summary: "Booking details and timeline", params: uuidParam } }, async (req) =>
+  r.get("/bookings/:id", { onRequest: anyone, schema: { tags, summary: "Booking details and timeline", params: uuidParam } }, async (req) =>
     c.bookings.get(req.params.id, req.user),
   );
 
   r.patch(
     "/bookings/:id",
     {
-      preHandler: requireAuth(c, "customer", "admin"),
+      onRequest: requireAuth(c, "customer", "admin"),
       schema: {
         tags,
         summary: "Reschedule or change notes",
@@ -75,7 +75,7 @@ export async function bookingRoutes(app: FastifyInstance, c: Container) {
   r.post(
     "/bookings/:id/cancel",
     {
-      preHandler: requireAuth(c, "customer", "admin"),
+      onRequest: requireAuth(c, "customer", "admin"),
       schema: { tags, summary: "Cancel a booking (paid bookings are refunded)", params: uuidParam, body: z.object({ reason: z.string().trim().max(500).optional() }) },
     },
     async (req) => c.bookings.cancel(req.params.id, req.user, req.body.reason),
@@ -83,14 +83,14 @@ export async function bookingRoutes(app: FastifyInstance, c: Container) {
 
   r.get(
     "/bookings/:id/tracking",
-    { preHandler: anyone, schema: { tags, summary: "Assigned team, their status and live position", params: uuidParam } },
+    { onRequest: anyone, schema: { tags, summary: "Assigned team, their status and live position", params: uuidParam } },
     async (req) => c.bookings.tracking(req.params.id, req.user),
   );
 
   r.post(
     "/bookings/:id/review",
     {
-      preHandler: customer,
+      onRequest: customer,
       schema: {
         tags,
         summary: "Rate a completed booking",
