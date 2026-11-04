@@ -43,8 +43,8 @@ const EnvSchema = z.object({
   TWILIO_MESSAGING_SERVICE_SID: z.string().optional(),
   // WhatsApp sign-in codes (Meta WhatsApp Cloud API). When set, codes go to WhatsApp first
   // and fall back to SMS if WhatsApp can't send. Customers can also ask for SMS instead.
-  WHATSAPP_TOKEN: z.string().optional(),
-  WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),
+  WHATSAPP_TOKEN: z.string().trim().optional(),
+  WHATSAPP_PHONE_NUMBER_ID: z.string().trim().optional(),
   // WhatsApp Business Account ID (WhatsApp Manager). Lets the dashboard create the login template.
   WHATSAPP_BUSINESS_ACCOUNT_ID: z.string().optional(),
   WHATSAPP_OTP_TEMPLATE: z.string().default("login_code"),
@@ -61,8 +61,8 @@ const EnvSchema = z.object({
   // Social sign-in
   GOOGLE_CLIENT_IDS: csv,
   APPLE_BUNDLE_IDS: csv,
-  FACEBOOK_APP_ID: z.string().optional(),
-  FACEBOOK_APP_SECRET: z.string().optional(),
+  FACEBOOK_APP_ID: z.string().trim().optional(),
+  FACEBOOK_APP_SECRET: z.string().trim().optional(),
 
   // Payments. Prices in the catalog are in AED and include VAT.
   VAT_RATE: z.coerce.number().min(0).max(1).default(0.05),
