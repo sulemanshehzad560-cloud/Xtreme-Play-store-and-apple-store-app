@@ -4,7 +4,7 @@ import { remoteJwks } from "./jwks.js";
 import type { SocialProfile, SocialVerifier } from "./types.js";
 
 export const FACEBOOK_LIMITED_JWKS_URL = "https://limited.facebook.com/.well-known/oauth/openid/jwks/";
-const GRAPH = "https://graph.facebook.com/v21.0";
+const GRAPH = "https://graph.facebook.com/v25.0";
 
 type FetchLike = (url: string) => Promise<{ ok: boolean; json(): Promise<unknown> }>;
 
@@ -36,9 +36,13 @@ export class FacebookVerifier implements SocialVerifier {
     const appToken = `${this.appId}|${this.appSecret}`;
     const debug = (await this.getJson(
       `${GRAPH}/debug_token?input_token=${encodeURIComponent(accessToken)}&access_token=${encodeURIComponent(appToken)}`,
-    )) as { data?: { is_valid?: boolean; app_id?: string; user_id?: string } };
+    )) as { data?: { is_valid?: boolean; app_id?: string; user_id?: string; error?: { message?: string } } };
     const data = debug.data;
     if (!data?.is_valid || data.app_id !== this.appId || !data.user_id) {
+      // Logged (without the token) so a wrong FACEBOOK_APP_ID / FACEBOOK_APP_SECRET is easy to spot in the server log.
+      console.warn(
+        `[facebook] sign-in rejected: valid=${data?.is_valid ?? "?"} tokenApp=${data?.app_id ?? "?"} serverApp=${this.appId} reason=${data?.error?.message ?? "none"}`,
+      );
       throw unauthorized("Facebook sign-in could not be verified", "invalid_provider_token");
     }
     const me = (await this.getJson(
@@ -81,7 +85,12 @@ export class FacebookVerifier implements SocialVerifier {
 
   private async getJson(url: string): Promise<unknown> {
     const res = await this.fetchFn(url);
-    if (!res.ok) throw unauthorized("Facebook sign-in could not be verified", "invalid_provider_token");
+    if (!res.ok) {
+      const body = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
+      // e.g. "Invalid OAuth access token signature" when FACEBOOK_APP_SECRET is wrong.
+      console.warn(`[facebook] Graph API refused the check: ${body.error?.message ?? "no details"}`);
+      throw unauthorized("Facebook sign-in could not be verified", "invalid_provider_token");
+    }
     return res.json();
   }
 }
