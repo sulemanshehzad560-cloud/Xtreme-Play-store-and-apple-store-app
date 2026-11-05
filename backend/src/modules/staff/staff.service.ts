@@ -320,6 +320,8 @@ export function adminStaffView(s: typeof staffProfiles.$inferSelect) {
     skills: s.skills,
     status: s.status,
     active: s.active,
+    isSupplier: s.isSupplier,
+    supplierCompany: s.supplierCompany,
     statusChangedAt: s.statusChangedAt.toISOString(),
     location:
       s.lastLat != null && s.lastLng != null && s.lastLocationAt
@@ -363,4 +365,6 @@ export interface StaffInput {
   photoUrl?: string | null | undefined;
   active?: boolean | undefined;
   notifyNewOrders?: boolean | undefined;
+  isSupplier?: boolean | undefined;
+  supplierCompany?: string | null | undefined;
 }

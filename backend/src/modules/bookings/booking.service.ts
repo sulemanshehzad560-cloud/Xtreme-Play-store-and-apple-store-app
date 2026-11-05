@@ -18,6 +18,7 @@ import { COMPANY } from "../../config/company.js";
 import { assertInServiceZone } from "../../config/service-zone.js";
 import { badRequest, conflict, forbidden, notFound } from "../../lib/errors.js";
 import { estimateEtaMinutes } from "../../lib/geo.js";
+import { redactContacts } from "../../lib/contact-filter.js";
 import { findService, quote, serviceName, type PropertyType } from "../catalog/catalog.js";
 import type { NotificationService } from "../notifications/notification.service.js";
 import { rooms, type RealtimeHub } from "../tracking/realtime.js";
@@ -621,7 +622,7 @@ export class BookingService {
     return rows.map((r) => r.staffId);
   }
 
-  private async team(bookingId: string) {
+  async team(bookingId: string) {
     return this.teams([bookingId]).then((m) => m.get(bookingId) ?? []);
   }
 
@@ -762,6 +763,11 @@ export class BookingService {
             ).map((u) => [u.id, u]),
           );
 
+    // Third-party suppliers never see a customer's phone number or contact details in notes.
+    const supplier =
+      actor.role === "staff" &&
+      ((await this.db.select({ s: staffProfiles.isSupplier }).from(staffProfiles).where(eq(staffProfiles.userId, actor.id)).limit(1))[0]?.s ?? false);
+
     return rows.map((b) => {
       const service = findService(b.serviceKey);
       const review = reviewMap.get(b.id);
@@ -789,13 +795,18 @@ export class BookingService {
         scheduledAt: b.scheduledAt.toISOString(),
         durationMinutes: b.durationMinutes,
         address: { ...b.address, lat: b.lat, lng: b.lng },
-        notes: b.notes,
+        notes: supplier && b.notes ? redactContacts(b.notes).text : b.notes,
         team: (teams.get(b.id) ?? []).map(publicStaff),
         trackable: TRACKABLE.includes(b.status),
         canCancel: canTransition(b.status, "cancelled", actor.role),
         canReschedule: actor.role === "customer" ? ["requested", "confirmed"].includes(b.status) : !TERMINAL.includes(b.status),
         review: review ? { rating: review.rating, comment: review.comment, createdAt: review.createdAt.toISOString() } : null,
-        customer: actor.role === "customer" ? undefined : (customers.get(b.customerId) ?? null),
+        customer:
+          actor.role === "customer"
+            ? undefined
+            : supplier
+              ? { ...(customers.get(b.customerId) ?? {}), phone: null, phoneHidden: true }
+              : (customers.get(b.customerId) ?? null),
         cancelReason: b.cancelReason,
         completedAt: b.completedAt?.toISOString() ?? null,
         cancelledAt: b.cancelledAt?.toISOString() ?? null,
@@ -819,6 +830,8 @@ export function publicStaff(s: typeof staffProfiles.$inferSelect & { isLead?: bo
     teamName: s.teamName,
     status: s.status,
     isLead: s.isLead ?? false,
+    /** Third-party partner working for Xtreme (shown as "Xtreme partner"). */
+    partner: s.isSupplier,
   };
 }
 

@@ -99,6 +99,13 @@
       "when": 1793884600557,
       "tag": "0013_booking_photos",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1793886056645,
+      "tag": "0014_suppliers_job_chat",
+      "breakpoints": true
     }
   ]
 }

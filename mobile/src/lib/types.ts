@@ -77,7 +77,7 @@ export interface Booking {
   team: TeamMember[];
   trackable: boolean;
   review: { rating: number } | null;
-  customer?: { fullName: string | null; phone: string | null } | null;
+  customer?: { fullName: string | null; phone: string | null; phoneHidden?: boolean } | null;
   timeline?: { type: string; to: BookingStatus | null; at: string }[];
 }
 

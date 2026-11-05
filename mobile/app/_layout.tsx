@@ -61,6 +61,7 @@ function Gate() {
       if (!data?.bookingId) return;
       // A new-order alert is for awareness; staff open job details once the office assigns them.
       if (user.role === "staff" && data.type === "new_order") return router.push("/");
+      if (data.type === "job_chat") return router.push(user.role === "staff" ? `/chat/${data.bookingId}` : `/booking/${data.bookingId}/chat`);
       router.push(user.role === "staff" ? `/job/${data.bookingId}` : `/booking/${data.bookingId}`);
     });
     return () => sub.remove();

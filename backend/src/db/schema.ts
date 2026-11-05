@@ -204,6 +204,12 @@ export const staffProfiles = pgTable(
     lockedUntil: ts("locked_until"),
     // Push alert for every new customer order.
     notifyNewOrders: boolean("notify_new_orders").notNull().default(true),
+    /**
+     * Third-party supplier working as Xtreme staff. Suppliers never see a customer's phone
+     * number: calls go through Xtreme's masked number and chat blocks contact details.
+     */
+    isSupplier: boolean("is_supplier").notNull().default(false),
+    supplierCompany: text("supplier_company"),
     status: staffStatus("status").notNull().default("off_duty"),
     statusChangedAt: ts("status_changed_at").notNull().defaultNow(),
     active: boolean("active").notNull().default(true),
@@ -604,6 +610,30 @@ export const bookingPhotos = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index("booking_photos_booking_idx").on(t.bookingId, t.createdAt)],
+);
+
+export const bookingMessageSender = pgEnum("booking_message_sender", ["customer", "staff", "admin"]);
+
+/**
+ * Job chat between the customer and the team on their booking (staff or suppliers), which the
+ * office can read. Phone numbers, emails and messaging links are removed before saving, so
+ * neither side can move the conversation off Xtreme. Bodies are encrypted at rest.
+ */
+export const bookingMessages = pgTable(
+  "booking_messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    bookingId: uuid("booking_id")
+      .notNull()
+      .references(() => bookings.id, { onDelete: "cascade" }),
+    senderId: uuid("sender_id").references(() => users.id, { onDelete: "set null" }),
+    sender: bookingMessageSender("sender").notNull(),
+    body: text("body").notNull(),
+    /** True when contact details were removed from the message. */
+    redacted: boolean("redacted").notNull().default(false),
+    createdAt: createdAt(),
+  },
+  (t) => [index("booking_messages_booking_idx").on(t.bookingId, t.createdAt)],
 );
 
 /** "Chat with us": one thread per customer, with instant automated answers and replies from the office. */

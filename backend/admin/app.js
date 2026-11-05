@@ -208,13 +208,14 @@ function renderBoard() {
 }
 
 function card(b) {
-  const team = b.team.map((m) => esc(m.displayName) + (m.isLead ? " ★" : "")).join(", ");
+  const team = b.team.map((m) => esc(m.displayName) + (m.isLead ? " ★" : "") + (m.partner ? " (supplier)" : "")).join(", ");
   const actions = [];
   if (b.status === "requested" && !b.awaitingPayment) actions.push(`<button class="btn primary small" data-act="confirm" data-id="${b.id}">Confirm</button>`);
   if (["requested", "confirmed", "assigned"].includes(b.status) && !b.awaitingPayment) actions.push(`<button class="btn gold small" data-act="assign" data-id="${b.id}">${b.team.length ? "Reassign" : "Assign team"}</button>`);
   if (b.paymentStatus === "unpaid" && b.status !== "cancelled" && (b.pricing === "inspection" || b.priceAed == null)) {
     actions.push(`<button class="btn ${b.priceAed == null ? "primary" : "outline"} small" data-act="price" data-id="${b.id}">${b.priceAed == null ? "Send quote" : "Change quote"}</button>`);
   }
+  if (b.team.length) actions.push(`<button class="btn outline small" data-act="chat" data-id="${b.id}">Job chat</button>`);
   if (b.status !== "completed") actions.push(`<button class="btn danger small" data-act="cancel" data-id="${b.id}">Cancel</button>`);
   if (b.paymentStatus === "paid" || b.paymentStatus === "partially_refunded") actions.push(`<button class="btn outline small" data-act="refund" data-id="${b.id}">Refund</button>`);
   if (b.status === "completed" && (b.paymentStatus === "paid" || b.paymentStatus === "partially_refunded"))
@@ -242,7 +243,7 @@ $("#board").addEventListener("click", (e) => {
   if (!btn) return;
   e.preventDefault();
   const b = state.bookings.find((x) => x.id === btn.dataset.id);
-  ({ confirm: confirmBooking, assign: assignTeam, price: setPrice, photos: setPrice, cancel: cancelBooking, refund: refundBooking, invoice: emailInvoice })[btn.dataset.act](b);
+  ({ confirm: confirmBooking, assign: assignTeam, price: setPrice, photos: setPrice, chat: jobChat, cancel: cancelBooking, refund: refundBooking, invoice: emailInvoice })[btn.dataset.act](b);
 });
 
 const emailInvoice = (b) =>
@@ -326,6 +327,30 @@ async function setPrice(b) {
   if (photos.length) $("#modal").classList.add("wide");
 }
 
+/** Read (and join) the chat between the customer and the team. Contact details are removed automatically. */
+async function jobChat(b) {
+  const thread = await api(`/bookings/${b.id}/messages`);
+  const lines = thread.messages.length
+    ? thread.messages
+        .map((m) => `<div class="chat-line ${m.sender}"><b>${esc(m.senderName)}</b> <small class="muted">${when(m.createdAt)}</small>${m.redacted ? ' <span class="pill awaiting">contact details removed</span>' : ""}<div>${esc(m.body)}</div></div>`)
+        .join("")
+    : '<p class="muted">No messages yet.</p>';
+  modal(
+    `<h2>Job chat · ${esc(b.reference)}</h2>
+     <p class="muted">Between ${esc(b.customer?.fullName ?? "the customer")} and ${esc(b.team.map((m) => m.displayName).join(", "))}. Phone numbers, emails and messaging links are removed automatically.</p>
+     <div class="chat-log">${lines}</div>
+     ${thread.open ? '<label>Message as the Xtreme team<textarea name="body" rows="2" maxlength="1000" placeholder="Write to the customer and team"></textarea></label>' : ""}
+     <div class="modal-actions"><button class="btn outline" value="cancel" formnovalidate>Close</button>${thread.open ? '<button class="btn primary">Send</button>' : ""}</div>`,
+    async (form) => {
+      const body = String(form.get("body") || "").trim();
+      if (!body) throw new Error("Write a message first");
+      await api(`/bookings/${b.id}/messages`, { body: { body } });
+      toast("Message sent");
+    },
+  );
+  $("#modal").classList.add("wide");
+}
+
 function cancelBooking(b) {
   modal(
     `<h2>Cancel ${esc(b.reference)}?</h2>
@@ -380,7 +405,7 @@ function renderStaff() {
       (s) => `<tr class="clickable" data-open="${s.id}">
       <td><b>${esc(s.displayName)}</b>${s.email ? `<br><small class="muted">${esc(s.email)}</small>` : ""}</td>
       <td>${esc(s.employeeCode)}</td><td>${esc(s.phone ?? "")}</td>
-      <td>${esc(s.jobTitle ?? "—")}${s.teamName ? `<br><small class="muted">${esc(s.teamName)}</small>` : ""}</td>
+      <td>${esc(s.jobTitle ?? "—")}${s.teamName ? `<br><small class="muted">${esc(s.teamName)}</small>` : ""}${s.isSupplier ? `<br><span class="pill awaiting">Supplier${s.supplierCompany ? ` · ${esc(s.supplierCompany)}` : ""}</span>` : ""}</td>
       <td><span class="pill" style="background:${STAFF_COLOR[s.status]}22;color:${STAFF_COLOR[s.status]}">${STAFF_LABEL[s.status]}</span>${s.active ? "" : ' <span class="pill cancelled">inactive</span>'}${s.currentBooking ? `<br><small class="muted">on ${esc(s.currentBooking.reference)}</small>` : ""}</td>
       <td>${s.emergencyContactName ? `${esc(s.emergencyContactName)}<br><small class="muted">${esc(s.emergencyContactPhone ?? "")}</small>` : '<small class="muted">—</small>'}</td>
       <td>${esc(s.joinedOn ?? "—")}</td>
@@ -431,6 +456,8 @@ async function staffForm(s) {
        <label>Email<input name="email" type="email" value="${v("email")}" /></label>
        <label>Job title<input name="jobTitle" value="${v("jobTitle")}" placeholder="e.g. Senior cleaner" /></label>
        <label>Team<input name="teamName" value="${v("teamName")}" placeholder="e.g. Gold Team" /></label>
+       <label>Works for<select name="isSupplier"><option value="false" ${s?.isSupplier ? "" : "selected"}>Xtreme (own staff)</option><option value="true" ${s?.isSupplier ? "selected" : ""}>Third-party supplier: customer numbers hidden</option></select></label>
+       <label>Supplier company<input name="supplierCompany" value="${v("supplierCompany")}" placeholder="Only for suppliers, e.g. Sparkle Partners LLC" /></label>
        <label>Emergency contact name<input name="emergencyContactName" value="${v("emergencyContactName")}" /></label>
        <label>Emergency contact phone<input name="emergencyContactPhone" value="${v("emergencyContactPhone")}" /></label>
        <label>Joined on<input name="joinedOn" type="date" value="${v("joinedOn")}" /></label>
@@ -462,6 +489,8 @@ async function staffForm(s) {
         notes: form.get("notes") || null,
         skills: form.getAll("skills"),
         notifyNewOrders: form.get("notifyNewOrders") === "true",
+        isSupplier: form.get("isSupplier") === "true",
+        supplierCompany: form.get("supplierCompany") || null,
       };
       if (s) {
         await api(`/admin/staff/${s.id}`, { method: "PATCH", body: { ...body, active: form.get("active") === "true" } });

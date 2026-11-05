@@ -20,6 +20,7 @@ export default function AppLayout() {
       <Stack.Screen name="booking/[id]/track" options={{ headerShown: false }} />
       <Stack.Screen name="booking/[id]/pay" options={{ title: t("Payment"), presentation: "modal" }} />
       <Stack.Screen name="booking/[id]/invoice" options={{ title: t("Receipt") }} />
+      <Stack.Screen name="booking/[id]/chat" options={{ title: t("Messages") }} />
       <Stack.Screen name="phone" options={{ title: t("Mobile number"), presentation: "modal" }} />
       <Stack.Screen name="notifications" options={{ title: t("Notifications") }} />
       <Stack.Screen name="addresses" options={{ title: t("Saved addresses") }} />

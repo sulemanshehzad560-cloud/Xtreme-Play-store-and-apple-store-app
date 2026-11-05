@@ -14,6 +14,7 @@ import { useApi } from "@/lib/useApi";
 import { LineIcon, iconColor } from "@/components/LineIcon";
 import { Celebration } from "@/components/Celebration";
 import { QuotePhotoStatus } from "@/components/QuotePhotos";
+import { maskedCall } from "@/lib/calls";
 import * as StoreReview from "expo-store-review";
 import { dateLocale, isRTL, t } from "@/lib/i18n";
 
@@ -176,12 +177,15 @@ export default function BookingDetail() {
               </Text>
             </View>
           </Row>
-          {company.data ? (
-            <Row style={{ gap: space(2) }}>
-              <Button title={t("Call")} icon={<LineIcon name="call" size={18} color={iconColor("call")} />} variant="secondary" size="sm" style={{ flex: 1 }} onPress={() => Linking.openURL(`tel:${company.data!.phone}`)} />
-              <Button title={t("WhatsApp")} icon={<LineIcon name="chat" size={18} color={iconColor("chat")} />} variant="secondary" size="sm" style={{ flex: 1 }} onPress={() => Linking.openURL(company.data!.whatsapp)} />
-            </Row>
-          ) : null}
+          <Row style={{ gap: space(2) }}>
+            {["assigned", "en_route", "arrived", "in_progress"].includes(b.status) ? (
+              <Button title={t("Call")} icon={<LineIcon name="call" size={18} color={iconColor("call")} />} variant="secondary" size="sm" style={{ flex: 1 }} onPress={() => void maskedCall(b.id)} />
+            ) : null}
+            {b.status !== "cancelled" ? (
+              <Button title={t("Message")} icon={<LineIcon name="chat" size={18} color={iconColor("chat")} />} variant="secondary" size="sm" style={{ flex: 1 }} onPress={() => router.push(`/booking/${b.id}/chat`)} />
+            ) : null}
+          </Row>
+          <Text variant="small">{t("Calls and messages go through Xtreme, so your number stays private.")}</Text>
         </Card>
       ) : null}
 

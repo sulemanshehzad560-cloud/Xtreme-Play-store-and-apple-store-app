@@ -23,12 +23,17 @@ function googleServicesFile(value: string | undefined): string | undefined {
 // Apple Pay certificate. Until both are done, iPhone builds offer card payments only.
 const APPLE_PAY = env.APPLE_PAY_ENABLED === "true";
 
+// APP_VARIANT=staff builds the separate staff & supplier app ("Xtreme Staff"): its own Android
+// package, so it installs next to the customer app, and it opens straight to the staff sign-in.
+// Push alerts need GOOGLE_SERVICES_JSON_STAFF (Firebase → add Android app ae.xtremefm.staff).
+const STAFF = env.APP_VARIANT === "staff";
+
 const config: ExpoConfig = {
-  name: "Xtreme-Cleaning Partner",
+  name: STAFF ? "Xtreme Staff" : "Xtreme-Cleaning Partner",
   slug: "xtreme-home-partner",
   owner: env.EXPO_OWNER ?? EXPO_OWNER,
-  platforms: ["ios", "android"],
-  scheme: "xtreme",
+  platforms: STAFF ? ["android"] : ["ios", "android"],
+  scheme: STAFF ? "xtremestaff" : "xtreme",
   version: "1.1.1",
   orientation: "portrait",
   icon: "./assets/icon.png",
@@ -51,7 +56,7 @@ const config: ExpoConfig = {
     },
   },
   android: {
-    package: "ae.xtremefm.app",
+    package: STAFF ? "ae.xtremefm.staff" : "ae.xtremefm.app",
     // Keep the app's data (sign-in, cached screens) out of cloud/device backups.
     allowBackup: false,
     adaptiveIcon: { foregroundImage: "./assets/adaptive-icon.png", backgroundColor: "#030405" },
@@ -64,7 +69,7 @@ const config: ExpoConfig = {
       "FOREGROUND_SERVICE_LOCATION",
       "POST_NOTIFICATIONS",
     ],
-    googleServicesFile: googleServicesFile(env.GOOGLE_SERVICES_JSON),
+    googleServicesFile: STAFF ? googleServicesFile(env.GOOGLE_SERVICES_JSON_STAFF) : googleServicesFile(env.GOOGLE_SERVICES_JSON),
   },
   plugins: [
     "expo-router",
@@ -113,6 +118,7 @@ const config: ExpoConfig = {
     // Android needs a Google Maps key to draw maps; without one the app shows a drawn map instead.
     androidMapsEnabled: Boolean(env.GOOGLE_MAPS_ANDROID_KEY),
     applePay: APPLE_PAY,
+    variant: STAFF ? "staff" : "customer",
     eas: { projectId: env.EAS_PROJECT_ID ?? EXPO_PROJECT_ID },
   },
 };

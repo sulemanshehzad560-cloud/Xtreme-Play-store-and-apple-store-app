@@ -41,6 +41,10 @@ const EnvSchema = z.object({
   TWILIO_AUTH_TOKEN: z.string().optional(),
   TWILIO_FROM: z.string().optional(),
   TWILIO_MESSAGING_SERVICE_SID: z.string().optional(),
+  // Masked calls between customers and the team: a Twilio voice number (E.164, e.g. +9712…).
+  // Twilio rings the caller from this number and connects them to the other side, so neither
+  // sees the other's real number. Without it, calls go to the office line instead.
+  TWILIO_VOICE_NUMBER: z.string().trim().regex(/^\+\d{8,15}$/, "TWILIO_VOICE_NUMBER must be in +971… format").optional(),
   // WhatsApp sign-in codes (Meta WhatsApp Cloud API). When set, codes go to WhatsApp first
   // and fall back to SMS if WhatsApp can't send. Customers can also ask for SMS instead.
   WHATSAPP_TOKEN: z.string().trim().optional(),

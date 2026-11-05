@@ -3,13 +3,14 @@ import { LineIcon, iconColor, type LineIconName } from "@/components/LineIcon";
 import { hasOnboarded } from "@/lib/onboarding";
 import { Alert, Platform, Pressable, Text as RNText, View } from "react-native";
 import { Image } from "expo-image";
-import { router } from "expo-router";
+import { Redirect, router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AppleIcon, FacebookIcon, GoogleIcon } from "@/components/BrandIcons";
 import { Button, Text } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import { colors, fonts, radius, space } from "@/lib/theme";
 import { t } from "@/lib/i18n";
+import { STAFF_APP } from "@/lib/variant";
 
 const PERKS: [LineIconName, string][] = [
   ["shield", "Vetted, trained & insured teams"],
@@ -18,6 +19,12 @@ const PERKS: [LineIconName, string][] = [
 ];
 
 export default function Welcome() {
+  // The staff app has no customer sign-in: it opens on the Staff ID screen.
+  if (STAFF_APP) return <Redirect href="/(auth)/staff-login" />;
+  return <CustomerWelcome />;
+}
+
+function CustomerWelcome() {
   const auth = useAuth();
   const [busy, setBusy] = useState<string | null>(null);
 

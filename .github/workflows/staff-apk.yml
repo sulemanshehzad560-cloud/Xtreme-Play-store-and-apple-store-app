@@ -1,0 +1,76 @@
+name: staff-apk
+# Builds the separate staff & supplier app ("Xtreme Staff", package ae.xtremefm.staff) as an
+# installable APK against the test server. It opens straight to the Staff ID sign-in and installs
+# next to the customer app. The APK goes to the "staff-app" release and the staff-apk branch.
+# Push alerts need the repository secret GOOGLE_SERVICES_JSON_STAFF (Firebase → add the Android
+# app ae.xtremefm.staff → download google-services.json → paste its text as the secret).
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: "Backend URL"
+        default: "https://xtreme-api-test.onrender.com"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: staff-apk
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults: { run: { working-directory: mobile } }
+    env:
+      APP_VARIANT: staff
+      EXPO_PUBLIC_DEMO: "0"
+      EXPO_PUBLIC_API_URL: ${{ inputs.api_url }}
+      GOOGLE_SERVICES_JSON_STAFF: ${{ secrets.GOOGLE_SERVICES_JSON_STAFF }}
+      NODE_OPTIONS: --max-old-space-size=6144
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: mobile/package-lock.json }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci --legacy-peer-deps
+      - run: npx tsc --noEmit
+      - name: Generate native Android project (staff variant)
+        run: npx expo prebuild --platform android --no-install --clean
+      - name: Give Gradle enough memory to package the APK
+        working-directory: mobile/android
+        run: |
+          sed -i '/^org.gradle.jvmargs=/d' gradle.properties
+          printf '\norg.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8\n' >> gradle.properties
+      - name: Build APK (release variant, signed with the project's fixed debug key so updates install over it)
+        working-directory: mobile/android
+        run: ./gradlew assembleRelease --no-daemon --stacktrace -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
+      - name: Name the APK
+        run: |
+          mkdir -p ../dist
+          cp android/app/build/outputs/apk/release/app-release.apk ../dist/Xtreme-Staff.apk
+          ls -la ../dist
+      - uses: actions/upload-artifact@v4
+        with: { name: Xtreme-Staff-apk, path: dist/Xtreme-Staff.apk }
+      - name: Copy to the staff-apk branch
+        working-directory: dist
+        run: |
+          git init -q -b staff-apk
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          echo "Xtreme Staff app built from ${GITHUB_SHA::7} ($(date -u '+%Y-%m-%d %H:%M UTC')) against ${EXPO_PUBLIC_API_URL}" > BUILD.txt
+          git add Xtreme-Staff.apk BUILD.txt
+          git commit -qm "Xtreme Staff APK"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" staff-apk
+      - name: Publish to the "staff-app" release
+        continue-on-error: true
+        working-directory: .
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          NOTES="Xtreme Staff (staff & suppliers) from commit ${GITHUB_SHA::7} ($(date -u '+%Y-%m-%d %H:%M UTC')). Install on Android: download the APK on the phone, open it and allow installing from this source. Sign in with the Staff ID and password from the office."
+          gh release view staff-app >/dev/null 2>&1 || gh release create staff-app --target "$GITHUB_SHA" --prerelease --title "Xtreme Staff app" --notes "$NOTES"
+          gh release edit staff-app --target "$GITHUB_SHA" --notes "$NOTES"
+          gh release upload staff-app dist/Xtreme-Staff.apk --clobber

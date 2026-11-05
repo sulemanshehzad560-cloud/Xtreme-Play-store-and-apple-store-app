@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Alert, Linking, Platform, Text as RNText, View } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { Button, Card, Divider, ErrorText, InlineLoader, Input, Row, Screen, StatusPill, StickyFooter, Text } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { startSharingLocation } from "@/lib/staff-location";
 import { aed, SIZE_LABEL, when } from "@/lib/format";
+import { maskedCall } from "@/lib/calls";
 import { LineIcon } from "@/components/LineIcon";
 import { colors, fonts, space } from "@/lib/theme";
 import type { Booking, BookingStatus, StaffStatus } from "@/lib/types";
@@ -166,12 +167,16 @@ export default function Job() {
       <Card>
         <Text variant="label">{t("CUSTOMER")}</Text>
         <Text style={{ fontFamily: fonts.bold, fontSize: 17 }}>{job.customer?.fullName ?? t("Customer")}</Text>
-        {job.customer?.phone ? (
-          <Row style={{ gap: space(2) }}>
+        <Row style={{ gap: space(2) }}>
+          {job.customer?.phone ? (
             <Button title={t("Call")} icon={<LineIcon name="call" size={18} />} variant="secondary" size="sm" style={{ flex: 1 }} onPress={() => Linking.openURL(`tel:${job.customer!.phone}`)} />
-            <Button title={t("WhatsApp")} icon={<LineIcon name="chat" size={18} />} variant="secondary" size="sm" style={{ flex: 1 }} onPress={() => Linking.openURL(`https://wa.me/${job.customer!.phone!.replace(/[^0-9]/g, "")}`)} />
-          </Row>
-        ) : null}
+          ) : (
+            // Suppliers: the customer's number is hidden; calls go through Xtreme's masked number.
+            <Button title={t("Call")} icon={<LineIcon name="call" size={18} />} variant="secondary" size="sm" style={{ flex: 1 }} onPress={() => void maskedCall(job.id)} />
+          )}
+          <Button title={t("Message")} icon={<LineIcon name="chat" size={18} />} variant="secondary" size="sm" style={{ flex: 1 }} onPress={() => router.push(`/chat/${job.id}`)} />
+        </Row>
+        {job.customer?.phoneHidden ? <Text variant="small">{t("The customer's number is private. Calls and messages go through Xtreme.")}</Text> : null}
       </Card>
       <Card>
         <Text variant="label">{t("ADDRESS")}</Text>

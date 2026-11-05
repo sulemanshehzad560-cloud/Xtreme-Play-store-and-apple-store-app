@@ -15,6 +15,8 @@ import { WhatsAppOtp, type CodeSender } from "./modules/auth/whatsapp.js";
 import { TokenService } from "./modules/auth/tokens.js";
 import { BookingService, DEFAULT_RULES, type BookingRules } from "./modules/bookings/booking.service.js";
 import { BookingPhotoService } from "./modules/bookings/booking-photos.service.js";
+import { BookingContactService } from "./modules/bookings/booking-contact.service.js";
+import { NoCallBridge, TwilioCallBridge, type CallBridge } from "./modules/calls/masked-call.js";
 import { NotificationService } from "./modules/notifications/notification.service.js";
 import { ExpoPush, NoopPush, type PushSender } from "./modules/notifications/push.js";
 import type { BnplGateway, CardGateway, HostedCardGateway } from "./modules/payments/gateways.js";
@@ -60,6 +62,7 @@ export interface Container {
   promotions: PromotionService;
   support: SupportService;
   bookingPhotos: BookingPhotoService;
+  bookingContact: BookingContactService;
 }
 
 export interface ContainerOverrides {
@@ -72,6 +75,7 @@ export interface ContainerOverrides {
   hosted?: HostedCardGateway;
   bnpl?: BnplGateway;
   mailer?: Mailer;
+  callBridge?: CallBridge;
 }
 
 export function createContainer(env: Env, log: FastifyBaseLogger, overrides: ContainerOverrides = {}): Container {
@@ -116,6 +120,12 @@ export function createContainer(env: Env, log: FastifyBaseLogger, overrides: Con
     etaSpeedKmh: env.ETA_AVERAGE_SPEED_KMH,
     ...overrides.bookingRules,
   });
+  const callBridge =
+    overrides.callBridge ??
+    (env.TWILIO_VOICE_NUMBER && env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN
+      ? new TwilioCallBridge(env.TWILIO_ACCOUNT_SID, env.TWILIO_AUTH_TOKEN, env.TWILIO_VOICE_NUMBER, log)
+      : new NoCallBridge());
+  const bookingContact = new BookingContactService(db, bookings, notifications, hub, callBridge);
   const bookingPhotos = new BookingPhotoService(db, bookings, notifications, hub, { publicUrl: env.PUBLIC_URL, secret: env.JWT_SECRET });
   const staff = new StaffService(db, bookings, hub, {
     historyMinIntervalSeconds: env.LOCATION_HISTORY_MIN_INTERVAL_SECONDS,
@@ -179,5 +189,5 @@ export function createContainer(env: Env, log: FastifyBaseLogger, overrides: Con
   payments.onPaid((bookingId) => subscriptions.onBookingPaid(bookingId));
   payments.onPaid((bookingId) => bookings.confirmPaid(bookingId));
   payments.onPaid((bookingId) => invoices.sendIfDue(bookingId));
-  return { env, db, pool, hub, sms, push, verifiers, tokens, otp, auth, notifications, bookings, bookingPhotos, staff, users, card, hosted, bnpl, payments, admin, mailer, invoices, subscriptions, promotions, support, prices };
+  return { env, db, pool, hub, sms, push, verifiers, tokens, otp, auth, notifications, bookings, bookingPhotos, bookingContact, staff, users, card, hosted, bnpl, payments, admin, mailer, invoices, subscriptions, promotions, support, prices };
 }

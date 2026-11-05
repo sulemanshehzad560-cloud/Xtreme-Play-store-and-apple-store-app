@@ -101,6 +101,26 @@ export async function bookingRoutes(app: FastifyInstance, c: Container) {
     async (req) => c.bookings.review(req.params.id, req.user, req.body),
   );
 
+  // Job chat and masked calls between the customer and their team. Contact details are removed
+  // from messages and calls go through Xtreme's number, so numbers are never exchanged.
+  r.get("/bookings/:id/messages", { onRequest: anyone, schema: { tags, summary: "Job chat with the team", params: uuidParam } }, async (req) =>
+    c.bookingContact.messages(req.params.id, req.user),
+  );
+  r.post(
+    "/bookings/:id/messages",
+    {
+      onRequest: anyone,
+      config: { rateLimit: { max: 30, timeWindow: "1 minute" } },
+      schema: { tags, summary: "Send a job chat message (phone numbers, emails and links are removed)", params: uuidParam, body: z.object({ body: z.string().trim().min(1).max(1000) }) },
+    },
+    async (req, reply) => reply.status(201).send(await c.bookingContact.send(req.params.id, req.user, req.body.body)),
+  );
+  r.post(
+    "/bookings/:id/call",
+    { onRequest: anyone, config: { rateLimit: { max: 6, timeWindow: "5 minutes" } }, schema: { tags, summary: "Call the other side through Xtreme's masked number", params: uuidParam } },
+    async (req) => c.bookingContact.call(req.params.id, req.user),
+  );
+
   // Quote photos: for "price on inspection" services the customer sends 3–5 photos and the office prices the job from them.
   const photoParams = z.object({ id: z.uuid(), photoId: z.uuid() });
   r.get("/bookings/:id/photos", { onRequest: anyone, schema: { tags, summary: "Photos sent for a quote (signed links)", params: uuidParam } }, async (req) =>

@@ -16,6 +16,7 @@ export default function StaffLayout() {
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="job/[id]" options={{ title: t("Job") }} />
+      <Stack.Screen name="chat/[id]" options={{ title: t("Messages") }} />
     </Stack>
   );
 }

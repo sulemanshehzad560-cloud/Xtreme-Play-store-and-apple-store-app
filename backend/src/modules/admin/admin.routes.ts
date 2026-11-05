@@ -133,6 +133,9 @@ export async function adminRoutes(app: FastifyInstance, c: Container) {
     skills: z.array(z.string().max(40)).max(30),
     photoUrl: z.url().nullish(),
     notifyNewOrders: z.boolean().optional(),
+    // Third-party supplier working as Xtreme staff: never sees customers' phone numbers.
+    isSupplier: z.boolean().optional(),
+    supplierCompany: z.string().trim().max(80).nullish(),
   };
   const staffPassword = z.string().min(8, "Use at least 8 characters").max(100);
   const optionalPhone = (v: string | null | undefined) => (v ? normalizePhone(v, c.env.OTP_DEFAULT_REGION) : v);

@@ -7,6 +7,7 @@ import { LineIcon } from "@/components/LineIcon";
 import { useAuth } from "@/lib/auth";
 import { colors, fonts, radius, space } from "@/lib/theme";
 import { t } from "@/lib/i18n";
+import { STAFF_APP } from "@/lib/variant";
 
 /** Sign-in for Xtreme staff with the Staff ID and password set by the office. */
 export default function StaffLogin() {
@@ -34,9 +35,11 @@ export default function StaffLogin() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.ink }}>
       <SafeAreaView edges={["top"]} style={{ paddingHorizontal: space(6), paddingTop: space(2), paddingBottom: space(8), gap: space(5) }}>
-        <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel={t("Back")} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "#2A251D", alignItems: "center", justifyContent: "center" }}>
-          <RNText style={{ color: "#fff", fontSize: 22, marginTop: -2 }}>‹</RNText>
-        </Pressable>
+        {STAFF_APP ? null : (
+          <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel={t("Back")} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "#2A251D", alignItems: "center", justifyContent: "center" }}>
+            <RNText style={{ color: "#fff", fontSize: 22, marginTop: -2 }}>‹</RNText>
+          </Pressable>
+        )}
         <Image source={require("../../assets/logo-mark.png")} style={{ width: 92, height: 70 }} resizeMode="contain" />
         <View style={{ gap: space(1) }}>
           <RNText style={{ color: colors.goldBright, fontFamily: fonts.bold, fontSize: 14, letterSpacing: 1.5 }}>{t("XTREME STAFF")}</RNText>
