@@ -161,7 +161,7 @@ export function QuotePhotoPicker({ photos, onChange }: { photos: QuotePhoto[]; o
       {photos.length ? (
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space(2) }}>
           {photos.map((p, i) => (
-            <Thumb key={p.uri} uri={p.uri} size={88} onRemove={() => onChange(photos.filter((_, j) => j !== i))} />
+            <Thumb key={p.uri} uri={p.uri} size={74} onRemove={() => onChange(photos.filter((_, j) => j !== i))} />
           ))}
         </View>
       ) : null}
@@ -226,7 +226,7 @@ export function QuotePhotoStatus({ bookingId, quoted, editable }: { bookingId: s
       {photos.length ? (
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space(2) }}>
           {photos.map((p) => (
-            <Thumb key={p.id} uri={p.url} size={88} onRemove={canAdd ? () => void remove(p.id) : undefined} />
+            <Thumb key={p.id} uri={p.url} size={74} onRemove={canAdd ? () => void remove(p.id) : undefined} />
           ))}
         </View>
       ) : null}
