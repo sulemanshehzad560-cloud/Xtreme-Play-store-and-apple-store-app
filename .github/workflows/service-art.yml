@@ -13,7 +13,7 @@ permissions:
   contents: write
 
 env:
-  STYLE: "photorealistic 3D product render, single subject centered, three-quarter view, soft studio lighting, soft contact shadow, isolated on plain pure white background, high detail, no text, no people"
+  STYLE: "photorealistic, centered, three-quarter view, soft studio lighting, soft shadow, white seamless background, high detail"
 
 jobs:
   web:
