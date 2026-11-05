@@ -69,9 +69,17 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           echo "Built from ${GITHUB_SHA::7} with the EAS signing key ($(date -u '+%Y-%m-%d %H:%M UTC'))" > BUILD.txt
-          git add Xtreme-Cleaning-Partner-test.apk BUILD.txt
+          # GitHub refuses files over 100 MB: larger builds go up in 90 MB parts
+          # (rejoin with: cat Xtreme-Cleaning-Partner-test.apk.part-* > Xtreme-Cleaning-Partner-test.apk).
+          sha256sum Xtreme-Cleaning-Partner-test.apk > SHA256.txt
+          if [ "$(stat -c %s Xtreme-Cleaning-Partner-test.apk)" -gt 95000000 ]; then
+            split -b 90m -d Xtreme-Cleaning-Partner-test.apk Xtreme-Cleaning-Partner-test.apk.part-
+            mv Xtreme-Cleaning-Partner-test.apk ../full.apk
+          fi
+          git add Xtreme-Cleaning-Partner-test.apk* BUILD.txt SHA256.txt
           git commit -qm "Android test APK (EAS-signed)"
           git push -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" apk-download
+          [ -f ../full.apk ] && mv ../full.apk Xtreme-Cleaning-Partner-test.apk || true
       - name: Publish to the "android-test" release
         # Optional: the APK is already on the apk-download branch and in the run artifacts.
         continue-on-error: true
