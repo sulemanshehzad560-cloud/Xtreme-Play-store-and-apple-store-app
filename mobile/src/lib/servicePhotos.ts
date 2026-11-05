@@ -12,6 +12,8 @@ export const SERVICE_ICON_PHOTOS: Partial<Record<string, ImageSourcePropType>> =
   sofa: require("../../assets/services/sofa-icon.jpg"),
   mattress: require("../../assets/services/mattress-icon.jpg"),
   carpet: require("../../assets/services/carpet-icon.jpg"),
+  restaurant: require("../../assets/services/restaurant-icon.jpg"),
+  bathroom: require("../../assets/services/bathroom-icon.jpg"),
 };
 
 export const SERVICE_PHOTOS: Partial<Record<string, ImageSourcePropType>> = {
@@ -20,4 +22,6 @@ export const SERVICE_PHOTOS: Partial<Record<string, ImageSourcePropType>> = {
   sofa: require("../../assets/services/sofa.jpg"),
   mattress: require("../../assets/services/mattress.jpg"),
   carpet: require("../../assets/services/carpet.jpg"),
+  restaurant: require("../../assets/services/restaurant.jpg"),
+  bathroom: require("../../assets/services/bathroom.jpg"),
 };
