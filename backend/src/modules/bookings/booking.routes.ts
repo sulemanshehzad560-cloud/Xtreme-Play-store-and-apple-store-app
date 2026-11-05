@@ -100,4 +100,35 @@ export async function bookingRoutes(app: FastifyInstance, c: Container) {
     },
     async (req) => c.bookings.review(req.params.id, req.user, req.body),
   );
+
+  // Quote photos: for "price on inspection" services the customer sends 3–5 photos and the office prices the job from them.
+  const photoParams = z.object({ id: z.uuid(), photoId: z.uuid() });
+  r.get("/bookings/:id/photos", { onRequest: anyone, schema: { tags, summary: "Photos sent for a quote (signed links)", params: uuidParam } }, async (req) =>
+    c.bookingPhotos.list(req.params.id, req.user),
+  );
+  r.post(
+    "/bookings/:id/photos",
+    {
+      onRequest: customer,
+      bodyLimit: 3_000_000,
+      config: { rateLimit: { max: 20, timeWindow: "1 minute" } },
+      schema: { tags, summary: "Add a photo for my quote (base64 JPEG/PNG/WebP, up to 2 MB; 5 per booking)", params: uuidParam, body: z.object({ image: z.string().min(1000).max(2_800_000) }) },
+    },
+    async (req, reply) => reply.status(201).send(await c.bookingPhotos.add(req.params.id, req.user, req.body.image)),
+  );
+  r.delete("/bookings/:id/photos/:photoId", { onRequest: anyone, schema: { tags, summary: "Remove a quote photo", params: photoParams } }, async (req) =>
+    c.bookingPhotos.remove(req.params.id, req.params.photoId, req.user),
+  );
+}
+
+/** Quote photos by signed link, so the dashboard and app can show them without a sign-in header. */
+export async function bookingPhotoLinkRoutes(app: FastifyInstance, c: Container) {
+  app.withTypeProvider<ZodTypeProvider>().get(
+    "/booking-photos/:id/:sig",
+    { schema: { tags, summary: "A quote photo (signed link)", params: z.object({ id: z.uuid(), sig: z.string().regex(/^[0-9a-f]{32}$/) }) } },
+    async (req, reply) => {
+      const p = await c.bookingPhotos.bySignedLink(req.params.id, req.params.sig);
+      return reply.type(p.contentType).header("cache-control", "private, max-age=2592000, immutable").send(p.bytes);
+    },
+  );
 }

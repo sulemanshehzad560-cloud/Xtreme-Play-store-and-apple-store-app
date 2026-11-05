@@ -43,9 +43,9 @@ const config: ExpoConfig = {
       NSLocationWhenInUseUsageDescription: "Xtreme-Cleaning Partner uses your location to set the service address and to show your team arriving.",
       NSLocationAlwaysAndWhenInUseUsageDescription:
         "Staff only: Xtreme-Cleaning Partner shares your location with the customer while you are on duty and travelling to a job.",
-      // Camera: a profile photo, or scanning a card in Stripe's payment form. Apple requires the reasons.
-      NSCameraUsageDescription: "Xtreme-Cleaning Partner uses the camera only when you choose to take a profile photo or scan your payment card.",
-      NSPhotoLibraryUsageDescription: "Xtreme-Cleaning Partner lets you choose a profile photo from your library.",
+      // Camera: a profile photo, quote photos (sofa, mattress…), or scanning a card in Stripe's payment form. Apple requires the reasons.
+      NSCameraUsageDescription: "Xtreme-Cleaning Partner uses the camera only when you choose to take a profile photo, photograph the item you want cleaned (for example a sofa or mattress) so we can send your quote, or scan your payment card.",
+      NSPhotoLibraryUsageDescription: "Xtreme-Cleaning Partner lets you choose a profile photo, or photos of the item you want cleaned (for example a sofa or mattress) so we can send your quote.",
       UIBackgroundModes: ["location", "remote-notification"],
       ITSAppUsesNonExemptEncryption: false,
     },
@@ -75,8 +75,8 @@ const config: ExpoConfig = {
     [
       "expo-image-picker",
       {
-        photosPermission: "Xtreme-Cleaning Partner lets you choose a profile photo from your library.",
-        cameraPermission: "Xtreme-Cleaning Partner uses the camera only when you choose to take a profile photo or scan your payment card.",
+        photosPermission: "Xtreme-Cleaning Partner lets you choose a profile photo, or photos of the item you want cleaned (for example a sofa or mattress) so we can send your quote.",
+        cameraPermission: "Xtreme-Cleaning Partner uses the camera only when you choose to take a profile photo, photograph the item you want cleaned (for example a sofa or mattress) so we can send your quote, or scan your payment card.",
         microphonePermission: false,
       },
     ],

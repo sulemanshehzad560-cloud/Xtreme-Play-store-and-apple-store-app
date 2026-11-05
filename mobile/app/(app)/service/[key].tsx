@@ -17,6 +17,7 @@ import { SlotPicker, abuDhabiTime, firstOpenDay, hourLabel, nextDays } from "@/c
 import { LineIcon, iconColor, type LineIconName } from "@/components/LineIcon";
 import { dateLocale, t } from "@/lib/i18n";
 import { useMaterialsText } from "@/lib/materials";
+import { MIN_PHOTOS, QuotePhotoPicker, uploadQuotePhotos, type QuotePhoto } from "@/components/QuotePhotos";
 
 type PropertyType = "apartment" | "villa" | "office" | "restaurant";
 type Pay = "card" | "tamara";
@@ -88,6 +89,9 @@ export default function BookService() {
   const price = q === undefined ? undefined : (q?.priceAed ?? null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Quote jobs (sofa, mattress…): the customer sends 3–5 photos so the office can price the job.
+  const [photos, setPhotos] = useState<QuotePhoto[]>([]);
+  const [sending, setSending] = useState<string | null>(null);
   const idempotencyKey = useRef(Crypto.randomUUID()).current;
 
   const sizes = catalog.data?.propertySizes[type] ?? [];
@@ -127,7 +131,8 @@ export default function BookService() {
   }, [service?.key, type, size, sizes.length, frequency]);
 
   const newAddressOk = Boolean(completeAddress(draft));
-  const canContinue = [true, hour != null, adding ? newAddressOk : Boolean(addressId), true][step];
+  const needsPhotos = q?.pricing === "inspection";
+  const canContinue = [!needsPhotos || photos.length >= MIN_PHOTOS, hour != null, adding ? newAddressOk : Boolean(addressId), true][step];
 
   async function submit() {
     setBusy(true);
@@ -154,6 +159,11 @@ export default function BookService() {
           ...(useId ? { addressId: useId } : { address: newAddress }),
         },
       });
+      if (!fixed && photos.length) {
+        // Send the photos; if one fails, the booking page lets the customer add it again.
+        setSending(t("Sending photos {0} of {1}…", { 0: 0, 1: photos.length }));
+        await uploadQuotePhotos(booking.id, photos, (n) => setSending(t("Sending photos {0} of {1}…", { 0: n, 1: photos.length }))).catch(() => undefined);
+      }
       if (booking.canPay && (pay === "card" || pay === "tamara")) router.replace(`/booking/${booking.id}/pay?method=${pay}`);
       else router.replace(`/booking/${booking.id}?new=1`);
     } catch (e) {
@@ -163,6 +173,7 @@ export default function BookService() {
       } else setError(e instanceof Error ? e.message : t("Could not book"));
     } finally {
       setBusy(false);
+      setSending(null);
     }
   }
 
@@ -175,8 +186,8 @@ export default function BookService() {
   }
 
   const selectedAddress = saved.data?.find((a) => a.id === addressId);
-  const totalLabel = q === undefined ? "…" : fixed ? aed(step === 3 ? payTotal : price!) : t("On-site visit");
-  const cta = step < 3 ? t("Continue") : fixed ? t("Pay {0}", { 0: aed(payTotal) }) : t("Book site visit");
+  const totalLabel = q === undefined ? "…" : fixed ? aed(step === 3 ? payTotal : price!) : t("Quote from photos");
+  const cta = step < 3 ? t("Continue") : fixed ? t("Pay {0}", { 0: aed(payTotal) }) : t("Send for quote");
 
   return (
     <Screen
@@ -294,16 +305,17 @@ export default function BookService() {
             <Card tone="gold">
               <Row style={{ gap: space(2) }}>
                 <LineIcon name="doc" size={22} color={iconColor("doc")} />
-                <Text style={{ fontFamily: fonts.bold, flex: 1 }}>{t("Priced on a site visit")}</Text>
+                <Text style={{ fontFamily: fonts.bold, flex: 1 }}>{t("Priced from your photos")}</Text>
               </Row>
               <Text style={{ fontSize: 14, lineHeight: 20 }}>
                 {service.key === "deep"
                   ? t("Every deep clean is different. The price depends on the property and whether it is empty or occupied. ")
                   : ""}
-                {t("Our team visits at the time you choose, checks the job and sends your quote to the app. Nothing to pay now; you pay securely in the app once you accept the quote.")}
+                {t("Send a few photos and our team reviews them and sends your quote to the app. Nothing to pay now; you pay securely in the app once you accept the quote. If anything is unclear, we arrange a free site visit.")}
               </Text>
             </Card>
           ) : null}
+          {needsPhotos ? <QuotePhotoPicker photos={photos} onChange={setPhotos} /> : null}
         </>
       ) : null}
 
@@ -314,8 +326,8 @@ export default function BookService() {
           onDay={setDay}
           hour={hour}
           onHour={setHour}
-          title={fixed ? t("Pick a day") : t("When can we visit?")}
-          note={fixed ? undefined : t("This is the time for the site visit. The schedule for the work is agreed with you once the quotation is finalised.")}
+          title={fixed ? t("Pick a day") : t("When suits you?")}
+          note={fixed ? undefined : t("Your preferred time for the job. We confirm it with your quote, or arrange a free site visit if we need a closer look.")}
         />
       ) : null}
 
@@ -356,12 +368,15 @@ export default function BookService() {
             />
             {q?.durationMinutes ? <SummaryRow icon={<LineIcon name="clock" size={20} color={iconColor("clock")} />} label={t("Team & time")} value={t("{0} cleaners · about {1} · materials free", { 0: q.cleaners, 1: duration(q.durationMinutes) })} /> : null}
             <SummaryRow icon={<LineIcon name="home" size={20} color={iconColor("home")} />} label={t("Property")} value={`${t(PROPERTY.find(([k]) => k === type)![1])} · ${t(SIZE_LABEL[size] ?? size)}`} />
-            <SummaryRow icon={<LineIcon name="calendar" size={20} color={iconColor("calendar")} />} label={fixed ? t("Date & time") : t("Site visit")} value={`${day.toLocaleDateString(dateLocale(), { weekday: "short", day: "numeric", month: "short" })} · ${hour != null ? hourLabel(hour) : ""}`} />
+            <SummaryRow icon={<LineIcon name="calendar" size={20} color={iconColor("calendar")} />} label={fixed ? t("Date & time") : t("Preferred time")} value={`${day.toLocaleDateString(dateLocale(), { weekday: "short", day: "numeric", month: "short" })} · ${hour != null ? hourLabel(hour) : ""}`} />
             <SummaryRow
               icon={<LineIcon name="pin" size={20} color={iconColor("pin")} />}
               label={t("Address")}
               value={(adding ? [draft.unit, draft.building, draft.area] : [selectedAddress?.unit, selectedAddress?.building, selectedAddress?.area]).filter(Boolean).join(", ")}
             />
+            {needsPhotos ? (
+              <SummaryRow icon={<LineIcon name="camera" size={20} color={iconColor("camera")} />} label={t("Photos for your quote")} value={t("{0} photos ready to send", { 0: photos.length })} />
+            ) : null}
           </Card>
 
           <Text variant="heading">{t("Payment method")}</Text>
@@ -378,7 +393,7 @@ export default function BookService() {
             </>
           ) : (
             <Card tone="gold">
-              <Text style={{ fontSize: 14 }}>{t("Nothing to pay now. Our team inspects the job during the visit and sends your quote to the app; you pay by card or Tamara once you accept it.")}</Text>
+              <Text style={{ fontSize: 14 }}>{t("Nothing to pay now. Our team reviews your photos and sends your quote to the app; you pay by card or Tamara once you accept it.")}</Text>
             </Card>
           )}
 
@@ -399,6 +414,7 @@ export default function BookService() {
         </>
       ) : null}
 
+      {sending ? <Text variant="small" style={{ textAlign: "center", color: colors.gold }}>{sending}</Text> : null}
       <ErrorText error={error} />
     </Screen>
   );

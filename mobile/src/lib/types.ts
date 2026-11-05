@@ -56,6 +56,8 @@ export interface Booking {
   property: { type: string; size: string };
   priceAed: number | null;
   pricing: "fixed" | "inspection";
+  /** Photos the customer sent for a quote. */
+  photoCount?: number;
   paymentMethod: string;
   paymentStatus: "unpaid" | "pending" | "paid" | "partially_refunded" | "refunded" | "included";
   subscriptionId?: string | null;

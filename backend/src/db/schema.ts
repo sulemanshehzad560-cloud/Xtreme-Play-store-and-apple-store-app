@@ -588,6 +588,24 @@ export const userAvatars = pgTable("user_avatars", {
   updatedAt: ts("updated_at").notNull().defaultNow(),
 });
 
+/**
+ * Photos the customer sends with a quote request (e.g. the sofa or mattress to be cleaned), so the
+ * office can price the job from the dashboard. Stored encrypted like profile photos.
+ */
+export const bookingPhotos = pgTable(
+  "booking_photos",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    bookingId: uuid("booking_id")
+      .notNull()
+      .references(() => bookings.id, { onDelete: "cascade" }),
+    contentType: text("content_type").notNull(),
+    data: text("data").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("booking_photos_booking_idx").on(t.bookingId, t.createdAt)],
+);
+
 /** "Chat with us": one thread per customer, with instant automated answers and replies from the office. */
 export const supportMessages = pgTable(
   "support_messages",

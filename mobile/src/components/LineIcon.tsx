@@ -40,7 +40,9 @@ export type LineIconName =
   | "map"
   | "briefcase"
   | "search"
-  | "heart";
+  | "heart"
+  | "camera"
+  | "image";
 
 // Each icon has its own colour, so lists and highlights are easy to scan.
 const TINT: Partial<Record<LineIconName, string>> = {
@@ -70,6 +72,8 @@ const TINT: Partial<Record<LineIconName, string>> = {
   restaurant: "#E5484D",
   card: "#2F6FDE",
   clock: "#F76B15",
+  camera: "#B98F35",
+  image: "#B98F35",
   tag: "#1E9E5A",
   sun: "#F5A524",
   moon: "#6E56CF",
@@ -183,6 +187,21 @@ export function LineIcon({ name, size = 22, color = colors.text }: { name: LineI
               <>
                 <Rect x={2.5} y={5} width={19} height={14} rx={2.5} {...p} />
                 <Path d="M2.5 9.5h19M6.5 15h4" {...p} />
+              </>
+            );
+          case "camera":
+            return (
+              <>
+                <Path d="M3 8.5A2 2 0 0 1 5 6.5h2.2l1.4-2h6.8l1.4 2H19a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" {...p} />
+                <Circle cx={12} cy={13} r={3.6} {...p} />
+              </>
+            );
+          case "image":
+            return (
+              <>
+                <Rect x={3} y={4.5} width={18} height={15} rx={2.5} {...p} />
+                <Circle cx={8.5} cy={9.5} r={1.6} {...p} />
+                <Path d="m21 15.5-5-5-8.5 9" {...p} />
               </>
             );
           case "clock":

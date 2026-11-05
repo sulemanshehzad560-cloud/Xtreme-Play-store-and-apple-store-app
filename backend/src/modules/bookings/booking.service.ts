@@ -4,6 +4,7 @@ import {
   addresses,
   bookingAssignments,
   bookingEvents,
+  bookingPhotos,
   bookings,
   reviews,
   staffProfiles,
@@ -742,6 +743,9 @@ export class BookingService {
     const teams = await this.teams(ids);
     const reviewRows = ids.length ? await this.db.select().from(reviews).where(inArray(reviews.bookingId, ids)) : [];
     const reviewMap = new Map(reviewRows.map((r) => [r.bookingId, r]));
+    const photoRows = ids.length ? await this.db.select({ bookingId: bookingPhotos.bookingId }).from(bookingPhotos).where(inArray(bookingPhotos.bookingId, ids)) : [];
+    const photoCount = new Map<string, number>();
+    for (const p of photoRows) photoCount.set(p.bookingId, (photoCount.get(p.bookingId) ?? 0) + 1);
     const timeline =
       opts.withTimeline && ids.length
         ? await this.db.select().from(bookingEvents).where(inArray(bookingEvents.bookingId, ids)).orderBy(bookingEvents.id)
@@ -768,6 +772,7 @@ export class BookingService {
         service: { key: b.serviceKey, name: serviceName(b.serviceKey), nameAr: service?.nameAr ?? null },
         property: { type: b.propertyType, size: b.propertySize },
         plan: b.plan,
+        photoCount: photoCount.get(b.id) ?? 0,
         frequency: b.frequency,
         repeatOfId: b.repeatOfId,
         pricing: b.pricing,

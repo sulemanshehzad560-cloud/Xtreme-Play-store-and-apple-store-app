@@ -13,6 +13,7 @@ import type { Booking, BookingStatus, Company } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { LineIcon, iconColor } from "@/components/LineIcon";
 import { Celebration } from "@/components/Celebration";
+import { QuotePhotoStatus } from "@/components/QuotePhotos";
 import * as StoreReview from "expo-store-review";
 import { dateLocale, isRTL, t } from "@/lib/i18n";
 
@@ -210,13 +211,21 @@ export default function BookingDetail() {
           </Text>
         ) : null}
         {b.priceAed == null && b.status !== "cancelled" ? (
-          <Text variant="small">{t("Our team inspects on arrival and sends your quote here. You'll get a notification and can pay securely in the app.")}</Text>
+          <Text variant="small">
+            {b.pricing === "inspection" && (b.photoCount ?? 0) > 0
+              ? t("Our team reviews your photos and sends your quote here. You'll get a notification and can pay securely in the app.")
+              : t("Our team inspects on arrival and sends your quote here. You'll get a notification and can pay securely in the app.")}
+          </Text>
         ) : null}
         {b.canPay && !b.awaitingPayment ? <Button title={t("Pay {0} now", { 0: aed(b.amountDueAed ?? b.priceAed) })} variant="gold" onPress={() => router.push(`/booking/${b.id}/pay`)} /> : null}
         {["paid", "partially_refunded", "refunded"].includes(b.paymentStatus) ? (
           <Button title={t("View receipt")} variant="secondary" onPress={() => router.push(`/booking/${b.id}/invoice`)} />
         ) : null}
       </Card>
+
+      {b.pricing === "inspection" && b.status !== "cancelled" ? (
+        <QuotePhotoStatus bookingId={b.id} quoted={b.priceAed != null} editable={b.paymentStatus === "unpaid" && b.status !== "completed"} />
+      ) : null}
 
       {b.status === "completed" && !b.review ? (
         <Card tone="gold">

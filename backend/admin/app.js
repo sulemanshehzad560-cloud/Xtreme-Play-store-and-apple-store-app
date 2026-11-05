@@ -231,16 +231,18 @@ function card(b) {
     <div class="row"><span class="pill ${b.paymentStatus}">${esc(b.paymentStatus.replace("_", " "))} · ${esc(b.paymentMethod.replace("_", " "))}</span></div>
     ${team ? `<div class="meta">🧑‍🔧 ${team}</div>` : ""}
     ${b.notes ? `<div class="meta">📝 ${esc(b.notes)}</div>` : ""}
+    ${b.photoCount ? `<div class="meta ${b.priceAed == null ? "warn" : ""}">📷 <a href="#" data-act="photos" data-id="${b.id}">${b.photoCount} photo${b.photoCount === 1 ? "" : "s"} from the customer</a>${b.priceAed == null ? " · review and send the quote" : ""}</div>` : ""}
     ${b.invoiceSentAt ? `<div class="meta">✉️ Invoice emailed ${when(b.invoiceSentAt)}</div>` : ""}
     <div class="actions">${actions.join("")}</div>
   </div>`;
 }
 
 $("#board").addEventListener("click", (e) => {
-  const btn = e.target.closest("button[data-act]");
+  const btn = e.target.closest("[data-act]");
   if (!btn) return;
+  e.preventDefault();
   const b = state.bookings.find((x) => x.id === btn.dataset.id);
-  ({ confirm: confirmBooking, assign: assignTeam, price: setPrice, cancel: cancelBooking, refund: refundBooking, invoice: emailInvoice })[btn.dataset.act](b);
+  ({ confirm: confirmBooking, assign: assignTeam, price: setPrice, photos: setPrice, cancel: cancelBooking, refund: refundBooking, invoice: emailInvoice })[btn.dataset.act](b);
 });
 
 const emailInvoice = (b) =>
@@ -294,10 +296,24 @@ function assignTeam(b) {
   );
 }
 
-function setPrice(b) {
+async function setPrice(b) {
+  // Photos the customer sent for this quote (signed links, shown as a gallery to price from).
+  const photos = b.photoCount ? await api(`/bookings/${b.id}/photos`).catch(() => []) : [];
+  const canQuote = b.paymentStatus === "unpaid" && b.status !== "cancelled";
+  const gallery = photos.length
+    ? `<div class="photo-grid">${photos.map((p, i) => `<a href="${esc(p.url)}" target="_blank" rel="noopener" title="Open full size"><img src="${esc(p.url)}" alt="Customer photo ${i + 1}" loading="lazy" /></a>`).join("")}</div>
+       <p class="muted small">${photos.length} photo${photos.length === 1 ? "" : "s"} from ${esc(b.customer?.fullName ?? "the customer")}. Click a photo to open it full size.</p>`
+    : `<p class="muted">No photos were sent with this request.</p>`;
+  if (!canQuote) {
+    modal(`<h2>Customer photos · ${esc(b.reference)}</h2>${gallery}<div class="modal-actions"><button class="btn outline" value="cancel" formnovalidate>Close</button></div>`, async () => {});
+    $("#modal").classList.add("wide");
+    return;
+  }
   modal(
     `<h2>${b.priceAed == null ? "Send quote" : "Change quote"} · ${esc(b.reference)}</h2>
-     <p class="muted">${esc(b.service.name)}. The customer is notified at once and can pay securely in the app. The team lead can also quote on site from the staff app.</p>
+     <p class="muted">${esc(b.service.name)} · ${esc(b.property.type)} · ${esc(b.property.size)}${b.notes ? ` · “${esc(b.notes)}”` : ""}</p>
+     ${gallery}
+     <p class="muted">The customer is notified at once and can pay securely in the app. The team lead can also quote on site from the staff app.</p>
      <label>Price (AED, VAT included)<input name="price" type="number" min="1" max="1000000" required value="${b.priceAed ?? ""}" /></label>
      <label>What it covers (optional)<input name="note" maxlength="200" placeholder="e.g. king-size mattress, both sides" /></label>
      <div class="modal-actions"><button class="btn outline" value="cancel" formnovalidate>Close</button><button class="btn primary">Save price</button></div>`,
@@ -307,6 +323,7 @@ function setPrice(b) {
       toast("Quote sent to the customer");
     },
   );
+  if (photos.length) $("#modal").classList.add("wide");
 }
 
 function cancelBooking(b) {

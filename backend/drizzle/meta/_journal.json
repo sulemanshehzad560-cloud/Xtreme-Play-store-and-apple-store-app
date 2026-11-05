@@ -92,6 +92,13 @@
       "when": 1793641248877,
       "tag": "0012_promo_announcements",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793884600557,
+      "tag": "0013_booking_photos",
+      "breakpoints": true
     }
   ]
 }

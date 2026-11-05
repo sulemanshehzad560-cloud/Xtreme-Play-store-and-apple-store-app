@@ -14,6 +14,7 @@ import { createSmsSender, type SmsSender } from "./modules/auth/sms.js";
 import { WhatsAppOtp, type CodeSender } from "./modules/auth/whatsapp.js";
 import { TokenService } from "./modules/auth/tokens.js";
 import { BookingService, DEFAULT_RULES, type BookingRules } from "./modules/bookings/booking.service.js";
+import { BookingPhotoService } from "./modules/bookings/booking-photos.service.js";
 import { NotificationService } from "./modules/notifications/notification.service.js";
 import { ExpoPush, NoopPush, type PushSender } from "./modules/notifications/push.js";
 import type { BnplGateway, CardGateway, HostedCardGateway } from "./modules/payments/gateways.js";
@@ -58,6 +59,7 @@ export interface Container {
   subscriptions: SubscriptionService;
   promotions: PromotionService;
   support: SupportService;
+  bookingPhotos: BookingPhotoService;
 }
 
 export interface ContainerOverrides {
@@ -114,6 +116,7 @@ export function createContainer(env: Env, log: FastifyBaseLogger, overrides: Con
     etaSpeedKmh: env.ETA_AVERAGE_SPEED_KMH,
     ...overrides.bookingRules,
   });
+  const bookingPhotos = new BookingPhotoService(db, bookings, notifications, hub, { publicUrl: env.PUBLIC_URL, secret: env.JWT_SECRET });
   const staff = new StaffService(db, bookings, hub, {
     historyMinIntervalSeconds: env.LOCATION_HISTORY_MIN_INTERVAL_SECONDS,
     etaSpeedKmh: env.ETA_AVERAGE_SPEED_KMH,
@@ -176,5 +179,5 @@ export function createContainer(env: Env, log: FastifyBaseLogger, overrides: Con
   payments.onPaid((bookingId) => subscriptions.onBookingPaid(bookingId));
   payments.onPaid((bookingId) => bookings.confirmPaid(bookingId));
   payments.onPaid((bookingId) => invoices.sendIfDue(bookingId));
-  return { env, db, pool, hub, sms, push, verifiers, tokens, otp, auth, notifications, bookings, staff, users, card, hosted, bnpl, payments, admin, mailer, invoices, subscriptions, promotions, support, prices };
+  return { env, db, pool, hub, sms, push, verifiers, tokens, otp, auth, notifications, bookings, bookingPhotos, staff, users, card, hosted, bnpl, payments, admin, mailer, invoices, subscriptions, promotions, support, prices };
 }
