@@ -1,53 +1,102 @@
 name: service-art
-# Generates the realistic service pictures (product-style renders on white) on GitHub's runner
-# and puts them on the service-art branch. The app's art is then finished from these files
-# (background removal + the light gold Xtreme backdrop) and committed under mobile/assets/services.
+# Generates the realistic service pictures (product-style renders on white) on GitHub's runners
+# and puts them on the service-art branch (folders: web/ and sd/). The app's art is finished from
+# these files (background removal + the light gold Xtreme backdrop) under mobile/assets/services.
 on:
   workflow_dispatch:
     inputs:
       seeds:
         description: "Seeds to try per picture (space separated)"
-        default: "11 23 37"
+        default: "11 23"
 
 permissions:
   contents: write
 
+env:
+  STYLE: "photorealistic 3D product render, single subject centered, three-quarter view, soft studio lighting, soft contact shadow, isolated on plain pure white background, high detail, no text, no people"
+
 jobs:
-  generate:
+  web:
+    # Fast: a free hosted FLUX model. Each picture gets a short, bounded wait; whatever arrives is kept.
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 30
     steps:
-      - name: Generate pictures
+      - uses: actions/checkout@v4
+      - name: Generate pictures (hosted FLUX)
+        continue-on-error: true
         env:
           SEEDS: ${{ inputs.seeds }}
         run: |
-          mkdir out && cd out
-          STYLE="photorealistic 3D product render, single subject centered, three-quarter view, soft studio lighting, soft contact shadow, isolated on plain pure white background, high detail, no text, no people"
-          declare -A P
-          P[glass]="a clean sparkling glass window in a white frame with a yellow-handled window squeegee cleaning the glass, sparkles"
-          P[kitchen]="a clean modern kitchen stove: stainless steel oven with black glass cooktop, a pot on top and a chrome range hood above, white tile backsplash panel behind"
-          P[bathroom]="a clean white freestanding bathtub with chrome faucet and soap bubbles, a small light blue tiled wall panel behind"
-          P[balcony]="a small clean apartment balcony section: glass railing with black metal frame, beige tiled floor, a potted green plant"
-          P[wardrobe]="an open wooden wardrobe with neatly hanging colorful shirts on hangers"
-          P[restaurant]="a spotless commercial restaurant kitchen station: stainless steel prep table with a large steel stock pot and a silver serving cloche"
-          P[cupboard]="a clean white kitchen cupboard unit with wooden countertop, lower cabinet doors with silver handles and an open upper shelf with neat jars"
-          for k in "${!P[@]}"; do
-            for s in $SEEDS; do
-              q=$(python3 -c 'import sys,urllib.parse;print(urllib.parse.quote(sys.argv[1]))' "${P[$k]}, $STYLE")
-              for try in 1 2 3 4; do
-                if curl -sSfL -m 180 -o "$k-$s.jpg" "https://image.pollinations.ai/prompt/$q?width=1024&height=1024&nologo=true&model=flux&seed=$s"; then
-                  file "$k-$s.jpg" | grep -q image && break
-                fi
-                sleep $((try*10))
-              done
-            done
-          done
+          mkdir -p out/web && cd out/web
+          python3 - <<'PY'
+          import json, os, subprocess, urllib.parse
+          prompts = json.load(open("../../.github/service-art-prompts.json"))
+          style = os.environ["STYLE"]
+          for key, text in prompts.items():
+              for seed in os.environ["SEEDS"].split():
+                  q = urllib.parse.quote(f"{text}, {style}")
+                  url = f"https://image.pollinations.ai/prompt/{q}?width=1024&height=1024&nologo=true&model=flux&seed={seed}"
+                  for attempt in range(2):
+                      r = subprocess.run(["curl", "-sSfL", "-m", "100", "-o", f"{key}-{seed}.jpg", url])
+                      ok = r.returncode == 0 and os.path.getsize(f"{key}-{seed}.jpg") > 20000 if os.path.exists(f"{key}-{seed}.jpg") else False
+                      print(key, seed, "ok" if ok else f"failed ({r.returncode})", flush=True)
+                      if ok: break
+                  else:
+                      if os.path.exists(f"{key}-{seed}.jpg"): os.remove(f"{key}-{seed}.jpg")
+          PY
           ls -la
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: web, path: out/web, if-no-files-found: ignore }
+
+  sd:
+    # Self-contained: SDXL-Turbo on the runner's CPU (no outside image service).
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - name: Install
+        run: pip install -q --extra-index-url https://download.pytorch.org/whl/cpu torch==2.4.1 diffusers==0.30.3 transformers==4.44.2 accelerate==0.34.2 safetensors
+      - name: Generate pictures (SDXL-Turbo, CPU)
+        continue-on-error: true
+        env:
+          SEEDS: ${{ inputs.seeds }}
+        run: |
+          mkdir -p out/sd
+          python3 - <<'PY'
+          import json, os, torch
+          from diffusers import AutoPipelineForText2Image
+          torch.set_num_threads(os.cpu_count() or 4)
+          pipe = AutoPipelineForText2Image.from_pretrained("stabilityai/sdxl-turbo", torch_dtype=torch.float32)
+          prompts = json.load(open(".github/service-art-prompts.json"))
+          style = os.environ["STYLE"]
+          for key, text in prompts.items():
+              for seed in os.environ["SEEDS"].split():
+                  g = torch.Generator().manual_seed(int(seed))
+                  img = pipe(prompt=f"{text}, {style}", num_inference_steps=4, guidance_scale=0.0, width=768, height=768, generator=g).images[0]
+                  img.save(f"out/sd/{key}-{seed}.jpg", quality=92)
+                  print(key, seed, "ok", flush=True)
+          PY
+          ls -la out/sd
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: sd, path: out/sd, if-no-files-found: ignore }
+
+  publish:
+    needs: [web, sd]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: out }
       - name: Push to the service-art branch
         working-directory: out
         run: |
+          ls -R
           git init -q -b service-art
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A && git commit -qm "Generated service pictures"
+          git add -A && git commit -qm "Generated service pictures" --allow-empty
           git push -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" service-art
