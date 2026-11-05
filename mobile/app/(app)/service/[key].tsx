@@ -16,6 +16,7 @@ import { PlanPromo } from "@/components/Promo";
 import { SlotPicker, abuDhabiTime, firstOpenDay, hourLabel, nextDays } from "@/components/SlotPicker";
 import { LineIcon, iconColor, type LineIconName } from "@/components/LineIcon";
 import { dateLocale, t } from "@/lib/i18n";
+import { useMaterialsText } from "@/lib/materials";
 
 type PropertyType = "apartment" | "villa" | "office" | "restaurant";
 type Pay = "card" | "tamara";
@@ -67,6 +68,7 @@ export default function BookService() {
   // "Book again" passes the previous booking's property and frequency.
   const { key, type: againType, size: againSize, frequency: againFrequency } = useLocalSearchParams<{ key: string; type?: PropertyType; size?: string; frequency?: Frequency }>();
   const catalog = useApi<Catalog>("/catalog/services");
+  const materials = useMaterialsText();
   const saved = useApi<Address[]>("/me/addresses");
   const service = catalog.data?.services.find((s) => s.key === key);
 
@@ -221,7 +223,10 @@ export default function BookService() {
             <Divider />
             <View style={{ flexDirection: "row", alignItems: "center", gap: space(2), backgroundColor: colors.successSoft, borderRadius: radius.md, paddingHorizontal: space(3), paddingVertical: space(2) }}>
               <LineIcon name="bottle" size={18} color={colors.success} />
-              <Text style={{ flex: 1, color: colors.success, fontFamily: fonts.bold, fontSize: 13.5 }}>{t("Cleaning materials included FREE")}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: colors.success, fontFamily: fonts.bold, fontSize: 13.5 }}>{materials.title}</Text>
+                {materials.note ? <Text style={{ color: colors.success, fontFamily: fonts.medium, fontSize: 12.5 }}>{materials.note}</Text> : null}
+              </View>
             </View>
             {service.highlights.filter((h) => !/materials included free/i.test(h)).map((h) => (
               <Row key={h} style={{ gap: space(2) }}>

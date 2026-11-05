@@ -612,11 +612,15 @@ async function loadAdminTab() {
     ["website", "Website"],
     ["addressLine1", "Office address"],
     ["tagline", "Tagline"],
+    ["materialsTitle", "Free materials headline (English)"],
+    ["materialsNote", "Line under it (English, optional)"],
+    ["materialsTitleAr", "Free materials headline (Arabic)"],
+    ["materialsNoteAr", "Line under it (Arabic, optional)"],
     ["facebook", "Facebook page"],
     ["instagram", "Instagram page"],
   ];
   $("#company-form").innerHTML =
-    fields.map(([k, label]) => `<label class="${k === "tagline" || k === "addressLine1" ? "full" : ""}">${label}<input name="${k}" value="${esc(company[k])}" required /></label>`).join("") +
+    fields.map(([k, label]) => `<label class="${k === "tagline" || k === "addressLine1" ? "full" : ""}">${label}<input name="${k}" value="${esc(company[k] ?? "")}" ${k.startsWith("materialsNote") ? "" : "required"} ${k.endsWith("Ar") ? 'dir="rtl"' : ""} /></label>`).join("") +
     '<div class="full modal-actions"><button class="btn primary">Save contacts</button></div>';
 
   const st = (ok) => (ok === true ? '<span class="state ok">Connected</span>' : ok === false ? '<span class="state no">Not set up</span>' : '<span class="state no">Optional</span>');

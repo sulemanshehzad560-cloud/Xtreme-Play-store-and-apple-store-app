@@ -6,13 +6,15 @@ import type { SubscriptionPlan } from "../lib/types";
 import { useApi } from "../lib/useApi";
 import { LineIcon } from "./LineIcon";
 import { t } from "@/lib/i18n";
+import { useMaterialsText } from "@/lib/materials";
 
 /** "Cleaning materials are free" — shown on every tab and through booking and checkout. */
 export function FreeMaterials({ compact = false }: { compact?: boolean }) {
+  const text = useMaterialsText();
   return (
     <View
       accessibilityRole="text"
-      accessibilityLabel={t("Cleaning materials are free of cost")}
+      accessibilityLabel={text.note ? `${text.title}. ${text.note}` : text.title}
       style={{
         flexDirection: "row",
         alignItems: "center",
@@ -29,7 +31,10 @@ export function FreeMaterials({ compact = false }: { compact?: boolean }) {
         <LineIcon name="bottle" size={compact ? 18 : 22} color={colors.success} />
       </View>
       <View style={{ flex: 1 }}>
-        <RNText style={{ color: colors.success, fontFamily: fonts.extrabold, fontSize: compact ? 14 : 15.5 }}>{t("Cleaning materials are FREE")}</RNText>
+        <RNText style={{ color: colors.success, fontFamily: fonts.extrabold, fontSize: compact ? 14 : 15.5 }}>{text.title}</RNText>
+        {text.note ? (
+          <RNText style={{ color: colors.success, fontFamily: fonts.semibold, fontSize: compact ? 12.5 : 13.5, lineHeight: compact ? 17 : 19 }}>{text.note}</RNText>
+        ) : null}
         {compact ? null : (
           <RNText style={{ color: colors.successText, fontFamily: fonts.medium, fontSize: 12.5, lineHeight: 17 }}>
             {t("All materials and equipment are included in every booking. They don't cost you anything extra.")}

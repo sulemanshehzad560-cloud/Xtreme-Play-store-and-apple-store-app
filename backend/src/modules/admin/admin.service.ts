@@ -18,6 +18,11 @@ export interface CompanyContacts {
   website: string;
   addressLine1: string;
   tagline: string;
+  /** The free-materials message shown across the app (editable, English and Arabic). */
+  materialsTitle: string;
+  materialsNote: string;
+  materialsTitleAr: string;
+  materialsNoteAr: string;
   facebook: string;
   instagram: string;
 }
@@ -34,6 +39,10 @@ export const companyDefaults = (): CompanyContacts => ({
   website: COMPANY.website,
   addressLine1: COMPANY.address.line1,
   tagline: COMPANY.tagline,
+  materialsTitle: "Cleaning materials are free of cost",
+  materialsNote: "Professional-grade cleaning solutions",
+  materialsTitleAr: "مواد التنظيف مجانية",
+  materialsNoteAr: "منتجات تنظيف احترافية",
   facebook: COMPANY.social.facebook,
   instagram: COMPANY.social.instagram,
 });

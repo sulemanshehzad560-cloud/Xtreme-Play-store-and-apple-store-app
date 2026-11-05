@@ -23,6 +23,7 @@ export async function catalogRoutes(app: FastifyInstance, c: Container) {
     return {
       ...COMPANY,
       tagline: c2.tagline,
+      materials: { title: c2.materialsTitle, note: c2.materialsNote, titleAr: c2.materialsTitleAr, noteAr: c2.materialsNoteAr },
       phone: c2.phone,
       phoneDisplay: c2.phoneDisplay,
       landline: c2.landline,

@@ -326,6 +326,10 @@ export async function adminRoutes(app: FastifyInstance, c: Container) {
     website: z.url(),
     addressLine1: z.string().trim().min(3).max(120),
     tagline: z.string().trim().min(3).max(120),
+    materialsTitle: z.string().trim().min(3).max(80),
+    materialsNote: z.string().trim().max(120),
+    materialsTitleAr: z.string().trim().min(2).max(80),
+    materialsNoteAr: z.string().trim().max(120),
     facebook: z.url(),
     instagram: z.url(),
   });
