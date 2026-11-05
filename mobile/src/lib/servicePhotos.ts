@@ -13,6 +13,11 @@ export const SERVICE_ICON_PHOTOS: Partial<Record<string, ImageSourcePropType>> =
   mattress: require("../../assets/services/mattress-icon.jpg"),
   carpet: require("../../assets/services/carpet-icon.jpg"),
   restaurant: require("../../assets/services/restaurant-icon.jpg"),
+  cupboard: require("../../assets/services/cupboard-icon.jpg"),
+  wardrobe: require("../../assets/services/wardrobe-icon.jpg"),
+  balcony: require("../../assets/services/balcony-icon.jpg"),
+  kitchen: require("../../assets/services/kitchen-icon.jpg"),
+  glass: require("../../assets/services/glass-icon.jpg"),
   bathroom: require("../../assets/services/bathroom-icon.jpg"),
 };
 
@@ -23,5 +28,10 @@ export const SERVICE_PHOTOS: Partial<Record<string, ImageSourcePropType>> = {
   mattress: require("../../assets/services/mattress.jpg"),
   carpet: require("../../assets/services/carpet.jpg"),
   restaurant: require("../../assets/services/restaurant.jpg"),
+  cupboard: require("../../assets/services/cupboard.jpg"),
+  wardrobe: require("../../assets/services/wardrobe.jpg"),
+  balcony: require("../../assets/services/balcony.jpg"),
+  kitchen: require("../../assets/services/kitchen.jpg"),
+  glass: require("../../assets/services/glass.jpg"),
   bathroom: require("../../assets/services/bathroom.jpg"),
 };
