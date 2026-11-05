@@ -176,7 +176,7 @@ export default function Job() {
           )}
           <Button title={t("Message")} icon={<LineIcon name="chat" size={18} />} variant="secondary" size="sm" style={{ flex: 1 }} onPress={() => router.push(`/chat/${job.id}`)} />
         </Row>
-        {job.customer?.phoneHidden ? <Text variant="small">{t("The customer's number is private. Call and message them in the app.")}</Text> : null}
+        {job.customer ? <Text variant="small">{t("The customer's number is private. Call and message them in the app. Calls are recorded for training and quality purposes.")}</Text> : null}
       </Card>
       <Card>
         <Text variant="label">{t("ADDRESS")}</Text>

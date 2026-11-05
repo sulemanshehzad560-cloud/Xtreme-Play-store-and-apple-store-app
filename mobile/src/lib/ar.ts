@@ -979,4 +979,10 @@ export const AR: Record<string, string> = {
   "Couldn't connect the call. Check your internet and try again.": "تعذّر توصيل المكالمة. تحقق من الإنترنت وحاول مرة أخرى.",
   "Could not answer": "تعذّر الرد",
   "Could not connect the call": "تعذّر توصيل المكالمة",
+  "This call is recorded for training and quality purposes.": "يتم تسجيل هذه المكالمة لأغراض التدريب وضمان الجودة.",
+  "Calls are recorded": "يتم تسجيل المكالمات",
+  "Calls between customers and Xtreme teams are recorded for training and quality purposes, and to keep everyone safe. Recordings are kept securely by Xtreme.": "تُسجَّل المكالمات بين العملاء وفرق Xtreme لأغراض التدريب وضمان الجودة وللحفاظ على سلامة الجميع. تحتفظ Xtreme بالتسجيلات بشكل آمن.",
+  "I understand": "فهمت",
+  "Calls and messages stay in the app, so your number stays private. Calls are recorded for training and quality purposes.": "تبقى المكالمات والرسائل داخل التطبيق، لذا يبقى رقمك خاصاً. تُسجَّل المكالمات لأغراض التدريب وضمان الجودة.",
+  "The customer's number is private. Call and message them in the app. Calls are recorded for training and quality purposes.": "رقم العميل خاص. اتصل به وراسله داخل التطبيق. تُسجَّل المكالمات لأغراض التدريب وضمان الجودة.",
 };

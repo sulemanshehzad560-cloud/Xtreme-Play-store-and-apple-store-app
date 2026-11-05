@@ -3,6 +3,9 @@ import { MediaStream, RTCIceCandidate, RTCPeerConnection, RTCSessionDescription,
 import { AudioSession } from "@livekit/react-native";
 import { ConnectionState, Room, RoomEvent, Track, type RemoteParticipant } from "livekit-client";
 import InCallManager from "react-native-incall-manager";
+import * as SecureStore from "expo-secure-store";
+import * as Speech from "expo-speech";
+import { lang, t } from "./i18n";
 import { api } from "./api";
 import { getSocket } from "./realtime";
 
@@ -39,6 +42,39 @@ type Signal =
   | { type: "offer" | "answer"; sdp: { type: string; sdp: string } }
   | { type: "candidate"; candidate: { candidate: string; sdpMid?: string | null; sdpMLineIndex?: number | null } };
 
+/** Told to both sides: before the first call (once), spoken when a recorded call connects, and on screen. */
+export const RECORDING_NOTICE = "This call is recorded for training and quality purposes.";
+const NOTICE_KEY = "call-recording-notice-v1";
+
+/** One-time notice before someone's first call: calls are recorded. Resolves false if they cancel. */
+async function acknowledgeRecording(): Promise<boolean> {
+  const seen = await SecureStore.getItemAsync(NOTICE_KEY).catch(() => null);
+  if (seen === "1") return true;
+  return new Promise((resolve) =>
+    RN.Alert.alert(
+      t("Calls are recorded"),
+      t("Calls between customers and Xtreme teams are recorded for training and quality purposes, and to keep everyone safe. Recordings are kept securely by Xtreme."),
+      [
+        { text: t("Cancel"), style: "cancel", onPress: () => resolve(false) },
+        {
+          text: t("I understand"),
+          onPress: () => {
+            void SecureStore.setItemAsync(NOTICE_KEY, "1").catch(() => undefined);
+            resolve(true);
+          },
+        },
+      ],
+      { cancelable: false },
+    ),
+  );
+}
+
+/** Spoken on both phones as a recorded call connects. */
+function announceRecording() {
+  const ar = lang() === "ar";
+  Speech.speak(t(RECORDING_NOTICE), { language: ar ? "ar-AE" : "en-US", rate: ar ? 0.95 : 1.0, pitch: 1.0 });
+}
+
 const IDLE: CallState = { phase: "idle", callId: null, bookingId: null, peerName: "", reference: null, startedAt: null, muted: false, speaker: false, recorded: false, endReason: null, error: null };
 /** Give up if the audio hasn't connected by then (both paths). */
 const CONNECT_TIMEOUT_MS = 25_000;
@@ -72,8 +108,15 @@ class CallController {
     return () => void this.listeners.delete(fn);
   }
 
+  private announced: string | null = null;
+
   private set(patch: Partial<CallState>) {
     this.state = { ...this.state, ...patch };
+    // Both sides hear the recording notice once, as the call connects.
+    if (this.state.phase === "active" && this.state.recorded && this.state.callId && this.announced !== this.state.callId) {
+      this.announced = this.state.callId;
+      announceRecording();
+    }
     for (const fn of this.listeners) fn(this.state);
   }
 
@@ -82,7 +125,7 @@ class CallController {
     if (this.bound) return;
     this.bound = true;
     const s = getSocket();
-    s.on("call:incoming", (d: { callId: string; bookingId: string; reference: string; fromName: string }) => void this.onIncoming(d));
+    s.on("call:incoming", (d: { callId: string; bookingId: string; reference: string; fromName: string; recorded?: boolean }) => void this.onIncoming(d));
     s.on("call:answered", (d: { callId: string }) => d.callId === this.state.callId && void this.onAnswered());
     s.on("call:signal", (d: { callId: string; data: Signal }) => d.callId === this.state.callId && void this.onSignal(d.data));
     s.on("call:ended", (d: { callId: string; status: CallState["endReason"] }) => d.callId === this.state.callId && this.finish(d.status ?? "ended"));
@@ -108,6 +151,7 @@ class CallController {
   async start(bookingId: string) {
     if (this.busy()) return;
     this.clearReset();
+    if (!(await acknowledgeRecording())) return;
     if (!(await this.micAllowed())) return this.fail("Allow microphone access in your phone's Settings to make calls.");
     this.set({ ...IDLE, phase: "outgoing", bookingId });
     try {
@@ -140,6 +184,7 @@ class CallController {
     const callId = this.state.callId;
     if (!callId || this.state.phase !== "incoming") return;
     InCallManager.stopRingtone();
+    if (!(await acknowledgeRecording())) return this.decline();
     if (!(await this.micAllowed())) {
       void api(`/calls/${callId}/decline`, { body: {} }).catch(() => undefined);
       return this.fail("Allow microphone access in your phone's Settings to take calls.");
@@ -378,6 +423,7 @@ class CallController {
 
   private async cleanup() {
     this.clearConnectTimeout();
+    void Speech.stop().catch(() => undefined);
     if (this.recoveryTimer) clearTimeout(this.recoveryTimer);
     this.recoveryTimer = null;
     try {

@@ -94,11 +94,12 @@ export class InAppCallService {
       }
     }
 
-    this.hub.emit(rooms.user(calleeId), "call:incoming", { callId: call!.id, bookingId, reference: booking.reference, fromName });
+    const recorded = !!livekit && this.media.recording;
+    this.hub.emit(rooms.user(calleeId), "call:incoming", { callId: call!.id, bookingId, reference: booking.reference, fromName, recorded });
     // Wakes the other side if the app is closed; tapping it opens the incoming-call screen.
     void this.notifications.notify([calleeId], {
       title: `📞 ${fromName} is calling`,
-      body: `About booking ${booking.reference}. Tap to answer in the app.`,
+      body: `About booking ${booking.reference}. Tap to answer in the app.${recorded ? " Calls are recorded for training and quality purposes." : ""}`,
       data: { type: "call", callId: call!.id, bookingId },
     });
     this.timers.set(

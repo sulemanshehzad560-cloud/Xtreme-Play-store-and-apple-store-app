@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Modal, Pressable, Text as RNText, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LineIcon } from "./LineIcon";
-import { calls, type CallState } from "@/lib/voip";
+import { RECORDING_NOTICE, calls, type CallState } from "@/lib/voip";
 import { isRTL, t } from "@/lib/i18n";
 import { colors, fonts, space } from "@/lib/theme";
 
@@ -87,9 +87,9 @@ export function CallOverlay() {
 
           <View style={{ alignItems: "center", gap: space(6) }}>
             {s.recorded ? (
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "#2A251D", borderRadius: 999, paddingHorizontal: space(3), paddingVertical: 6 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "#2A251D", borderRadius: 999, paddingHorizontal: space(3), paddingVertical: 6, marginHorizontal: space(6) }}>
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#E5484D" }} />
-                <RNText style={{ color: "#E9E3D6", fontFamily: fonts.semibold, fontSize: 12 }}>{t("This call is recorded for quality and safety")}</RNText>
+                <RNText style={{ color: "#E9E3D6", fontFamily: fonts.semibold, fontSize: 12, flexShrink: 1, textAlign: "center" }}>{t(RECORDING_NOTICE)}</RNText>
               </View>
             ) : null}
             <RNText style={{ color: "#8C8475", fontFamily: fonts.medium, fontSize: 12.5 }}>{t("Free call over the internet · numbers stay private")}</RNText>
