@@ -1,7 +1,7 @@
 import Svg, { Circle, ClipPath, Defs, Ellipse, G, Line, Path, Rect } from "react-native-svg";
 import { Image, View } from "react-native";
 import { colors } from "../../lib/theme";
-import { SERVICE_PHOTOS } from "../../lib/servicePhotos";
+import { SERVICE_ICON_PHOTOS, SERVICE_PHOTOS } from "../../lib/servicePhotos";
 import { ArtTile, ServiceArt, hasServiceArt } from "./ServiceArt";
 
 // Service pictures: the lifelike illustrations in ServiceArt for current services; the older
@@ -304,8 +304,12 @@ function Glyph({ name }: { name: string }) {
 }
 
 /** Service illustration on a soft round tile. */
-export function ServiceIcon({ name, size = 48, tile = true }: { name: string; size?: number; tile?: boolean }) {
-  const photo = SERVICE_PHOTOS[name];
+/**
+ * Service picture. Uses the realistic photo tile when there is one; pass `vector` (or a size under 30)
+ * for the illustrated icon, e.g. on coloured promo banners and in compact rows.
+ */
+export function ServiceIcon({ name, size = 48, tile = true, vector = false }: { name: string; size?: number; tile?: boolean; vector?: boolean }) {
+  const photo = vector || size < 30 ? undefined : SERVICE_ICON_PHOTOS[name];
   if (photo) {
     return <Image source={photo} style={{ width: size, height: size, borderRadius: size * 0.28 }} resizeMode="cover" accessibilityIgnoresInvertColors />;
   }

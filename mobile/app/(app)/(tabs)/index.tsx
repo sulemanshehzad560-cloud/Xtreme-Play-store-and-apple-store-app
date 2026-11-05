@@ -16,6 +16,7 @@ import { api } from "@/lib/api";
 import { aed, when } from "@/lib/format";
 import { ratingLabel } from "@/lib/rating";
 import { MOST_BOOKED, SERVICE_SHORT } from "@/lib/serviceIcons";
+import { SERVICE_ICON_PHOTOS } from "@/lib/servicePhotos";
 import { colors, fonts, radius, shadow, space } from "@/lib/theme";
 import type { Booking, Company, Service } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
@@ -359,9 +360,15 @@ export default function Home() {
             {all.map((s, i) => (
               <FadeIn key={s.key} delay={i * 25} style={{ width: "25%" }}>
                 <Pressable onPress={() => open(s.key)} style={({ pressed }) => ({ alignItems: "center", gap: space(1.5), transform: [{ scale: pressed ? 0.94 : 1 }] })} accessibilityRole="button" accessibilityLabel={t(s.name)}>
-                  <View style={{ width: 66, height: 66, borderRadius: radius.lg + 2, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center", ...shadow.card }}>
-                    <ServiceIcon name={s.key} size={50} tile={false} />
-                  </View>
+                  {SERVICE_ICON_PHOTOS[s.key] ? (
+                    <View style={{ width: 72, height: 72, borderRadius: 20, borderWidth: 1.5, borderColor: colors.goldLine, overflow: "hidden", backgroundColor: "#FFFCF4", ...shadow.card }}>
+                      <Image source={SERVICE_ICON_PHOTOS[s.key]} style={{ width: "100%", height: "100%" }} resizeMode="cover" accessibilityIgnoresInvertColors />
+                    </View>
+                  ) : (
+                    <View style={{ width: 66, height: 66, borderRadius: radius.lg + 2, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center", ...shadow.card }}>
+                      <ServiceIcon name={s.key} size={50} tile={false} />
+                    </View>
+                  )}
                   <RNText style={{ fontFamily: fonts.semibold, fontSize: 12, color: colors.text, textAlign: "center" }} numberOfLines={2}>
                     {t(SERVICE_SHORT[s.key] ?? s.name)}
                   </RNText>

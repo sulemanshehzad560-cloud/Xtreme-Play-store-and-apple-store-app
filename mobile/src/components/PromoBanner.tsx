@@ -54,7 +54,7 @@ export function PromoBanner({ promo, width, height = 184, onPress }: { promo: Pr
         <Path d={sparkle(width - 30, 26, 3.5)} fill="#FFFFFF" opacity={0.7} />
       </Svg>
       <View style={{ position: "absolute", right: 4, top: height / 2 - 66 }}>
-        {typeof promo.art === "string" ? <ServiceIcon name={promo.art} size={140} tile={false} /> : promo.art}
+        {typeof promo.art === "string" ? <ServiceIcon name={promo.art} size={140} tile={false} vector /> : promo.art}
       </View>
       <View style={{ padding: space(5), paddingRight: 0, width: "62%", gap: space(1.5), flex: 1 }}>
         <View style={{ alignSelf: "flex-start", backgroundColor: promo.accent, borderRadius: radius.pill, paddingHorizontal: space(2.5), paddingVertical: 3 }}>
