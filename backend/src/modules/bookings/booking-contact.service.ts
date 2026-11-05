@@ -5,13 +5,11 @@ import { COMPANY } from "../../config/company.js";
 import { redactContacts } from "../../lib/contact-filter.js";
 import { badRequest, conflict, forbidden } from "../../lib/errors.js";
 import { seal, unseal } from "../../lib/sealed.js";
-import type { CallBridge } from "../calls/masked-call.js";
+import { CALLABLE, type VoiceService } from "../calls/voice.service.js";
 import type { NotificationService } from "../notifications/notification.service.js";
 import { rooms, type RealtimeHub } from "../tracking/realtime.js";
 import type { Actor, BookingService } from "./booking.service.js";
 
-/** Statuses during which the customer and the team can call each other. */
-const CALLABLE = ["assigned", "en_route", "arrived", "in_progress"] as const;
 /** Chat stays open this long after the job is completed (e.g. a forgotten item). */
 const CHAT_AFTER_COMPLETION_MS = 3 * 24 * 3600_000;
 
@@ -28,7 +26,7 @@ export class BookingContactService {
     private readonly bookings: BookingService,
     private readonly notifications: NotificationService,
     private readonly hub: RealtimeHub,
-    private readonly bridge: CallBridge,
+    private readonly voice: VoiceService,
   ) {}
 
   async isSupplier(userId: string) {
@@ -110,9 +108,9 @@ export class BookingContactService {
   // ------------------------------------------------------------ masked calls
 
   /**
-   * Connects the customer and the team lead by phone. With a Twilio voice number, Twilio rings
-   * the caller and connects them, both seeing only Xtreme's number. Without one, the app calls
-   * the office, which connects them.
+   * Connects the customer and the team lead by phone. With masked calling set up, Twilio rings
+   * the caller and connects them, both seeing only Xtreme's number. Otherwise the app calls the
+   * office, which connects them. Nobody is ever given the other side's number.
    */
   async call(bookingId: string, actor: Actor): Promise<{ mode: "bridge"; message: string } | { mode: "office"; phone: string; message: string }> {
     const booking = await this.bookings.loadFor(bookingId, actor);
@@ -121,20 +119,26 @@ export class BookingContactService {
     const team = await this.bookings.team(bookingId);
     const lead = team.find((m) => m.isLead) ?? team[0];
     const office = { mode: "office" as const, phone: COMPANY.phone, message: "We'll connect you through the Xtreme office." };
-    if (!this.bridge.enabled || !lead) return office;
+    if (!this.voice.enabled || !lead) return office;
 
     const otherId = actor.role === "customer" ? lead.userId : booking.customerId;
     const phones = await this.db.select({ id: users.id, phone: users.phone }).from(users).where(inArray(users.id, [actor.id, otherId]));
     const mine = phones.find((p) => p.id === actor.id)?.phone;
     const theirs = phones.find((p) => p.id === otherId)?.phone;
     if (!mine || !theirs) return office;
-    const intro = actor.role === "customer" ? `Connecting you to your Xtreme team for booking ${booking.reference}.` : `Connecting you to the customer for booking ${booking.reference}.`;
     try {
-      await this.bridge.connect(mine, theirs, intro);
+      await this.voice.startFromApp({
+        bookingId,
+        reference: booking.reference,
+        callerId: actor.id,
+        callerRole: actor.role,
+        callerPhone: mine,
+        calleePhone: theirs,
+        calleeRole: actor.role === "customer" ? "staff" : "customer",
+      });
     } catch {
       return office;
     }
     return { mode: "bridge", message: "We're calling you now. Answer to be connected. Both numbers stay private." };
   }
 }
-

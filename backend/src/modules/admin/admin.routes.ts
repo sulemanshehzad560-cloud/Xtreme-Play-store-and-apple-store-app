@@ -47,6 +47,13 @@ export async function adminRoutes(app: FastifyInstance, c: Container) {
     };
   });
 
+  // Masked calls: count, talk minutes and estimated cost (two call legs per bridged call).
+  r.get(
+    "/admin/calls/summary",
+    { schema: { tags, summary: "Masked calls in the last N days", querystring: z.object({ days: z.coerce.number().int().min(1).max(365).default(30) }) } },
+    async (req) => c.voice.summary(req.query.days),
+  );
+
   // Bookings
   r.get(
     "/admin/bookings",

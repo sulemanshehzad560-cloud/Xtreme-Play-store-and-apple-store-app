@@ -27,6 +27,7 @@ import { registerErrorHandler } from "./plugins/errors.js";
 import { tileRoutes } from "./modules/maps/tiles.routes.js";
 import { avatarRoutes } from "./modules/users/avatar.routes.js";
 import { bookingPhotoLinkRoutes } from "./modules/bookings/booking.routes.js";
+import { voiceRoutes } from "./modules/calls/voice.routes.js";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -176,6 +177,7 @@ export async function buildApp(env: Env, overrides: ContainerOverrides = {}): Pr
       await tileRoutes(v1, c.env);
       await avatarRoutes(v1, c);
       await bookingPhotoLinkRoutes(v1, c);
+      await voiceRoutes(v1, c);
       await v1.register(async (scoped) => meRoutes(scoped, c));
       await v1.register(async (scoped) => staffRoutes(scoped, c));
       await v1.register(async (scoped) => adminRoutes(scoped, c));

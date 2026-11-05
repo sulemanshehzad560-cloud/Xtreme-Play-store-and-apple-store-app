@@ -636,6 +636,31 @@ export const bookingMessages = pgTable(
   (t) => [index("booking_messages_booking_idx").on(t.bookingId, t.createdAt)],
 );
 
+export const callKind = pgEnum("call_kind", ["app", "callback"]);
+
+/**
+ * Masked calls through Xtreme's number: started from the app ("app") or by calling the number
+ * back ("callback"). Real numbers are never stored here; durations feed the cost summary.
+ */
+export const bookingCalls = pgTable(
+  "booking_calls",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    bookingId: uuid("booking_id").references(() => bookings.id, { onDelete: "set null" }),
+    callerId: uuid("caller_id").references(() => users.id, { onDelete: "set null" }),
+    callerRole: text("caller_role").notNull(),
+    kind: callKind("kind").notNull(),
+    /** Connected to the office instead of the other side (no active job, or masked calling unavailable). */
+    toOffice: boolean("to_office").notNull().default(false),
+    twilioSid: text("twilio_sid"),
+    /** Talk time once the call ends (seconds). */
+    durationSeconds: integer("duration_seconds"),
+    endedAt: ts("ended_at"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("booking_calls_created_idx").on(t.createdAt), uniqueIndex("booking_calls_sid_unique").on(t.twilioSid)],
+);
+
 /** "Chat with us": one thread per customer, with instant automated answers and replies from the office. */
 export const supportMessages = pgTable(
   "support_messages",

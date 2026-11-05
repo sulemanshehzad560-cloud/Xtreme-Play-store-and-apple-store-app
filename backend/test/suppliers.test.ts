@@ -1,11 +1,11 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { FakeCallBridge } from "../src/modules/calls/masked-call.js";
+import { FakeCallBridge, twilioSignature } from "../src/modules/calls/masked-call.js";
 import { book, createTestApp, resetDb, signInAs, signInPhone, type TestContext } from "./helpers.js";
 
 let t: TestContext;
 const bridge = new FakeCallBridge();
 beforeAll(async () => {
-  t = await createTestApp({}, { callBridge: bridge });
+  t = await createTestApp({ TWILIO_VOICE_NUMBER: "+97125550000", TWILIO_ACCOUNT_SID: "ACtest", TWILIO_AUTH_TOKEN: "twilio-test-token" }, { callBridge: bridge });
 });
 afterAll(() => t.app.close());
 beforeEach(async () => {
@@ -88,5 +88,57 @@ describe("suppliers and number masking", () => {
     expect(bridge.calls).toHaveLength(2);
     expect(bridge.calls[0]!.caller).toBe("+971501230001");
     expect(bridge.calls[1]!.callee).toBe("+971501230001");
+  });
+
+  /** A Twilio webhook request, signed like Twilio does. */
+  const twilio = (path: string, params: Record<string, string>, token = "twilio-test-token") =>
+    t.app.inject({
+      method: "POST",
+      url: path,
+      headers: { "content-type": "application/x-www-form-urlencoded", "x-twilio-signature": twilioSignature(token, `https://api.xtreme.test${path}`, params) },
+      payload: new URLSearchParams(params).toString(),
+    });
+
+  it("connects a call-back to the other side of the caller's active job, and logs the talk time", async () => {
+    const { customer, lead, admin, booking } = await setup(true);
+    // The customer calls the Xtreme number back: connected to their team lead, shown the Xtreme number.
+    const leadPhone = (await req("GET", `/v1/admin/staff/${lead.user.id}`, admin.auth)).json().phone;
+    const res = await twilio("/v1/voice/inbound", { From: "+971501230001", To: "+97125550000", CallSid: "CA" + "1".repeat(32) });
+    expect(res.statusCode).toBe(200);
+    expect(res.headers["content-type"]).toContain("text/xml");
+    expect(res.body).toContain(`<Number>${leadPhone}</Number>`);
+    expect(res.body).toContain('callerId="+97125550000"');
+    expect(res.body).toContain(booking.reference);
+    // When the call ends, Twilio reports the talk time.
+    const action = /action="([^"]+)"/.exec(res.body)![1]!.replace("https://api.xtreme.test", "").replace(/&amp;/g, "&");
+    expect((await twilio(action, { DialCallDuration: "95", CallSid: "CA" + "1".repeat(32) })).body).toContain("<Hangup/>");
+    // The lead calls back: connected to the customer.
+    const back = await twilio("/v1/voice/inbound", { From: leadPhone, To: "+97125550000", CallSid: "CA" + "2".repeat(32) });
+    expect(back.body).toContain("<Number>+971501230001</Number>");
+
+    const summary = (await req("GET", "/v1/admin/calls/summary", admin.auth)).json();
+    expect(summary).toMatchObject({ enabled: true, calls: 2, callbacks: 2, toOffice: 0, minutes: 1.6 });
+    expect(summary.estimatedCostUsd).toBeCloseTo(1.6 * 2 * 0.3, 2);
+    void customer;
+  });
+
+  it("sends unknown callers and callers without an active job to the office", async () => {
+    const res = await twilio("/v1/voice/inbound", { From: "+971509999999", To: "+97125550000", CallSid: "CA" + "3".repeat(32) });
+    expect(res.body).toContain("<Number>+971503641714</Number>");
+    expect(res.body).toContain('callerId="+97125550000"');
+  });
+
+  it("rejects webhook requests that are not signed by Twilio", async () => {
+    const forged = await twilio("/v1/voice/inbound", { From: "+971501230001", CallSid: "CA" + "4".repeat(32) }, "wrong-token");
+    expect(forged.statusCode).toBe(403);
+    const unsigned = await t.app.inject({ method: "POST", url: "/v1/voice/inbound", headers: { "content-type": "application/x-www-form-urlencoded" }, payload: "From=%2B971501230001" });
+    expect(unsigned.statusCode).toBe(403);
+  });
+
+  it("logs calls started from the app", async () => {
+    const { customer, admin, booking } = await setup(true);
+    await req("POST", `/v1/bookings/${booking.id}/call`, customer.auth);
+    expect(bridge.calls[0]!.twiml).toContain("/v1/voice/ended?log=");
+    expect((await req("GET", "/v1/admin/calls/summary", admin.auth)).json()).toMatchObject({ calls: 1, callbacks: 0 });
   });
 });

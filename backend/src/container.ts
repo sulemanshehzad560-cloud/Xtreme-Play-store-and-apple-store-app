@@ -17,6 +17,7 @@ import { BookingService, DEFAULT_RULES, type BookingRules } from "./modules/book
 import { BookingPhotoService } from "./modules/bookings/booking-photos.service.js";
 import { BookingContactService } from "./modules/bookings/booking-contact.service.js";
 import { NoCallBridge, TwilioCallBridge, type CallBridge } from "./modules/calls/masked-call.js";
+import { VoiceService } from "./modules/calls/voice.service.js";
 import { NotificationService } from "./modules/notifications/notification.service.js";
 import { ExpoPush, NoopPush, type PushSender } from "./modules/notifications/push.js";
 import type { BnplGateway, CardGateway, HostedCardGateway } from "./modules/payments/gateways.js";
@@ -63,6 +64,7 @@ export interface Container {
   support: SupportService;
   bookingPhotos: BookingPhotoService;
   bookingContact: BookingContactService;
+  voice: VoiceService;
 }
 
 export interface ContainerOverrides {
@@ -125,7 +127,8 @@ export function createContainer(env: Env, log: FastifyBaseLogger, overrides: Con
     (env.TWILIO_VOICE_NUMBER && env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN
       ? new TwilioCallBridge(env.TWILIO_ACCOUNT_SID, env.TWILIO_AUTH_TOKEN, env.TWILIO_VOICE_NUMBER, log)
       : new NoCallBridge());
-  const bookingContact = new BookingContactService(db, bookings, notifications, hub, callBridge);
+  const voice = new VoiceService(db, callBridge, { publicUrl: env.PUBLIC_URL, voiceNumber: env.TWILIO_VOICE_NUMBER, costPerMinUsd: env.CALL_COST_PER_MIN_USD });
+  const bookingContact = new BookingContactService(db, bookings, notifications, hub, voice);
   const bookingPhotos = new BookingPhotoService(db, bookings, notifications, hub, { publicUrl: env.PUBLIC_URL, secret: env.JWT_SECRET });
   const staff = new StaffService(db, bookings, hub, {
     historyMinIntervalSeconds: env.LOCATION_HISTORY_MIN_INTERVAL_SECONDS,
@@ -189,5 +192,5 @@ export function createContainer(env: Env, log: FastifyBaseLogger, overrides: Con
   payments.onPaid((bookingId) => subscriptions.onBookingPaid(bookingId));
   payments.onPaid((bookingId) => bookings.confirmPaid(bookingId));
   payments.onPaid((bookingId) => invoices.sendIfDue(bookingId));
-  return { env, db, pool, hub, sms, push, verifiers, tokens, otp, auth, notifications, bookings, bookingPhotos, bookingContact, staff, users, card, hosted, bnpl, payments, admin, mailer, invoices, subscriptions, promotions, support, prices };
+  return { env, db, pool, hub, sms, push, verifiers, tokens, otp, auth, notifications, bookings, bookingPhotos, bookingContact, voice, staff, users, card, hosted, bnpl, payments, admin, mailer, invoices, subscriptions, promotions, support, prices };
 }

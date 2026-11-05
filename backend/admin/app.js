@@ -150,13 +150,14 @@ async function loadAll() {
   const q = new URLSearchParams({ limit: "300", status: "requested,confirmed,assigned,en_route,arrived,in_progress,completed" });
   if (from) q.set("from", from.toISOString());
   if (to) q.set("to", to.toISOString());
-  const [bookings, staff, dashboard, payments] = await Promise.all([
+  const [bookings, staff, dashboard, payments, calls] = await Promise.all([
     api(`/admin/bookings?${q}`),
     api("/admin/staff"),
     api("/admin/dashboard"),
     api("/admin/payments?limit=100"),
+    api("/admin/calls/summary?days=30").catch(() => null),
   ]);
-  Object.assign(state, { bookings, staff, dashboard, payments });
+  Object.assign(state, { bookings, staff, dashboard, payments, calls });
   render();
 }
 
@@ -181,6 +182,12 @@ function renderKpis() {
     [`${(d.today.en_route ?? 0) + (d.today.arrived ?? 0) + (d.today.in_progress ?? 0)}`, "Jobs live now"],
     [`${d.staff.available} / ${d.staff.onDuty}`, "Teams available / on duty"],
     [aed(d.collectedTodayAed), "Collected today"],
+    ...(state.calls
+      ? [[
+          state.calls.enabled ? `${state.calls.minutes} min · ~USD ${state.calls.estimatedCostUsd}` : "Office line",
+          state.calls.enabled ? `Masked calls, 30 days (${state.calls.calls} calls)` : "Masked calls not set up yet",
+        ]]
+      : []),
   ]
     .map(([v, l, alert]) => `<div class="kpi ${alert ? "alert" : ""}"><b>${esc(v)}</b><span>${esc(l)}</span></div>`)
     .join("");
