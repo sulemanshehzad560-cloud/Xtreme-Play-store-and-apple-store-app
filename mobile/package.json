@@ -7,6 +7,9 @@
     "@config-plugins/react-native-webrtc": "^15.0.2",
     "@expo-google-fonts/plus-jakarta-sans": "^0.4.2",
     "@expo-google-fonts/tajawal": "^0.4.1",
+    "@livekit/react-native": "^3.1.0",
+    "@livekit/react-native-expo-plugin": "^1.1.0",
+    "@livekit/react-native-webrtc": "^150.1.1",
     "@react-native-community/datetimepicker": "9.1.0",
     "@react-native-google-signin/google-signin": "^16.1.5",
     "@stripe/stripe-react-native": "0.64.0",
@@ -34,6 +37,7 @@
     "expo-store-review": "~57.0.3",
     "expo-task-manager": "~57.0.21",
     "expo-web-browser": "~57.0.3",
+    "livekit-client": "^2.23.0",
     "react": "19.2.3",
     "react-dom": "^19.2.3",
     "react-native": "0.86.3",
@@ -43,7 +47,6 @@
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
     "react-native-svg": "^15.15.4",
-    "react-native-webrtc": "^155.0.1",
     "socket.io-client": "^4.8.4"
   },
   "devDependencies": {

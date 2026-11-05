@@ -29,6 +29,11 @@ import "@/lib/staff-location"; // registers the background task at startup
 import { api } from "@/lib/api";
 import { CallOverlay } from "@/components/CallOverlay";
 import { calls } from "@/lib/voip";
+import { registerGlobals } from "@livekit/react-native";
+import { Platform } from "react-native";
+
+// WebRTC for in-app calls (LiveKit): set up once, before any call starts.
+if (Platform.OS !== "web") registerGlobals();
 
 // Hand over from the static native splash to the animated brand intro as soon as JS is up.
 SplashScreen.preventAutoHideAsync().catch(() => undefined);

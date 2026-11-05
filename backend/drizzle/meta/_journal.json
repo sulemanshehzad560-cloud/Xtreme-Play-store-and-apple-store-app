@@ -120,6 +120,13 @@
       "when": 1793887110961,
       "tag": "0016_in_app_calls",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793887601463,
+      "tag": "0017_call_recordings",
+      "breakpoints": true
     }
   ]
 }

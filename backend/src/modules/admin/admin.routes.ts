@@ -54,6 +54,18 @@ export async function adminRoutes(app: FastifyInstance, c: Container) {
     async (req) => c.voice.summary(req.query.days),
   );
 
+  // In-app calls: history with recordings, live calls, and hidden listen-only access.
+  r.get(
+    "/admin/calls",
+    { schema: { tags, summary: "Recent in-app calls with recordings", querystring: z.object({ limit: z.coerce.number().int().min(1).max(500).default(100) }) } },
+    async (req) => ({ mode: c.calls.mode, calls: await c.calls.list(req.query.limit) }),
+  );
+  r.post("/admin/calls/:id/listen", { schema: { tags, summary: "Listen to a live call (hidden, listen-only)", params: uuidParam } }, async (req) => {
+    const access = await c.calls.listen(req.params.id, req.user);
+    await c.admin.audit(req.user.id, "call.listened", "call", req.params.id, {});
+    return access;
+  });
+
   // Bookings
   r.get(
     "/admin/bookings",

@@ -1184,6 +1184,7 @@ const PAGE_SUB = {
   customers: "Customer accounts",
   payments: "Card and Tamara payments and refunds",
   admin: "Access, company details and connected services",
+  calls: "In-app calls between customers and teams: recordings and live listening",
 };
 
 document.querySelectorAll(".tab").forEach((t) =>
@@ -1194,6 +1195,7 @@ document.querySelectorAll(".tab").forEach((t) =>
     $("#page-sub").textContent = PAGE_SUB[t.dataset.tab] ?? "";
     $("#kpis").classList.toggle("hidden", t.dataset.tab !== "board");
     if (t.dataset.tab === "customers") loadCustomers().catch((e) => toast(e.message));
+    if (t.dataset.tab === "calls") loadCalls().catch((e) => toast(e.message));
     if (t.dataset.tab === "subscriptions") loadSubscriptions().catch((e) => toast(e.message));
     if (t.dataset.tab === "pricing") loadPricing().catch((e) => toast(e.message));
     if (t.dataset.tab === "promotions") loadPromotions().catch((e) => toast(e.message));
@@ -1210,6 +1212,92 @@ document.querySelectorAll(".tab").forEach((t) =>
 );
 $("#search").addEventListener("input", renderBoard);
 $("#day").addEventListener("change", loadAll);
+
+// ------------------------------------------------------------------ calls
+
+const CALL_STATUS = { ringing: "Ringing", answered: "Live", ended: "Ended", missed: "Missed", declined: "Declined", cancelled: "Cancelled" };
+const REC_LABEL = { recording: "Recording…", saving: "Saving…", ready: "Recorded", failed: "Recording failed" };
+const dur = (s) => (s == null ? "—" : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`);
+let listenRoom = null;
+
+async function loadCalls() {
+  const { mode, calls } = await api("/admin/calls?limit=150");
+  $("#calls-mode").innerHTML = mode.recorded
+    ? "✅ Calls run through the recorded call service: every answered call is recorded and you can listen to live calls."
+    : mode.relay
+      ? "⚠️ Calls run through LiveKit but recording storage isn't set up (RECORDING_S3_*): calls are not recorded yet."
+      : "⚠️ Calls connect phone-to-phone: they are <b>not recorded</b> and can't be listened to. Add LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET and the RECORDING_S3_* settings on the server.";
+  const live = calls.filter((c) => c.live);
+  const badge = $("#calls-badge");
+  badge.textContent = live.length;
+  badge.classList.toggle("hidden", !live.length);
+  $("#calls-live").innerHTML = live.length
+    ? live
+        .map(
+          (c) => `<div class="card call-card"><div class="row"><b>${esc(c.reference ?? "")}</b><span class="pill in_progress">● Live ${since(c.answeredAt)}</span></div>
+          <div class="meta">${esc(c.caller)} → ${esc(c.callee)}</div>
+          <div class="actions"><button class="btn primary small" data-listen="${c.id}" data-title="${esc(c.reference ?? "")}" data-sub="${esc(c.caller)} ↔ ${esc(c.callee)}">🎧 Listen live</button></div></div>`,
+        )
+        .join("")
+    : '<p class="muted">No calls in progress.</p>';
+  $("#calls-table").innerHTML = `<tr><th>When</th><th>Booking</th><th>From</th><th>To</th><th>Status</th><th>Length</th><th>Recording</th></tr>${
+    calls
+      .map(
+        (c) => `<tr><td>${when(c.createdAt)}</td><td>${esc(c.reference ?? "—")}</td><td>${esc(c.caller)}<br><small class="muted">${esc(c.callerRole)}</small></td><td>${esc(c.callee)}</td>
+        <td><span class="pill ${c.live ? "in_progress" : c.status === "ended" ? "completed" : "cancelled"}">${CALL_STATUS[c.status] ?? esc(c.status ?? "")}</span></td><td>${dur(c.durationSeconds)}</td>
+        <td>${c.recording ? (c.recording.status === "ready" || c.recording.status === "saving" ? `<audio controls preload="none" src="${esc(c.recording.url)}"></audio>` : `<small class="muted">${REC_LABEL[c.recording.status] ?? ""}</small>`) : '<small class="muted">Not recorded</small>'}</td></tr>`,
+      )
+      .join("") || '<tr><td colspan="7" class="muted">No calls yet.</td></tr>'
+  }`;
+}
+
+function since(iso) {
+  if (!iso) return "";
+  const s = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+  return dur(s);
+}
+
+$("#calls-live").addEventListener("click", async (e) => {
+  const btn = e.target.closest("[data-listen]");
+  if (!btn) return;
+  await listenLive(btn.dataset.listen, btn.dataset.title, btn.dataset.sub);
+});
+
+/** Joins a live call hidden and listen-only (LiveKit), playing both sides through the browser. */
+async function listenLive(callId, title, sub) {
+  if (!window.LivekitClient) return toast("The call player didn't load. Refresh the page.");
+  await stopListening();
+  try {
+    const { url, token } = await api(`/admin/calls/${callId}/listen`, { body: {} });
+    const room = new LivekitClient.Room({ adaptiveStream: false });
+    room.on(LivekitClient.RoomEvent.TrackSubscribed, (track) => {
+      if (track.kind === "audio") document.body.appendChild(track.attach());
+    });
+    room.on(LivekitClient.RoomEvent.Disconnected, () => {
+      $("#listen-bar").classList.add("hidden");
+      listenRoom = null;
+      loadCalls().catch(() => undefined);
+    });
+    await room.connect(url, token, { autoSubscribe: true });
+    await room.startAudio();
+    listenRoom = room;
+    $("#listen-title").textContent = `Listening to ${title}`;
+    $("#listen-sub").textContent = sub;
+    $("#listen-bar").classList.remove("hidden");
+  } catch (err) {
+    toast(err.message || "Could not join the call");
+  }
+}
+
+async function stopListening() {
+  if (!listenRoom) return;
+  const r = listenRoom;
+  listenRoom = null;
+  await r.disconnect();
+  document.querySelectorAll("audio[data-lk-source], body > audio").forEach((a) => a.remove());
+  $("#listen-bar").classList.add("hidden");
+}
+$("#listen-stop").addEventListener("click", () => void stopListening());
 
 function connectRealtime() {
   if (!window.io) return;
@@ -1229,6 +1317,8 @@ function connectRealtime() {
     reloadSoon();
   });
   socket.on("booking:status", reloadSoon);
+  // Calls start or end: refresh the Calls tab (live list and badge).
+  socket.on("call:live", () => loadCalls().catch(() => undefined));
   socket.on("support:message", (p) => {
     toast("New customer message");
     loadThreads().catch(() => {});

@@ -19,6 +19,7 @@ import { BookingContactService } from "./modules/bookings/booking-contact.servic
 import { NoCallBridge, TwilioCallBridge, type CallBridge } from "./modules/calls/masked-call.js";
 import { VoiceService } from "./modules/calls/voice.service.js";
 import { InAppCallService } from "./modules/calls/in-app-call.service.js";
+import { createMediaRooms, type MediaRooms } from "./modules/calls/livekit.js";
 import { NotificationService } from "./modules/notifications/notification.service.js";
 import { ExpoPush, NoopPush, type PushSender } from "./modules/notifications/push.js";
 import type { BnplGateway, CardGateway, HostedCardGateway } from "./modules/payments/gateways.js";
@@ -80,6 +81,7 @@ export interface ContainerOverrides {
   bnpl?: BnplGateway;
   mailer?: Mailer;
   callBridge?: CallBridge;
+  media?: MediaRooms;
 }
 
 export function createContainer(env: Env, log: FastifyBaseLogger, overrides: ContainerOverrides = {}): Container {
@@ -130,7 +132,8 @@ export function createContainer(env: Env, log: FastifyBaseLogger, overrides: Con
       ? new TwilioCallBridge(env.TWILIO_ACCOUNT_SID, env.TWILIO_AUTH_TOKEN, env.TWILIO_VOICE_NUMBER, log)
       : new NoCallBridge());
   const voice = new VoiceService(db, callBridge, { publicUrl: env.PUBLIC_URL, voiceNumber: env.TWILIO_VOICE_NUMBER, costPerMinUsd: env.CALL_COST_PER_MIN_USD });
-  const calls = new InAppCallService(db, bookings, notifications, hub, env);
+  const media = overrides.media ?? createMediaRooms(env, log);
+  const calls = new InAppCallService(db, bookings, notifications, hub, env, media);
   const bookingContact = new BookingContactService(db, bookings, notifications, hub, voice);
   const bookingPhotos = new BookingPhotoService(db, bookings, notifications, hub, { publicUrl: env.PUBLIC_URL, secret: env.JWT_SECRET });
   const staff = new StaffService(db, bookings, hub, {

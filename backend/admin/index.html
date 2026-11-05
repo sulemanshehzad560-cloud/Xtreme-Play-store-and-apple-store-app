@@ -42,6 +42,7 @@
         <button class="tab" data-tab="promotions"><span>%</span>Promotions</button>
         <button class="tab" data-tab="staff"><span>☺</span>Staff</button>
         <button class="tab" data-tab="customers"><span>◉</span>Customers</button>
+        <button class="tab" data-tab="calls"><span>☏</span>Calls <em id="calls-badge" class="badge hidden"></em></button>
         <button class="tab" data-tab="payments"><span>◈</span>Payments</button>
         <button class="tab" data-tab="admin"><span>⚙</span>Admin &amp; IT</button>
       </nav>
@@ -76,6 +77,14 @@
       <div id="tab-customers" class="tab-panel hidden">
         <div class="toolbar"><input id="customer-search" placeholder="Search customer name, phone or email…" /></div>
         <table class="table" id="customers-table"></table>
+      </div>
+      <div id="tab-calls" class="tab-panel hidden">
+        <div id="calls-mode" class="notice"></div>
+        <h3 class="section-title">Live now</h3>
+        <div id="calls-live" class="call-cards"></div>
+        <h3 class="section-title">Recent calls</h3>
+        <table class="table" id="calls-table"></table>
+        <div id="listen-bar" class="listen-bar hidden"><span class="dot"></span><b id="listen-title">Listening</b><span class="muted" id="listen-sub"></span><button class="btn danger small" id="listen-stop">Stop listening</button></div>
       </div>
       <div id="tab-admin" class="tab-panel hidden">
         <div class="grid2">
@@ -166,6 +175,7 @@
   <div id="toast" class="toast"></div>
 
   <script src="vendor/leaflet/leaflet.js"></script>
+  <script src="vendor/livekit/livekit-client.umd.js"></script>
   <script src="/realtime/socket.io.js"></script>
   <script type="module" src="./app.js"></script>
 </body>

@@ -44,6 +44,19 @@ const EnvSchema = z.object({
   // Masked calls between customers and the team: a Twilio voice number (E.164, e.g. +9712…).
   // Twilio rings the caller from this number and connects them to the other side, so neither
   // sees the other's real number. Without it, calls go to the office line instead.
+  // Recorded in-app calls through LiveKit (livekit.io, open source; LiveKit Cloud has a free tier).
+  // With these set, every call goes through a LiveKit room: reliable on any network (built-in
+  // TURN over 443, reconnection), recorded on the server, and the office can listen in live.
+  LIVEKIT_URL: z.string().trim().regex(/^wss:\/\//, "LIVEKIT_URL must start with wss://").optional(),
+  LIVEKIT_API_KEY: z.string().trim().optional(),
+  LIVEKIT_API_SECRET: z.string().trim().optional(),
+  // Where call recordings are stored: any S3-compatible bucket (e.g. Cloudflare R2, AWS S3).
+  // Recordings are private; the dashboard plays them through the API.
+  RECORDING_S3_BUCKET: z.string().trim().optional(),
+  RECORDING_S3_REGION: z.string().trim().default("auto"),
+  RECORDING_S3_ENDPOINT: z.url().optional(),
+  RECORDING_S3_ACCESS_KEY: z.string().trim().optional(),
+  RECORDING_S3_SECRET: z.string().trim().optional(),
   // In-app calls (WebRTC) relay through a TURN server when the two phones can't connect directly
   // (common on mobile data). Comma-separated turn:/turns: URLs with a username and credential, e.g.
   // from Cloudflare Realtime or Metered. Without them, only STUN is used (most Wi-Fi calls still work).

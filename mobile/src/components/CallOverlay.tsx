@@ -21,6 +21,8 @@ function statusText(s: CallState, now: number) {
       return t("Connecting…");
     case "active":
       return s.startedAt ? mmss(now - s.startedAt) : t("Connected");
+    case "reconnecting":
+      return t("Weak connection, reconnecting…");
     case "ended":
       if (s.error) return t(s.error);
       return s.endReason === "declined" ? t("Call declined") : s.endReason === "missed" ? t("No answer") : s.endReason === "failed" ? t("Call failed") : t("Call ended");
@@ -84,6 +86,12 @@ export function CallOverlay() {
           </View>
 
           <View style={{ alignItems: "center", gap: space(6) }}>
+            {s.recorded ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "#2A251D", borderRadius: 999, paddingHorizontal: space(3), paddingVertical: 6 }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#E5484D" }} />
+                <RNText style={{ color: "#E9E3D6", fontFamily: fonts.semibold, fontSize: 12 }}>{t("This call is recorded for quality and safety")}</RNText>
+              </View>
+            ) : null}
             <RNText style={{ color: "#8C8475", fontFamily: fonts.medium, fontSize: 12.5 }}>{t("Free call over the internet · numbers stay private")}</RNText>
             {s.phase === "incoming" ? (
               <View style={{ flexDirection: "row", gap: space(12) }}>

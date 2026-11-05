@@ -100,6 +100,7 @@ const config: ExpoConfig = {
         isAndroidForegroundServiceEnabled: true,
       },
     ],
+    "@livekit/react-native-expo-plugin",
     ["@config-plugins/react-native-webrtc", { microphonePermission: "Xtreme-Cleaning Partner uses the microphone only for in-app calls between you and your cleaning team (or, for staff, the customer)." }],
     ["expo-notifications", { icon: "./assets/notification-icon.png", color: "#E2C170" }],
     ["@react-native-google-signin/google-signin", { iosUrlScheme: env.GOOGLE_IOS_URL_SCHEME ?? "com.googleusercontent.apps.placeholder" }],

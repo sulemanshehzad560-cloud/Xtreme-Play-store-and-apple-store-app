@@ -657,6 +657,12 @@ export const bookingCalls = pgTable(
     calleeId: uuid("callee_id").references(() => users.id, { onDelete: "set null" }),
     status: text("status"),
     answeredAt: ts("answered_at"),
+    /** LiveKit room the call ran in, and its server-side recording. */
+    room: text("room"),
+    egressId: text("egress_id"),
+    recordingKey: text("recording_key"),
+    recordingStatus: text("recording_status"),
+    recordingBytes: integer("recording_bytes"),
     /** Talk time once the call ends (seconds). */
     durationSeconds: integer("duration_seconds"),
     endedAt: ts("ended_at"),

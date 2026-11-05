@@ -974,4 +974,9 @@ export const AR: Record<string, string> = {
   "The connection dropped. Check your internet and try again.": "انقطع الاتصال. تحقق من الإنترنت وحاول مرة أخرى.",
   "Calls and messages stay in the app, so your number stays private.": "تبقى المكالمات والرسائل داخل التطبيق، لذا يبقى رقمك خاصاً.",
   "The customer's number is private. Call and message them in the app.": "رقم العميل خاص. اتصل به وراسله داخل التطبيق.",
+  "Weak connection, reconnecting…": "الاتصال ضعيف، جارٍ إعادة الاتصال…",
+  "This call is recorded for quality and safety": "يتم تسجيل هذه المكالمة لضمان الجودة والسلامة",
+  "Couldn't connect the call. Check your internet and try again.": "تعذّر توصيل المكالمة. تحقق من الإنترنت وحاول مرة أخرى.",
+  "Could not answer": "تعذّر الرد",
+  "Could not connect the call": "تعذّر توصيل المكالمة",
 };
