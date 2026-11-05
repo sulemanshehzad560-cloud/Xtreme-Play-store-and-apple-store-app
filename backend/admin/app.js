@@ -184,8 +184,8 @@ function renderKpis() {
     [aed(d.collectedTodayAed), "Collected today"],
     ...(state.calls
       ? [[
-          state.calls.enabled ? `${state.calls.minutes} min · ~USD ${state.calls.estimatedCostUsd}` : "Office line",
-          state.calls.enabled ? `Masked calls, 30 days (${state.calls.calls} calls)` : "Masked calls not set up yet",
+          `${state.calls.inApp.minutes} min`,
+          `In-app calls, 30 days (${state.calls.inApp.answered} of ${state.calls.inApp.calls} answered, free)`,
         ]]
       : []),
   ]

@@ -27,6 +27,8 @@ import { colors } from "@/lib/theme";
 import { ThemeProvider, useThemeMode } from "@/lib/themeMode";
 import "@/lib/staff-location"; // registers the background task at startup
 import { api } from "@/lib/api";
+import { CallOverlay } from "@/components/CallOverlay";
+import { calls } from "@/lib/voip";
 
 // Hand over from the static native splash to the animated brand intro as soon as JS is up.
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
@@ -53,11 +55,19 @@ function Gate() {
     else closeSocket();
   }, [user?.id]);
 
+  // In-app calls: listen for incoming calls while signed in (customers, staff and suppliers).
+  useEffect(() => {
+    if (!user || DEMO || user.role === "admin") return;
+    calls.bind();
+    return () => calls.unbind();
+  }, [user?.id]);
+
   useEffect(() => {
     if (!user || DEMO) return;
     const sub = Notifications.addNotificationResponseReceivedListener((res) => {
       const data = res.notification.request.content.data as { bookingId?: string; type?: string };
       if (data?.type === "offer") return router.push("/");
+      if (data?.type === "call" && (data as { callId?: string }).callId) return void calls.resume((data as { callId: string }).callId);
       if (!data?.bookingId) return;
       // A new-order alert is for awareness; staff open job details once the office assigns them.
       if (user.role === "staff" && data.type === "new_order") return router.push("/");
@@ -92,6 +102,7 @@ function Gate() {
         <Stack.Screen name="(staff)" />
       </Stack.Protected>
     </Stack>
+    {user ? <CallOverlay /> : null}
     </View>
   );
 }

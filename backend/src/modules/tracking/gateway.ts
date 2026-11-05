@@ -7,15 +7,16 @@ import type { Container } from "../../container.js";
 import { AppError } from "../../lib/errors.js";
 import { pingSchema } from "../staff/staff.routes.js";
 import { rooms } from "./realtime.js";
+import { InAppCallService } from "../calls/in-app-call.service.js";
 
 type Ack = (res: { ok: true; data?: unknown } | { ok: false; error: { code: string; message: string } }) => void;
 
 /**
  * Socket.IO endpoint (path /realtime) for live updates.
  *
- * Client → server:  booking:subscribe {bookingId}, booking:unsubscribe {bookingId},
+ * Client → server:  booking:subscribe {bookingId}, booking:unsubscribe {bookingId}, call:signal {callId,data},
  *                   location:update {lat,lng,...}  (staff only)
- * Server → client:  booking:status, staff:location, notification,
+ * Server → client:  booking:status, staff:location, notification, call:incoming/answered/signal/ended/taken,
  *                   booking:created / staff:status (admins)
  */
 export async function attachRealtime(app: FastifyInstance, c: Container): Promise<Server> {
@@ -83,6 +84,15 @@ export async function attachRealtime(app: FastifyInstance, c: Container): Promis
       handle(bookingRef, async ({ bookingId }) => {
         await socket.leave(rooms.booking(bookingId));
         return null;
+      }),
+    );
+
+    // In-app calls: connection details (offer / answer / ICE candidates) go to the other side only.
+    socket.on(
+      "call:signal",
+      handle(z.object({ callId: z.uuid(), data: z.unknown() }), async ({ callId, data }) => {
+        InAppCallService.validateSignal(data);
+        return c.calls.relay(callId, user, data);
       }),
     );
 

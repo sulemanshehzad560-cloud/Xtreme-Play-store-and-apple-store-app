@@ -121,6 +121,17 @@ export async function bookingRoutes(app: FastifyInstance, c: Container) {
     async (req) => c.bookingContact.call(req.params.id, req.user),
   );
 
+  // Free in-app voice calls (WebRTC) between the customer and the team: no phone numbers involved.
+  r.post(
+    "/bookings/:id/voip",
+    { onRequest: anyone, config: { rateLimit: { max: 10, timeWindow: "5 minutes" } }, schema: { tags, summary: "Start an in-app call with the other side of a booking", params: uuidParam } },
+    async (req) => c.calls.start(req.params.id, req.user),
+  );
+  r.get("/calls/:id", { onRequest: anyone, schema: { tags, summary: "An in-app call's state", params: uuidParam } }, async (req) => c.calls.get(req.params.id, req.user));
+  r.post("/calls/:id/answer", { onRequest: anyone, schema: { tags, summary: "Answer an in-app call", params: uuidParam } }, async (req) => c.calls.answer(req.params.id, req.user));
+  r.post("/calls/:id/decline", { onRequest: anyone, schema: { tags, summary: "Decline or cancel a ringing call", params: uuidParam } }, async (req) => c.calls.decline(req.params.id, req.user));
+  r.post("/calls/:id/end", { onRequest: anyone, schema: { tags, summary: "Hang up", params: uuidParam } }, async (req) => c.calls.end(req.params.id, req.user));
+
   // Quote photos: for "price on inspection" services the customer sends 3–5 photos and the office prices the job from them.
   const photoParams = z.object({ id: z.uuid(), photoId: z.uuid() });
   r.get("/bookings/:id/photos", { onRequest: anyone, schema: { tags, summary: "Photos sent for a quote (signed links)", params: uuidParam } }, async (req) =>

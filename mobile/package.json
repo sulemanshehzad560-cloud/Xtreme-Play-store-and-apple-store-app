@@ -4,6 +4,7 @@
   "private": true,
   "main": "expo-router/entry",
   "dependencies": {
+    "@config-plugins/react-native-webrtc": "^15.0.2",
     "@expo-google-fonts/plus-jakarta-sans": "^0.4.2",
     "@expo-google-fonts/tajawal": "^0.4.1",
     "@react-native-community/datetimepicker": "9.1.0",
@@ -37,10 +38,12 @@
     "react-dom": "^19.2.3",
     "react-native": "0.86.3",
     "react-native-fbsdk-next": "^13.4.3",
+    "react-native-incall-manager": "^4.3.0",
     "react-native-maps": "1.27.2",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
     "react-native-svg": "^15.15.4",
+    "react-native-webrtc": "^155.0.1",
     "socket.io-client": "^4.8.4"
   },
   "devDependencies": {

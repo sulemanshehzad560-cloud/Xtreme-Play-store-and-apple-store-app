@@ -185,7 +185,7 @@ export default function BookingDetail() {
               <Button title={t("Message")} icon={<LineIcon name="chat" size={18} color={iconColor("chat")} />} variant="secondary" size="sm" style={{ flex: 1 }} onPress={() => router.push(`/booking/${b.id}/chat`)} />
             ) : null}
           </Row>
-          <Text variant="small">{t("Calls and messages go through Xtreme, so your number stays private.")}</Text>
+          <Text variant="small">{t("Calls and messages stay in the app, so your number stays private.")}</Text>
         </Card>
       ) : null}
 

@@ -51,7 +51,9 @@ const config: ExpoConfig = {
       // Camera: a profile photo, quote photos (sofa, mattress…), or scanning a card in Stripe's payment form. Apple requires the reasons.
       NSCameraUsageDescription: "Xtreme-Cleaning Partner uses the camera only when you choose to take a profile photo, photograph the item you want cleaned (for example a sofa or mattress) so we can send your quote, or scan your payment card.",
       NSPhotoLibraryUsageDescription: "Xtreme-Cleaning Partner lets you choose a profile photo, or photos of the item you want cleaned (for example a sofa or mattress) so we can send your quote.",
-      UIBackgroundModes: ["location", "remote-notification"],
+      NSMicrophoneUsageDescription: "Xtreme-Cleaning Partner uses the microphone only for in-app calls between you and your cleaning team (or, for staff, the customer).",
+      // "audio" keeps an in-app call going when the screen locks.
+      UIBackgroundModes: ["location", "remote-notification", "audio"],
       ITSAppUsesNonExemptEncryption: false,
     },
   },
@@ -68,7 +70,13 @@ const config: ExpoConfig = {
       "FOREGROUND_SERVICE",
       "FOREGROUND_SERVICE_LOCATION",
       "POST_NOTIFICATIONS",
+      // In-app calls.
+      "RECORD_AUDIO",
+      "MODIFY_AUDIO_SETTINGS",
+      "BLUETOOTH_CONNECT",
     ],
+    // The WebRTC plugin adds the camera for video, which these calls don't use.
+    blockedPermissions: ["android.permission.CAMERA"],
     googleServicesFile: STAFF ? googleServicesFile(env.GOOGLE_SERVICES_JSON_STAFF) : googleServicesFile(env.GOOGLE_SERVICES_JSON),
   },
   plugins: [
@@ -82,7 +90,7 @@ const config: ExpoConfig = {
       {
         photosPermission: "Xtreme-Cleaning Partner lets you choose a profile photo, or photos of the item you want cleaned (for example a sofa or mattress) so we can send your quote.",
         cameraPermission: "Xtreme-Cleaning Partner uses the camera only when you choose to take a profile photo, photograph the item you want cleaned (for example a sofa or mattress) so we can send your quote, or scan your payment card.",
-        microphonePermission: false,
+        microphonePermission: "Xtreme-Cleaning Partner uses the microphone for in-app calls with your cleaning team.",
       },
     ],
     [
@@ -92,6 +100,7 @@ const config: ExpoConfig = {
         isAndroidForegroundServiceEnabled: true,
       },
     ],
+    ["@config-plugins/react-native-webrtc", { microphonePermission: "Xtreme-Cleaning Partner uses the microphone only for in-app calls between you and your cleaning team (or, for staff, the customer)." }],
     ["expo-notifications", { icon: "./assets/notification-icon.png", color: "#E2C170" }],
     ["@react-native-google-signin/google-signin", { iosUrlScheme: env.GOOGLE_IOS_URL_SCHEME ?? "com.googleusercontent.apps.placeholder" }],
     [

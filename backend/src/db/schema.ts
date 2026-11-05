@@ -636,7 +636,7 @@ export const bookingMessages = pgTable(
   (t) => [index("booking_messages_booking_idx").on(t.bookingId, t.createdAt)],
 );
 
-export const callKind = pgEnum("call_kind", ["app", "callback"]);
+export const callKind = pgEnum("call_kind", ["app", "callback", "voip"]);
 
 /**
  * Masked calls through Xtreme's number: started from the app ("app") or by calling the number
@@ -653,6 +653,10 @@ export const bookingCalls = pgTable(
     /** Connected to the office instead of the other side (no active job, or masked calling unavailable). */
     toOffice: boolean("to_office").notNull().default(false),
     twilioSid: text("twilio_sid"),
+    /** In-app calls: who is being called, and how the call went. */
+    calleeId: uuid("callee_id").references(() => users.id, { onDelete: "set null" }),
+    status: text("status"),
+    answeredAt: ts("answered_at"),
     /** Talk time once the call ends (seconds). */
     durationSeconds: integer("duration_seconds"),
     endedAt: ts("ended_at"),

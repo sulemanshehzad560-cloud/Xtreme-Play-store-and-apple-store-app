@@ -44,6 +44,12 @@ const EnvSchema = z.object({
   // Masked calls between customers and the team: a Twilio voice number (E.164, e.g. +9712…).
   // Twilio rings the caller from this number and connects them to the other side, so neither
   // sees the other's real number. Without it, calls go to the office line instead.
+  // In-app calls (WebRTC) relay through a TURN server when the two phones can't connect directly
+  // (common on mobile data). Comma-separated turn:/turns: URLs with a username and credential, e.g.
+  // from Cloudflare Realtime or Metered. Without them, only STUN is used (most Wi-Fi calls still work).
+  TURN_URLS: csv,
+  TURN_USERNAME: z.string().optional(),
+  TURN_CREDENTIAL: z.string().optional(),
   // Estimated cost per minute of a masked call leg (USD), for the dashboard's call summary.
   // A bridged call has two legs (caller and callee), so a minute of talk costs about twice this.
   CALL_COST_PER_MIN_USD: z.coerce.number().min(0).default(0.3),

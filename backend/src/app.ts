@@ -71,6 +71,7 @@ export async function buildApp(env: Env, overrides: ContainerOverrides = {}): Pr
   // Prices edited in the dashboard live in the database.
   await c.prices.load().catch((err) => app.log.error({ err }, "could not load prices; using defaults"));
   app.addHook("onClose", async () => {
+    c.calls.close();
     await c.pool.end();
   });
 

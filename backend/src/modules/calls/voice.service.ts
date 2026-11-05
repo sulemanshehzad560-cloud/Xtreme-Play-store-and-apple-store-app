@@ -110,10 +110,13 @@ export class VoiceService {
     const since = new Date(Date.now() - days * 86_400_000);
     const [row] = await this.db
       .select({
-        calls: sql<number>`count(*)::int`,
+        calls: sql<number>`count(*) filter (where ${bookingCalls.kind} <> 'voip')::int`,
         callbacks: sql<number>`count(*) filter (where ${bookingCalls.kind} = 'callback')::int`,
         toOffice: sql<number>`count(*) filter (where ${bookingCalls.toOffice})::int`,
-        seconds: sql<number>`coalesce(sum(${bookingCalls.durationSeconds}), 0)::int`,
+        seconds: sql<number>`coalesce(sum(${bookingCalls.durationSeconds}) filter (where ${bookingCalls.kind} <> 'voip'), 0)::int`,
+        inAppCalls: sql<number>`count(*) filter (where ${bookingCalls.kind} = 'voip')::int`,
+        inAppAnswered: sql<number>`count(*) filter (where ${bookingCalls.kind} = 'voip' and ${bookingCalls.answeredAt} is not null)::int`,
+        inAppSeconds: sql<number>`coalesce(sum(${bookingCalls.durationSeconds}) filter (where ${bookingCalls.kind} = 'voip'), 0)::int`,
       })
       .from(bookingCalls)
       .where(gte(bookingCalls.createdAt, since));
@@ -128,6 +131,12 @@ export class VoiceService {
       minutes,
       estimatedCostUsd: Math.round(minutes * 2 * this.opts.costPerMinUsd * 100) / 100,
       costPerMinUsd: this.opts.costPerMinUsd,
+      // In-app calls (free; only TURN relay data if configured).
+      inApp: {
+        calls: row?.inAppCalls ?? 0,
+        answered: row?.inAppAnswered ?? 0,
+        minutes: Math.round(((row?.inAppSeconds ?? 0) / 60) * 10) / 10,
+      },
     };
   }
 }
