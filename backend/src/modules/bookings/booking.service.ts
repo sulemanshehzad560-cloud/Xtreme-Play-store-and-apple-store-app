@@ -763,10 +763,9 @@ export class BookingService {
             ).map((u) => [u.id, u]),
           );
 
-    // Third-party suppliers never see a customer's phone number or contact details in notes.
-    const supplier =
-      actor.role === "staff" &&
-      ((await this.db.select({ s: staffProfiles.isSupplier }).from(staffProfiles).where(eq(staffProfiles.userId, actor.id)).limit(1))[0]?.s ?? false);
+    // Staff and third-party suppliers never see a customer's phone number or contact details in
+    // notes: calls go through Xtreme's masked number and the job chat removes contact details.
+    const supplier = actor.role === "staff";
 
     return rows.map((b) => {
       const service = findService(b.serviceKey);

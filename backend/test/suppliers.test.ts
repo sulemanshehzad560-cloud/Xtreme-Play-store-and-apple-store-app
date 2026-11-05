@@ -42,9 +42,12 @@ describe("suppliers and number masking", () => {
     expect((await req("GET", "/v1/staff/me", lead.auth)).json().isSupplier).toBe(true);
   });
 
-  it("still shows the phone to Xtreme's own staff", async () => {
-    const { lead, booking } = await setup(false);
-    expect((await req("GET", `/v1/bookings/${booking.id}`, lead.auth)).json().customer.phone).toBe("+971501230001");
+  it("hides the phone from Xtreme's own staff too, but not from the office", async () => {
+    const { lead, admin, booking } = await setup(false);
+    const job = (await req("GET", `/v1/bookings/${booking.id}`, lead.auth)).json();
+    expect(job.customer.phone).toBeNull();
+    expect(job.notes).not.toContain("0501230001");
+    expect((await req("GET", `/v1/bookings/${booking.id}`, admin.auth)).json().customer.phone).toBe("+971501230001");
   });
 
   it("removes phone numbers from job chat in both directions", async () => {
