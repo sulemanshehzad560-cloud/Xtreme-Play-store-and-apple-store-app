@@ -1,0 +1,53 @@
+name: service-art
+# Generates the realistic service pictures (product-style renders on white) on GitHub's runner
+# and puts them on the service-art branch. The app's art is then finished from these files
+# (background removal + the light gold Xtreme backdrop) and committed under mobile/assets/services.
+on:
+  workflow_dispatch:
+    inputs:
+      seeds:
+        description: "Seeds to try per picture (space separated)"
+        default: "11 23 37"
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Generate pictures
+        env:
+          SEEDS: ${{ inputs.seeds }}
+        run: |
+          mkdir out && cd out
+          STYLE="photorealistic 3D product render, single subject centered, three-quarter view, soft studio lighting, soft contact shadow, isolated on plain pure white background, high detail, no text, no people"
+          declare -A P
+          P[glass]="a clean sparkling glass window in a white frame with a yellow-handled window squeegee cleaning the glass, sparkles"
+          P[kitchen]="a clean modern kitchen stove: stainless steel oven with black glass cooktop, a pot on top and a chrome range hood above, white tile backsplash panel behind"
+          P[bathroom]="a clean white freestanding bathtub with chrome faucet and soap bubbles, a small light blue tiled wall panel behind"
+          P[balcony]="a small clean apartment balcony section: glass railing with black metal frame, beige tiled floor, a potted green plant"
+          P[wardrobe]="an open wooden wardrobe with neatly hanging colorful shirts on hangers"
+          P[restaurant]="a spotless commercial restaurant kitchen station: stainless steel prep table with a large steel stock pot and a silver serving cloche"
+          P[cupboard]="a clean white kitchen cupboard unit with wooden countertop, lower cabinet doors with silver handles and an open upper shelf with neat jars"
+          for k in "${!P[@]}"; do
+            for s in $SEEDS; do
+              q=$(python3 -c 'import sys,urllib.parse;print(urllib.parse.quote(sys.argv[1]))' "${P[$k]}, $STYLE")
+              for try in 1 2 3 4; do
+                if curl -sSfL -m 180 -o "$k-$s.jpg" "https://image.pollinations.ai/prompt/$q?width=1024&height=1024&nologo=true&model=flux&seed=$s"; then
+                  file "$k-$s.jpg" | grep -q image && break
+                fi
+                sleep $((try*10))
+              done
+            done
+          done
+          ls -la
+      - name: Push to the service-art branch
+        working-directory: out
+        run: |
+          git init -q -b service-art
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A && git commit -qm "Generated service pictures"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" service-art
