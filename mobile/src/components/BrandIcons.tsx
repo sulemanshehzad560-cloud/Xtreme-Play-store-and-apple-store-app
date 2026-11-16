@@ -1,7 +1,4 @@
-import { Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
-import { fonts } from "../lib/theme";
-import { t } from "@/lib/i18n";
 
 export function GoogleIcon({ size = 20 }: { size?: number }) {
   return (
@@ -27,14 +24,6 @@ export function AppleIcon({ size = 20, color = "#fff" }: { size?: number; color?
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Path fill={color} d="M16.4 12.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.4-.9-1.7 0-3.3 1-4.2 2.6-1.8 3.1-.5 7.7 1.3 10.2.8 1.2 1.8 2.6 3.1 2.5 1.3-.1 1.7-.8 3.2-.8s1.9.8 3.2.8c1.3 0 2.2-1.2 3-2.4.9-1.4 1.3-2.7 1.3-2.8-.1 0-2.6-1-2.1-4.2zM13.9 4.9c.7-.8 1.1-1.9 1-3-1 0-2.2.7-2.9 1.5-.6.7-1.2 1.8-1 2.9 1.1.1 2.2-.6 2.9-1.4z" />
     </Svg>
-  );
-}
-
-export function TamaraBadge() {
-  return (
-    <View style={{ backgroundColor: "#F6D6C3", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3 }}>
-      <Text style={{ fontFamily: fonts.extrabold, fontSize: 11, color: "#1A1A1A" }}>{t("tamara")}</Text>
-    </View>
   );
 }
 

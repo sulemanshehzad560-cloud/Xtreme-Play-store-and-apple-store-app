@@ -4,7 +4,7 @@
 #   - The API sleeps after 15 minutes without traffic; the first request after that takes about a minute.
 #   - The free database is deleted after 30 days unless upgraded to a paid plan.
 # Sign-in codes are NOT texted: open the service's "Logs" tab and read the line "[sms] ... code".
-# Payments: leave Stripe/Tamara empty, or use TEST keys only.
+# Payments: Ziina only (ZIINA_API_KEY). Add ZIINA_TEST=true to take test payments with no real money.
 services:
   - type: web
     name: xtreme-api-test
@@ -35,18 +35,9 @@ services:
       - key: APPLE_BUNDLE_IDS
         value: ae.xtremefm.app
       - { key: GOOGLE_CLIENT_IDS, sync: false }
-      - { key: STRIPE_SECRET_KEY, sync: false }
-      - { key: STRIPE_PUBLISHABLE_KEY, sync: false }
-      - { key: STRIPE_WEBHOOK_SECRET, sync: false }
       - { key: DATA_ENCRYPTION_KEY, sync: false } # openssl rand -base64 32; never change once set
       - { key: RENDER_DEPLOY_HOOK_URL, sync: false } # Settings > Deploy Hook; enables "Deploy" in the dashboard
-      - key: NGENIUS_API_URL
-        value: https://api-gateway.sandbox.ngenius-payments.com # switch to https://api-gateway.ngenius-payments.com when live
-      - { key: NGENIUS_API_KEY, sync: false }
-      - { key: NGENIUS_OUTLET_REF, sync: false }
-      - { key: NGENIUS_WEBHOOK_SECRET, sync: false }
-      - key: TAMARA_API_URL
-        value: https://api-sandbox.tamara.co
+      - { key: ZIINA_API_KEY, sync: false } # Ziina access token: card, Apple Pay and Google Pay
       - key: PUSH_ENABLED
         value: "true"
       - { key: ADMIN_PHONE, sync: false }

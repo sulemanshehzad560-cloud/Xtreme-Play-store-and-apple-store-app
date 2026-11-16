@@ -20,7 +20,7 @@ beforeEach(async () => {
 const quote = async (qs: string) => (await t.app.inject({ method: "GET", url: `/v1/catalog/quote?${qs}` })).json();
 
 describe("price list", () => {
-  it("lets the office change fixed prices, add new ones and set the Tamara fee", async () => {
+  it("lets the office change fixed prices and add new ones", async () => {
     const admin = await signInAs(t, "admin");
     const customer = await signInPhone(t);
     const current = (await t.app.inject({ method: "GET", url: "/v1/admin/pricing", headers: admin.auth })).json();
@@ -38,7 +38,6 @@ describe("price list", () => {
     expect(await quote("serviceKey=deep&propertyType=villa&propertySize=4bhk")).toMatchObject({ priceAed: null, pricing: "inspection" });
 
     const catalog = (await t.app.inject({ method: "GET", url: "/v1/catalog/services" })).json();
-    expect(catalog.payments.tamaraFeePercent).toBe(5);
     expect(catalog.services.find((s: { key: string }) => s.key === "deep")).toMatchObject({ startingFromAed: 650, pricing: { kind: "tiered" } });
     expect(catalog.regularRates.studio.priceAed).toBe(99);
 
@@ -72,7 +71,7 @@ describe("price list", () => {
     expect(options.methods[1]).toMatchObject({ method: "cash", feeAed: 10, totalAed: 145, depositAed: 29, cashDueAed: 116 });
 
     await pay(t, me.auth, booking.id);
-    expect([...t.card.intents.values()].at(-1)!.amountMinor).toBe(14500);
+    expect([...t.ziina.intents.values()].at(-1)!.amountMinor).toBe(14500);
     const invoice = (await t.app.inject({ method: "GET", url: `/v1/bookings/${booking.id}/invoice`, headers: me.auth })).json();
     expect(invoice.totalAed).toBe(145);
     expect(invoice.lines.map((l: { description: string; amountAed: number }) => [l.description, l.amountAed]).slice(1)).toEqual([["Service fee", 10]]);
@@ -92,7 +91,7 @@ describe("price list", () => {
     expect(options.methods[1]).toMatchObject({ method: "cash", totalAed: 153, depositAed: 31, cashDueAed: 122 });
 
     await pay(t, me.auth, booking.id);
-    expect([...t.card.intents.values()].at(-1)!.amountMinor).toBe(15300);
+    expect([...t.ziina.intents.values()].at(-1)!.amountMinor).toBe(15300);
     const invoice = (await t.app.inject({ method: "GET", url: `/v1/bookings/${booking.id}/invoice`, headers: me.auth })).json();
     expect(invoice.totalAed).toBe(153);
   });

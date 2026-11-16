@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { book, createTestApp, pay, resetDb, signInAs, signInPhone, type TestContext } from "./helpers.js";
+import { book, createTestApp, pay, resetDb, signInAs, signInPhone, ziinaHook, type TestContext } from "./helpers.js";
 
 let t: TestContext;
 beforeAll(async () => {
@@ -87,10 +87,10 @@ describe("tipping the team", () => {
     const booking = await book(t, me.auth); // AED 150
     const start = await inject("POST", `/v1/bookings/${booking.id}/payments`, me.auth, { method: "card", tipAed: 10 });
     expect(start.statusCode).toBe(201);
-    const intentId = [...t.card.intents.keys()].at(-1)!;
-    expect(t.card.intents.get(intentId)!.amountMinor).toBe(16000);
-    t.card.succeed(intentId);
-    await t.app.inject({ method: "POST", url: "/v1/webhooks/stripe", headers: { "stripe-signature": "good", "content-type": "application/json" }, payload: JSON.stringify({ id: "evt_tip", type: "payment_intent.succeeded", intentId }) });
+    const intentId = [...t.ziina.intents.keys()].at(-1)!;
+    expect(t.ziina.intents.get(intentId)!.amountMinor).toBe(16000);
+    t.ziina.succeed(intentId);
+    await ziinaHook(t, intentId);
 
     const invoice = (await inject("GET", `/v1/bookings/${booking.id}/invoice`, me.auth)).json();
     expect(invoice).toMatchObject({ totalAed: 160, vatAed: 7.14, subtotalAed: 142.86 });

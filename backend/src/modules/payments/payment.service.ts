@@ -1,24 +1,19 @@
 import type { FastifyBaseLogger } from "fastify";
 import { and, desc, eq, inArray, ne } from "drizzle-orm";
 import type { Database } from "../../db/client.js";
-import { bookingAssignments, bookingEvents, bookings, paymentWebhookEvents, payments, users, type Booking, type Payment, type PaymentStatus } from "../../db/schema.js";
+import { bookingAssignments, bookingEvents, bookings, payments, users, type Booking, type Payment, type PaymentStatus } from "../../db/schema.js";
 import { COMPANY } from "../../config/company.js";
-import { badRequest, conflict, notFound, unauthorized } from "../../lib/errors.js";
+import { badRequest, conflict, notFound } from "../../lib/errors.js";
 import type { Actor, BookingService } from "../bookings/booking.service.js";
 import { serviceName } from "../catalog/catalog.js";
 import type { NotificationService } from "../notifications/notification.service.js";
-import type { BnplGateway, CardGateway, HostedCardGateway, HostedProvider } from "./gateways.js";
-import { ZiinaGateway } from "./ziina.gateway.js";
+import type { HostedCardGateway } from "./gateways.js";
 
 export interface PaymentConfig {
   vatRate: number;
   companyTrn?: string | undefined;
   publicUrl: string;
   appScheme: string;
-  merchantName: string;
-  tamaraInstalments: number;
-  /** Fee added to Tamara payments, in percent. */
-  tamaraFeePercent: number;
   /** Fee added to card payments, in percent. */
   cardFeePercent: number;
   /** Flat service fee added to every payment, in AED. */
@@ -29,7 +24,7 @@ export interface PaymentConfig {
   cashDepositPercent: number;
 }
 
-export type PayMethod = "card" | "tamara" | "cash";
+export type PayMethod = "card" | "cash";
 
 const CURRENCY = COMPANY.currency;
 const SETTLED: PaymentStatus[] = ["captured", "partially_refunded", "refunded"];
@@ -46,13 +41,10 @@ export class PaymentService {
     private readonly db: Database,
     private readonly bookingsSvc: BookingService,
     private readonly notifications: NotificationService,
-    private readonly card: CardGateway,
+    /** Ziina: the customer pays on Ziina's secure page (card, Apple Pay, Google Pay). */
     private readonly hosted: HostedCardGateway,
-    private readonly bnpl: BnplGateway,
     private readonly config: PaymentConfig,
     private readonly log: FastifyBaseLogger,
-    /** Every hosted-page provider we can still reach, so older payments are refunded where they were made. */
-    private readonly hostedByProvider: Partial<Record<HostedProvider, HostedCardGateway>> = {},
   ) {
     bookingsSvc.onStatusChange(async (booking, _from) => {
       if (booking.status === "cancelled") await this.settleCancelledBooking(booking);
@@ -67,7 +59,7 @@ export class PaymentService {
     const booking = await this.payable(bookingId, customer);
     const amountMinor = dueMinor(booking);
     const serviceFee = this.serviceFeeMinor(amountMinor);
-    const cardFee = this.methodFeeMinor("card", amountMinor);
+    const cardFee = this.cardFeeMinor(amountMinor);
     const cash = this.cashSplit(amountMinor + serviceFee);
     return {
       bookingId,
@@ -106,18 +98,17 @@ export class PaymentService {
     };
   }
 
-  /** Starts (or restarts) paying for a booking with card or Tamara. */
+  /** Starts (or restarts) paying for a booking: in full by card, or the deposit of a cash booking. */
   async start(bookingId: string, customer: Actor, method: PayMethod, opts: { locale?: "en" | "ar" | undefined; tipAed?: number | undefined } = {}) {
     const booking = await this.payable(bookingId, customer);
-    if ((method === "card" || method === "cash") && !this.cardAvailable) throw badRequest("method_unavailable", "Card payments are not available right now");
-    if (method === "tamara") throw badRequest("method_unavailable", "Tamara is no longer offered. Please pay by card or choose cash.");
+    if (!this.cardAvailable) throw badRequest("method_unavailable", "Card payments are not available right now");
     const [user] = await this.db.select().from(users).where(eq(users.id, customer.id)).limit(1);
     if (!user) throw notFound("Account");
 
     await this.retirePendingAttempts(booking.id);
 
     const serviceFeeMinor = this.serviceFeeMinor(dueMinor(booking));
-    const feeMinor = serviceFeeMinor + (method === "cash" ? 0 : this.methodFeeMinor(method, dueMinor(booking)));
+    const feeMinor = serviceFeeMinor + (method === "cash" ? 0 : this.cardFeeMinor(dueMinor(booking)));
     const tipMinor = Math.max(0, Math.round((opts.tipAed ?? 0) * 100));
     // Cash: only the deposit (plus any tip) is paid online now; the rest is collected on the day.
     const cash = method === "cash" ? this.cashSplit(dueMinor(booking) + serviceFeeMinor) : null;
@@ -127,7 +118,7 @@ export class PaymentService {
       .values({
         bookingId: booking.id,
         customerId: customer.id,
-        provider: this.hosted.configured ? this.hosted.provider : "stripe",
+        provider: this.hosted.provider,
         amountMinor,
         feeMinor,
         serviceFeeMinor,
@@ -138,73 +129,31 @@ export class PaymentService {
         balanceMinor: cash?.balanceMinor ?? 0,
       })
       .returning();
-    const itemName = serviceName(booking.serviceKey);
-    const description = cash ? `Deposit · ${itemName} · ${booking.reference}` : `${itemName} · ${booking.reference}`;
 
     try {
-      // Network International or Ziina: the customer pays on the provider's secure page, then returns to the app.
-      if (this.hosted.configured) {
-        const ret = (result: string) => `${this.config.publicUrl}/v1/payments/${this.hosted.provider}/return?paymentId=${payment!.id}&result=${result}`;
-        const order = await this.hosted.createOrder({
-          paymentId: payment!.id,
-          reference: booking.reference,
-          amountMinor,
-          currency: CURRENCY,
-          email: user.email,
-          redirectUrl: ret("done"),
-          cancelUrl: ret("cancel"),
-          language: opts.locale === "ar" ? "ar" : "en",
-        });
-        await this.db
-          .update(payments)
-          .set({ providerRef: order.orderRef, checkoutUrl: order.paymentUrl, updatedAt: new Date() })
-          .where(eq(payments.id, payment!.id));
-        await this.markBookingPending(booking, method);
-        return {
-          paymentId: payment!.id,
-          provider: this.hosted.provider,
-          status: "pending" as const,
-          hosted: { url: order.paymentUrl, returnUrlPrefix: `${this.config.appScheme}://payments/` },
-        };
-      }
-
-      // Stripe's in-app payment sheet.
-      {
-        const customerId = await this.card.ensureCustomer({
-          id: user.id,
-          email: user.email,
-          name: user.fullName,
-          phone: user.phone,
-          existingId: user.stripeCustomerId,
-        });
-        if (!user.stripeCustomerId) await this.db.update(users).set({ stripeCustomerId: customerId }).where(eq(users.id, user.id));
-        const intent = await this.card.createIntent({
-          paymentId: payment!.id,
-          amountMinor,
-          currency: CURRENCY,
-          customerId,
-          description,
-          metadata: { bookingId: booking.id, reference: booking.reference },
-        });
-        const sheet = await this.card.sheetSession(customerId);
-        await this.db.update(payments).set({ providerRef: intent.id, updatedAt: new Date() }).where(eq(payments.id, payment!.id));
-        await this.markBookingPending(booking, method);
-        return {
-          paymentId: payment!.id,
-          provider: "stripe" as const,
-          status: "pending" as const,
-          stripe: {
-            publishableKey: this.card.publishableKey!,
-            paymentIntentClientSecret: intent.clientSecret,
-            customerId: sheet.customerId,
-            customerEphemeralKeySecret: sheet.ephemeralKey,
-            merchantDisplayName: this.config.merchantName,
-            merchantCountryCode: COMPANY.address.countryCode,
-            currency: CURRENCY,
-          },
-        };
-      }
-
+      // The customer pays on Ziina's secure page, then returns to the app.
+      const ret = (result: string) => `${this.config.publicUrl}/v1/payments/${this.hosted.provider}/return?paymentId=${payment!.id}&result=${result}`;
+      const order = await this.hosted.createOrder({
+        paymentId: payment!.id,
+        reference: booking.reference,
+        amountMinor,
+        currency: CURRENCY,
+        email: user.email,
+        redirectUrl: ret("done"),
+        cancelUrl: ret("cancel"),
+        language: opts.locale === "ar" ? "ar" : "en",
+      });
+      await this.db
+        .update(payments)
+        .set({ providerRef: order.orderRef, checkoutUrl: order.paymentUrl, updatedAt: new Date() })
+        .where(eq(payments.id, payment!.id));
+      await this.markBookingPending(booking, method);
+      return {
+        paymentId: payment!.id,
+        provider: this.hosted.provider,
+        status: "pending" as const,
+        hosted: { url: order.paymentUrl, returnUrlPrefix: `${this.config.appScheme}://payments/` },
+      };
     } catch (err) {
       await this.db
         .update(payments)
@@ -274,7 +223,7 @@ export class PaymentService {
         ...(discountMinor > 0 ? [{ description: "Promotional discount", serviceDate: null, amountAed: -discountMinor / 100 }] : []),
         ...(serviceFeeMinor > 0 ? [{ description: "Service fee", serviceDate: null, amountAed: serviceFeeMinor / 100 }] : []),
         ...(methodFeeMinor > 0
-          ? [{ description: paid?.provider === "tamara" ? "Tamara instalment fee" : "Card processing fee", serviceDate: null, amountAed: methodFeeMinor / 100 }]
+          ? [{ description: "Card processing fee", serviceDate: null, amountAed: methodFeeMinor / 100 }]
           : []),
         ...(tipMinor > 0 ? [{ description: "Tip for your team (passed on in full)", serviceDate: null, amountAed: tipMinor / 100 }] : []),
       ],
@@ -340,39 +289,9 @@ export class PaymentService {
 
   // ------------------------------------------------------------ webhooks
 
-  async handleStripeWebhook(rawBody: Buffer, signature: string) {
-    const event = this.card.parseWebhook(rawBody, signature);
-    if (await this.seen("stripe", event.id)) return;
-    if (event.intentId) {
-      const [payment] = await this.db
-        .select()
-        .from(payments)
-        .where(and(eq(payments.provider, "stripe"), eq(payments.providerRef, event.intentId)))
-        .limit(1);
-      if (payment) await this.reconcile(payment);
-    }
-    await this.remember("stripe", event.id, event.type);
-  }
-
-  async handleTamaraWebhook(token: string | null, body: { order_id?: string; event_type?: string; order_status?: string }) {
-    await this.bnpl.verifyNotification(token);
-    if (!body.order_id) return;
-    const eventId = `${body.order_id}:${body.event_type ?? body.order_status ?? "update"}`;
-    if (await this.seen("tamara", eventId)) return;
-    const [payment] = await this.db
-      .select()
-      .from(payments)
-      .where(and(eq(payments.provider, "tamara"), eq(payments.providerRef, body.order_id)))
-      .limit(1);
-    if (payment) await this.reconcile(payment);
-    await this.remember("tamara", eventId, body.event_type ?? "update");
-  }
-
   /** Ziina tells us a payment intent or refund changed; we re-read the payment from Ziina. */
   async handleZiinaWebhook(rawBody: Buffer, signature: string | null) {
-    const ziina = this.hostedByProvider.ziina;
-    if (!ziina || !(ziina instanceof ZiinaGateway)) throw unauthorized("Invalid webhook");
-    ziina.verifySignature(rawBody, signature);
+    this.hosted.verifyWebhook(rawBody, signature);
     let body: { event?: string; data?: { id?: string; payment_intent_id?: string } } = {};
     try {
       body = JSON.parse(rawBody.toString("utf8"));
@@ -387,21 +306,6 @@ export class PaymentService {
       .where(and(eq(payments.provider, "ziina"), eq(payments.providerRef, intentId)))
       .limit(1);
     if (payment) await this.reconcile(payment);
-  }
-
-  async handleNGeniusWebhook(secret: string | null, body: { eventId?: string; eventName?: string; order?: { reference?: string } }) {
-    this.hostedFor("ngenius").verifyWebhook(secret);
-    const orderRef = body.order?.reference;
-    if (!orderRef) return;
-    const eventId = body.eventId ?? `${orderRef}:${body.eventName ?? "update"}`;
-    if (await this.seen("ngenius", eventId)) return;
-    const [payment] = await this.db
-      .select()
-      .from(payments)
-      .where(and(eq(payments.provider, "ngenius"), eq(payments.providerRef, orderRef)))
-      .limit(1);
-    if (payment) await this.reconcile(payment);
-    await this.remember("ngenius", eventId, body.eventName ?? "update");
   }
 
   // ------------------------------------------------------------ admin
@@ -427,9 +331,10 @@ export class PaymentService {
     const amount = input.amountMinor ?? remaining;
     if (amount <= 0 || amount > remaining) throw badRequest("invalid_amount", `You can refund up to ${CURRENCY} ${remaining / 100}`);
 
-    if (payment.provider === "stripe") await this.card.refund(payment.providerRef!, amount, input.reason);
-    else if (payment.provider === "ngenius" || payment.provider === "ziina") await this.hostedFor(payment.provider).refund(payment.providerRef!, amount, payment.currency);
-    else if (payment.provider === "tamara") await this.bnpl.refund(payment.providerRef!, amount, payment.currency, input.reason);
+    if (payment.provider === "ziina") await this.hosted.refund(payment.providerRef!, amount, payment.currency);
+    else if (payment.provider !== "cash") {
+      throw conflict("refund_elsewhere", "This older payment was taken by a provider we no longer use. Refund it in that provider's portal.");
+    }
     // Cash: the money is handed back in person; we only record it.
 
     const refunded = payment.refundedMinor + amount;
@@ -462,44 +367,14 @@ export class PaymentService {
    * Safe to call any number of times, from webhooks, the app or an admin.
    */
   async reconcile(payment: Payment): Promise<Payment> {
-    if (!payment.providerRef || payment.provider === "cash") return payment;
-    let next: { status: PaymentStatus; refundedMinor: number; failureReason?: string | null };
-
-    if (payment.provider === "ngenius" || payment.provider === "ziina") {
-      const order = await this.hostedFor(payment.provider).getOrder(payment.providerRef);
-      const refunded = Math.max(payment.refundedMinor, order.refundedMinor);
-      next =
-        order.status === "captured"
-          ? { status: refundStatus(refunded, payment.amountMinor), refundedMinor: refunded }
-          : { status: order.status, refundedMinor: refunded, failureReason: order.failureReason };
-    } else if (payment.provider === "stripe") {
-      const intent = await this.card.getIntent(payment.providerRef);
-      const refunded = Math.max(payment.refundedMinor, intent.amountRefundedMinor);
-      next =
-        intent.status === "captured"
-          ? { status: refundStatus(refunded, payment.amountMinor), refundedMinor: refunded }
-          : { status: intent.status, refundedMinor: refunded, failureReason: intent.failureReason };
-    } else {
-      let order = await this.bnpl.getOrder(payment.providerRef);
-      // Approved means the customer finished on Tamara's side; we confirm and take the money.
-      if (order.status === "approved") {
-        await this.bnpl.authorise(order.orderId);
-        order = { ...order, status: "authorised" };
-      }
-      if (order.status === "authorised") {
-        await this.bnpl.capture(order.orderId, payment.amountMinor, payment.currency);
-        order = { ...order, status: "captured" };
-      }
-      const refunded = Math.max(payment.refundedMinor, order.refundedMinor);
-      next =
-        order.status === "captured" || order.status === "refunded" || order.status === "partially_refunded"
-          ? { status: refundStatus(refunded, payment.amountMinor), refundedMinor: refunded }
-          : order.status === "declined" || order.status === "expired"
-            ? { status: "failed", refundedMinor: refunded, failureReason: `Tamara order ${order.status}` }
-            : order.status === "cancelled"
-              ? { status: "cancelled", refundedMinor: refunded }
-              : { status: "pending", refundedMinor: refunded };
-    }
+    // Cash has nothing to re-read; payments by providers we no longer use stay as recorded.
+    if (!payment.providerRef || payment.provider !== "ziina") return payment;
+    const order = await this.hosted.getOrder(payment.providerRef);
+    const refunded = Math.max(payment.refundedMinor, order.refundedMinor);
+    const next: { status: PaymentStatus; refundedMinor: number; failureReason?: string | null } =
+      order.status === "captured"
+        ? { status: refundStatus(refunded, payment.amountMinor), refundedMinor: refunded }
+        : { status: order.status, refundedMinor: refunded, failureReason: order.failureReason };
 
     if (next.status === payment.status && next.refundedMinor === payment.refundedMinor) return payment;
     const becameCaptured = !SETTLED.includes(payment.status) && SETTLED.includes(next.status);
@@ -571,12 +446,8 @@ export class PaymentService {
     const rows = await this.db.select().from(payments).where(eq(payments.bookingId, booking.id));
     for (const p of rows) {
       try {
-        if (p.status === "pending" && p.providerRef && (p.provider === "stripe" || p.provider === "ngenius" || p.provider === "ziina")) {
-          // An unfinished N-Genius or Ziina page simply expires; Stripe intents are cancelled.
-          if (p.provider === "stripe") await this.card.cancelIntent(p.providerRef);
-          await this.db.update(payments).set({ status: "cancelled", updatedAt: new Date() }).where(eq(payments.id, p.id));
-        } else if (p.status === "authorised" && p.providerRef && p.provider === "tamara") {
-          await this.bnpl.cancel(p.providerRef, p.amountMinor, p.currency);
+        if (p.status === "pending") {
+          // An unfinished Ziina page simply expires.
           await this.db.update(payments).set({ status: "cancelled", updatedAt: new Date() }).where(eq(payments.id, p.id));
         } else if (p.status === "captured" || p.status === "partially_refunded") {
           await this.refund(p.id, { id: "system", role: "admin" }, { reason: `Booking ${booking.reference} cancelled` });
@@ -601,9 +472,7 @@ export class PaymentService {
     for (const p of pending) {
       const synced = await this.reconcile(p);
       if (SETTLED.includes(synced.status)) throw conflict("already_paid", "This booking is already paid");
-      if (synced.status === "authorised") throw conflict("payment_in_progress", "A Tamara payment is being completed. Please wait a moment.");
       if (synced.status === "pending") {
-        if (synced.provider === "stripe" && synced.providerRef) await this.card.cancelIntent(synced.providerRef).catch(() => undefined);
         await this.db
           .update(payments)
           .set({ status: "cancelled", failureReason: "Replaced by a new attempt", updatedAt: new Date() })
@@ -678,31 +547,13 @@ export class PaymentService {
     return { depositMinor: totalMinor - balanceMinor, balanceMinor };
   }
 
-  private hostedFor(provider: HostedProvider): HostedCardGateway {
-    return this.hostedByProvider[provider] ?? this.hosted;
-  }
-
   private get cardAvailable() {
-    return this.hosted.configured || this.card.configured;
+    return this.hosted.configured;
   }
 
-  private async seen(provider: "stripe" | "tamara" | "ngenius", eventId: string) {
-    const [row] = await this.db
-      .select({ id: paymentWebhookEvents.eventId })
-      .from(paymentWebhookEvents)
-      .where(and(eq(paymentWebhookEvents.provider, provider), eq(paymentWebhookEvents.eventId, eventId)))
-      .limit(1);
-    return Boolean(row);
-  }
-
-  private async remember(provider: "stripe" | "tamara" | "ngenius", eventId: string, type: string) {
-    await this.db.insert(paymentWebhookEvents).values({ provider, eventId, type }).onConflictDoNothing();
-  }
-
-  /** Card or Tamara fee on the amount due, as set in the dashboard's price list. */
-  private methodFeeMinor(method: PayMethod, amountMinor: number) {
-    const pct = method === "tamara" ? this.config.tamaraFeePercent : this.config.cardFeePercent;
-    return Math.round((amountMinor * pct) / 100);
+  /** Card fee on the amount due, as set in the dashboard's price list. */
+  private cardFeeMinor(amountMinor: number) {
+    return Math.round((amountMinor * this.config.cardFeePercent) / 100);
   }
 
   /** Flat service fee plus the percentage service charge on the amount due. */

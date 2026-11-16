@@ -15,7 +15,7 @@ export class SupportService {
     private readonly notifications: NotificationService,
     private readonly hub: RealtimeHub,
     private readonly admin: AdminService,
-    private readonly opts: { tamaraFeePercent: number; cardFeePercent?: number },
+    private readonly opts: { cardFeePercent?: number },
   ) {}
 
   /** The customer's thread; opening it marks our replies as read. */
@@ -32,7 +32,7 @@ export class SupportService {
   async send(customerId: string, body: string) {
     const [mine] = await this.db.insert(supportMessages).values({ customerId, sender: "customer", body: seal(body) }).returning();
     const company = await this.admin.company();
-    const ctx = { whatsappDisplay: company.phoneDisplay, tamaraFeePercent: this.opts.tamaraFeePercent, cardFeePercent: this.opts.cardFeePercent };
+    const ctx = { whatsappDisplay: company.phoneDisplay, cardFeePercent: this.opts.cardFeePercent };
     const answer = botAnswer(body, ctx);
     let reply: Message | undefined;
     if (answer) {

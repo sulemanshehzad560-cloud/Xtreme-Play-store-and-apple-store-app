@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { ADDRESS, createTestApp, resetDb, signInAs, signInPhone, slot, type TestContext } from "./helpers.js";
+import { ADDRESS, createTestApp, resetDb, signInAs, signInPhone, slot, ziinaHook, type TestContext } from "./helpers.js";
 
 let t: TestContext;
 beforeAll(async () => {
@@ -11,14 +11,13 @@ beforeEach(resetDb);
 const post = (url: string, auth: Record<string, string>, payload: unknown = {}) => t.app.inject({ method: "POST", url, headers: auth, payload: payload as object });
 const patch = (url: string, auth: Record<string, string>, payload: unknown = {}) => t.app.inject({ method: "PATCH", url, headers: auth, payload: payload as object });
 const get = (url: string, auth?: Record<string, string>) => t.app.inject({ method: "GET", url, headers: auth });
-const stripeHook = (body: object) =>
-  t.app.inject({ method: "POST", url: "/v1/webhooks/stripe", headers: { "stripe-signature": "good", "content-type": "application/json" }, payload: JSON.stringify(body) });
+
 
 async function payCard(auth: Record<string, string>, bookingId: string) {
   expect((await post(`/v1/bookings/${bookingId}/payments`, auth, { method: "card" })).statusCode).toBe(201);
-  const intentId = [...t.card.intents.keys()].at(-1)!;
-  t.card.succeed(intentId);
-  await stripeHook({ id: `evt_${intentId}`, type: "payment_intent.succeeded", intentId });
+  const intentId = [...t.ziina.intents.keys()].at(-1)!;
+  t.ziina.succeed(intentId);
+  await ziinaHook(t, intentId);
 }
 
 async function homePlan(admin: { auth: Record<string, string> }) {

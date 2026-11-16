@@ -22,13 +22,10 @@ import { InAppCallService } from "./modules/calls/in-app-call.service.js";
 import { createMediaRooms, type MediaRooms } from "./modules/calls/livekit.js";
 import { NotificationService } from "./modules/notifications/notification.service.js";
 import { ExpoPush, NoopPush, type PushSender } from "./modules/notifications/push.js";
-import type { BnplGateway, CardGateway, HostedCardGateway } from "./modules/payments/gateways.js";
+import type { HostedCardGateway } from "./modules/payments/gateways.js";
 import { configureSealing } from "./lib/sealed.js";
-import { NGeniusGateway } from "./modules/payments/ngenius.gateway.js";
 import { ZiinaGateway } from "./modules/payments/ziina.gateway.js";
 import { PaymentService } from "./modules/payments/payment.service.js";
-import { StripeGateway } from "./modules/payments/stripe.gateway.js";
-import { TamaraGateway } from "./modules/payments/tamara.gateway.js";
 import { AdminService } from "./modules/admin/admin.service.js";
 import { StaffService } from "./modules/staff/staff.service.js";
 import { PricingService, defaultPricing, pricing } from "./modules/catalog/pricing.js";
@@ -55,9 +52,7 @@ export interface Container {
   staff: StaffService;
   prices: PricingService;
   users: UserService;
-  card: CardGateway;
   hosted: HostedCardGateway;
-  bnpl: BnplGateway;
   payments: PaymentService;
   admin: AdminService;
   mailer: Mailer;
@@ -77,9 +72,7 @@ export interface ContainerOverrides {
   push?: PushSender;
   verifiers?: Partial<Record<SocialProvider, SocialVerifier>>;
   bookingRules?: Partial<BookingRules>;
-  card?: CardGateway;
   hosted?: HostedCardGateway;
-  bnpl?: BnplGateway;
   mailer?: Mailer;
   callBridge?: CallBridge;
   media?: MediaRooms;
@@ -142,36 +135,25 @@ export function createContainer(env: Env, log: FastifyBaseLogger, overrides: Con
     etaSpeedKmh: env.ETA_AVERAGE_SPEED_KMH,
   });
   const users = new UserService(db, tokens, bookings);
-  const card = overrides.card ?? new StripeGateway(env.STRIPE_SECRET_KEY, env.STRIPE_PUBLISHABLE_KEY, env.STRIPE_WEBHOOK_SECRET);
-  const ngenius = new NGeniusGateway(env.NGENIUS_API_URL, env.NGENIUS_API_KEY, env.NGENIUS_OUTLET_REF, env.NGENIUS_WEBHOOK_SECRET);
+  // Card, Apple Pay and Google Pay: all through Ziina.
   const ziina = new ZiinaGateway(env.ZIINA_API_URL, env.ZIINA_API_KEY, { test: env.ZIINA_TEST, webhookSecret: env.ZIINA_WEBHOOK_SECRET });
-  // Card payments: N-Genius when set up, otherwise Ziina, otherwise Stripe's in-app sheet.
-  const hosted = overrides.hosted ?? (ngenius.configured || !ziina.configured ? ngenius : ziina);
-  const hostedByProvider = overrides.hosted ? { [overrides.hosted.provider]: overrides.hosted } : { ngenius, ziina };
+  const hosted = overrides.hosted ?? ziina;
   if (!overrides.hosted && ziina.configured && env.PUBLIC_URL.startsWith("https://")) {
     ziina
       .registerWebhook(`${env.PUBLIC_URL}/v1/webhooks/ziina`)
       .then(() => log.info("Ziina webhook registered"))
       .catch((err: unknown) => log.error({ err }, "Ziina webhook registration failed; payments still confirm when customers return to the app"));
   }
-  const bnpl = overrides.bnpl ?? new TamaraGateway(env.TAMARA_API_URL, env.TAMARA_API_TOKEN, env.TAMARA_NOTIFICATION_TOKEN);
   const payments = new PaymentService(
     db,
     bookings,
     notifications,
-    card,
     hosted,
-    bnpl,
     {
       vatRate: env.VAT_RATE,
       companyTrn: env.COMPANY_TRN,
       publicUrl: env.PUBLIC_URL,
       appScheme: env.APP_SCHEME,
-      merchantName: env.STRIPE_MERCHANT_NAME,
-      tamaraInstalments: env.TAMARA_INSTALMENTS,
-      get tamaraFeePercent() {
-        return pricing().tamaraFeePercent;
-      },
       get cardFeePercent() {
         return pricing().cardFeePercent;
       },
@@ -184,10 +166,9 @@ export function createContainer(env: Env, log: FastifyBaseLogger, overrides: Con
       cashDepositPercent: env.CASH_DEPOSIT_PERCENT,
     },
     log,
-    hostedByProvider,
   );
   const admin = new AdminService(db, tokens, env);
-  const prices = new PricingService(db, defaultPricing(env.TAMARA_FEE_PERCENT, env.SERVICE_FEE_PERCENT));
+  const prices = new PricingService(db, defaultPricing(0, env.SERVICE_FEE_PERCENT));
   const mailer = overrides.mailer ?? createMailer(env, log);
   const invoices = new InvoiceMailer(db, payments, notifications, mailer, { publicUrl: env.PUBLIC_URL }, log);
   bookings.onStatusChange(async (booking) => {
@@ -196,9 +177,6 @@ export function createContainer(env: Env, log: FastifyBaseLogger, overrides: Con
   const subscriptions = new SubscriptionService(db, bookings, notifications);
   const promotions = new PromotionService(db, bookings, notifications);
   const support = new SupportService(db, notifications, hub, admin, {
-    get tamaraFeePercent() {
-      return pricing().tamaraFeePercent;
-    },
     get cardFeePercent() {
       return pricing().cardFeePercent;
     },
@@ -211,5 +189,5 @@ export function createContainer(env: Env, log: FastifyBaseLogger, overrides: Con
   payments.onPaid((bookingId) => subscriptions.onBookingPaid(bookingId));
   payments.onPaid((bookingId) => bookings.confirmPaid(bookingId));
   payments.onPaid((bookingId) => invoices.sendIfDue(bookingId));
-  return { env, db, pool, hub, sms, push, verifiers, tokens, otp, auth, notifications, bookings, bookingPhotos, bookingContact, voice, calls, staff, users, card, hosted, bnpl, payments, admin, mailer, invoices, subscriptions, promotions, support, prices };
+  return { env, db, pool, hub, sms, push, verifiers, tokens, otp, auth, notifications, bookings, bookingPhotos, bookingContact, voice, calls, staff, users, hosted, payments, admin, mailer, invoices, subscriptions, promotions, support, prices };
 }

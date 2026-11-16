@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
 import { Pressable, Text as RNText, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
-import Constants from "expo-constants";
 import * as WebBrowser from "expo-web-browser";
-import { initStripe, useStripe } from "@stripe/stripe-react-native";
 import { Button, Card, ErrorText, InlineLoader, Input, Notice, OptionCard, Row, Screen, StickyFooter, Text } from "@/components/ui";
 import { api } from "@/lib/api";
 import { DEMO } from "@/lib/demo";
@@ -31,21 +29,12 @@ interface Options {
 }
 interface CardStart {
   paymentId: string;
-  /** Ziina or Network International: the card is entered on the provider's secure page. */
+  /** Ziina's secure payment page (card, Apple Pay, Google Pay). */
   hosted?: { url: string; returnUrlPrefix: string };
-  stripe?: {
-    publishableKey: string;
-    paymentIntentClientSecret: string;
-    customerId: string;
-    customerEphemeralKeySecret: string;
-    merchantDisplayName: string;
-    merchantCountryCode: string;
-    currency: string;
-  };
 }
+
 export default function Pay() {
-  const { id, method: preselected } = useLocalSearchParams<{ id: string; method?: "card" | "cash" | "tamara" }>();
-  const { initPaymentSheet, presentPaymentSheet } = useStripe();
+  const { id, method: preselected } = useLocalSearchParams<{ id: string; method?: "card" | "cash" }>();
   const [options, setOptions] = useState<Options | null>(null);
   const [booking, setBooking] = useState<Booking | null>(null);
   const [code, setCode] = useState("");
@@ -111,29 +100,8 @@ export default function Pay() {
   // Cash bookings pay their deposit the same way as a card payment.
   async function payByCard() {
     const start = await api<CardStart>(`/bookings/${id}/payments`, { body: { method, ...(tip ? { tipAed: tip } : {}) } });
-    if (!DEMO && start.hosted) {
-      await WebBrowser.openAuthSessionAsync(start.hosted.url, start.hosted.returnUrlPrefix);
-      return finish(start.paymentId);
-    }
-    if (DEMO || !start.stripe) return finish(start.paymentId);
-    const s = start.stripe;
-    await initStripe({ publishableKey: s.publishableKey, merchantIdentifier: "merchant.ae.xtremefm.app", urlScheme: "xtreme" });
-    const init = await initPaymentSheet({
-      merchantDisplayName: s.merchantDisplayName,
-      paymentIntentClientSecret: s.paymentIntentClientSecret,
-      customerId: s.customerId,
-      customerEphemeralKeySecret: s.customerEphemeralKeySecret,
-      ...(Constants.expoConfig?.extra?.applePay ? { applePay: { merchantCountryCode: s.merchantCountryCode } } : {}),
-      googlePay: { merchantCountryCode: s.merchantCountryCode, currencyCode: s.currency, testEnv: s.publishableKey.startsWith("pk_test") },
-      returnURL: "xtreme://stripe-redirect",
-      appearance: sheetAppearance(),
-    });
-    if (init.error) throw new Error(init.error.message);
-    const result = await presentPaymentSheet();
-    if (result.error) {
-      if (result.error.code !== "Canceled") setError(result.error.message);
-      return;
-    }
+    // The customer pays on Ziina's page and is sent back to the app when done.
+    if (!DEMO && start.hosted) await WebBrowser.openAuthSessionAsync(start.hosted.url, start.hosted.returnUrlPrefix);
     await finish(start.paymentId);
   }
 
@@ -333,31 +301,4 @@ function SummaryLine({ label, value, accent }: { label: string; value: string; a
       <Text style={{ color: accent ? colors.goldBright : colors.onInk, fontFamily: fonts.bold }}>{value}</Text>
     </Row>
   );
-}
-
-/**
- * Card sheet colours in the app's current theme. Every colour is set, for both the phone's light
- * and dark modes, so text is never white on a light field (or dark on a dark one).
- */
-function sheetAppearance() {
-  const palette = {
-    primary: colors.gold,
-    background: colors.surface,
-    componentBackground: colors.bg,
-    componentBorder: colors.border,
-    componentDivider: colors.border,
-    primaryText: colors.text,
-    secondaryText: colors.muted,
-    componentText: colors.text,
-    placeholderText: colors.faint,
-    icon: colors.muted,
-    error: colors.danger,
-  };
-  const button = { background: colors.goldBright, text: "#16130E", border: colors.goldBright };
-  return {
-    font: { scale: 1.0 },
-    shapes: { borderRadius: 14 },
-    colors: { light: palette, dark: palette },
-    primaryButton: { colors: { light: button, dark: button }, shapes: { borderRadius: 14 } },
-  };
 }

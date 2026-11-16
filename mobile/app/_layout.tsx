@@ -14,7 +14,6 @@ import { Stack, router } from "expo-router";
 import * as Notifications from "expo-notifications";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { StripeProvider } from "@stripe/stripe-react-native";
 import { BrandIntro } from "@/components/BrandIntro";
 import { LanguagePicker } from "@/components/LanguagePicker";
 import { LanguageProvider, useLanguage } from "@/lib/i18n";
@@ -112,17 +111,6 @@ function Gate() {
   );
 }
 
-/** Stripe is only needed for real card payments; demo builds take payments in-app. */
-function Payments({ children }: { children: React.ReactElement }) {
-  if (DEMO) return children;
-  // The publishable key arrives with each payment, so none is needed up front.
-  return (
-    <StripeProvider publishableKey="" merchantIdentifier="merchant.ae.xtremefm.app" urlScheme="xtreme">
-      {children}
-    </StripeProvider>
-  );
-}
-
 function ThemedStatusBar() {
   return <StatusBar style={useThemeMode().dark ? "light" : "dark"} />;
 }
@@ -143,16 +131,14 @@ export default function RootLayout() {
   if (!fontsLoaded && !fontError) return null;
   return (
     <SafeAreaProvider>
-      <Payments>
-        <AuthProvider>
-          <LanguageProvider>
-            <ThemeProvider>
-              <ThemedStatusBar />
-              <Gate />
-            </ThemeProvider>
-          </LanguageProvider>
-        </AuthProvider>
-      </Payments>
+      <AuthProvider>
+        <LanguageProvider>
+          <ThemeProvider>
+            <ThemedStatusBar />
+            <Gate />
+          </ThemeProvider>
+        </LanguageProvider>
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }

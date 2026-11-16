@@ -44,7 +44,7 @@ export async function buildApp(env: Env, overrides: ContainerOverrides = {}): Pr
         paths: [
           "req.headers.authorization",
           "req.headers.cookie",
-          'req.headers["stripe-signature"]',
+          'req.headers["x-hmac-signature"]',
           "req.body.code",
           "req.body.password",
           "req.body.refreshToken",

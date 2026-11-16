@@ -393,7 +393,7 @@ async function refundBooking(b) {
     async (form) => {
       await sure({
         title: `Refund ${aed(Number(form.get("amount")))}?`,
-        message: p.method === "cash" ? "This records that the cash was handed back to the customer. Hand it back in person." : `The money goes back to the customer's ${p.method === "tamara" ? "Tamara account" : "card"}. This cannot be undone.`,
+        message: p.method === "cash" ? "This records that the cash was handed back to the customer. Hand it back in person." : "The money goes back to the customer's card through Ziina. This cannot be undone.",
         confirm: "Refund",
         danger: true,
       });

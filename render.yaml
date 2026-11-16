@@ -40,20 +40,9 @@ services:
         value: ae.xtremefm.app
       - { key: FACEBOOK_APP_ID, sync: false }
       - { key: FACEBOOK_APP_SECRET, sync: false }
-      - { key: STRIPE_SECRET_KEY, sync: false }
-      - { key: STRIPE_PUBLISHABLE_KEY, sync: false }
-      - { key: STRIPE_WEBHOOK_SECRET, sync: false }
       - { key: DATA_ENCRYPTION_KEY, sync: false } # openssl rand -base64 32; never change once set
       - { key: RENDER_DEPLOY_HOOK_URL, sync: false } # Settings > Deploy Hook; enables "Deploy" in the dashboard
-      - key: NGENIUS_API_URL
-        value: https://api-gateway.sandbox.ngenius-payments.com # switch to https://api-gateway.ngenius-payments.com when live
-      - { key: NGENIUS_API_KEY, sync: false }
-      - { key: NGENIUS_OUTLET_REF, sync: false }
-      - { key: NGENIUS_WEBHOOK_SECRET, sync: false }
-      - key: TAMARA_API_URL
-        value: https://api-sandbox.tamara.co # switch to https://api.tamara.co after Tamara's sign-off
-      - { key: TAMARA_API_TOKEN, sync: false }
-      - { key: TAMARA_NOTIFICATION_TOKEN, sync: false }
+      - { key: ZIINA_API_KEY, sync: false } # Ziina access token: card, Apple Pay and Google Pay
       - key: PUSH_ENABLED
         value: "true"
       - { key: EXPO_ACCESS_TOKEN, sync: false }

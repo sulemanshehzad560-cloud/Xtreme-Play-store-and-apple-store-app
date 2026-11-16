@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { LineIcon, iconColor, type LineIconName } from "@/components/LineIcon";
 import { hasOnboarded } from "@/lib/onboarding";
-import { Alert, Platform, Pressable, Text as RNText, View } from "react-native";
+import { Alert, Platform, Text as RNText, View } from "react-native";
 import { Image } from "expo-image";
 import { Redirect, router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -84,12 +84,6 @@ function CustomerWelcome() {
         ) : null}
         <Button title={t("Continue with Google")} variant="secondary" loading={busy === "google"} onPress={run("google", auth.signInWithGoogle)} icon={<GoogleIcon />} />
         <Button title={t("Continue with Facebook")} variant="secondary" loading={busy === "facebook"} onPress={run("facebook", auth.signInWithFacebook)} icon={<FacebookIcon />} />
-        <Pressable onPress={() => router.push("/(auth)/staff-login")} accessibilityRole="button" style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: space(2), paddingVertical: space(2) }}>
-          <LineIcon name="key" size={18} color={colors.gold} />
-          <RNText style={{ fontFamily: fonts.semibold, fontSize: 14, color: colors.muted }}>
-            {t("Xtreme staff?")}{" "}<RNText style={{ color: colors.gold, fontFamily: fonts.bold }}>{t("Staff sign in")}</RNText>
-          </RNText>
-        </Pressable>
         <Text variant="small" style={{ textAlign: "center", marginTop: "auto" }}>
           {t("By continuing, you agree to our Terms of Service and Privacy Policy.")}
         </Text>

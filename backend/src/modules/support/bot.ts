@@ -14,7 +14,6 @@ interface Rule {
 
 export interface BotContext {
   whatsappDisplay: string;
-  tamaraFeePercent: number;
   cardFeePercent?: number;
 }
 

@@ -95,10 +95,6 @@ const EnvSchema = z.object({
   // UAE Tax Registration Number printed on tax invoices.
   COMPANY_TRN: z.string().trim().optional(),
   APP_SCHEME: z.string().default("xtreme"),
-  STRIPE_SECRET_KEY: z.string().optional(),
-  STRIPE_PUBLISHABLE_KEY: z.string().optional(),
-  STRIPE_WEBHOOK_SECRET: z.string().optional(),
-  STRIPE_MERCHANT_NAME: z.string().default("Xtreme Facilities Management"),
   /** Encrypts chat messages and profile photos in the database. Use Render's "Generate". Never change it once set. */
   DATA_ENCRYPTION_KEY: z.string().trim().min(32, "DATA_ENCRYPTION_KEY must be a random secret of at least 32 characters (use Render's Generate)").optional(),
   /** Render "Deploy Hook" URL (service Settings > Deploy Hook). Lets admins redeploy from the dashboard. */
@@ -108,29 +104,16 @@ const EnvSchema = z.object({
     .refine((u) => u.startsWith("https://api.render.com/deploy/"), "RENDER_DEPLOY_HOOK_URL must be a Render deploy hook (https://api.render.com/deploy/...)")
     .optional(),
 
-  // Network International N-Genius (card, Apple Pay, Google Pay). When the API key and outlet
-  // are set, card payments go through N-Genius instead of Stripe.
-  NGENIUS_API_URL: z.string().url().default("https://api-gateway.sandbox.ngenius-payments.com"),
-  NGENIUS_API_KEY: z.string().optional(),
-  NGENIUS_OUTLET_REF: z.string().optional(),
-  /** Value of the custom header set on the N-Genius webhook (header name: X-Webhook-Secret). */
-  NGENIUS_WEBHOOK_SECRET: z.string().optional(),
-  // Ziina (UAE): card, Apple Pay and Google Pay on Ziina's page. Used for card payments when
-  // N-Genius is not set. The webhook is registered automatically on start-up.
+  // Ziina (UAE): card, Apple Pay and Google Pay on Ziina's page, the only payment provider.
+  // The webhook is registered automatically on start-up.
   ZIINA_API_URL: z.string().url().default("https://api-v2.ziina.com/api"),
   ZIINA_API_KEY: z.string().optional(),
   /** true: create test payments (no money moves). */
   ZIINA_TEST: bool,
   /** Optional; by default the webhook signing secret is derived from the API key. */
   ZIINA_WEBHOOK_SECRET: z.string().optional(),
-  TAMARA_API_URL: z.string().url().default("https://api-sandbox.tamara.co"),
-  TAMARA_API_TOKEN: z.string().optional(),
-  TAMARA_NOTIFICATION_TOKEN: z.string().optional(),
-  TAMARA_INSTALMENTS: z.coerce.number().int().min(2).max(12).default(4),
-  /** Fee added when the customer pays with Tamara, in percent of the amount due (0 = none). */
   /** Cash bookings: share of the total paid online to confirm the booking; the rest is paid in cash on the day. */
   CASH_DEPOSIT_PERCENT: z.coerce.number().min(5).max(90).default(20),
-  TAMARA_FEE_PERCENT: z.coerce.number().min(0).max(20).default(8),
   /** Default service charge on every payment, in percent (editable later in the dashboard). */
   SERVICE_FEE_PERCENT: z.coerce.number().min(0).max(20).default(2),
 
@@ -182,11 +165,9 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     if (env.SMS_PROVIDER === "console") console.warn("Warning: test server. Sign-in codes are written to the log, not sent by SMS.");
     // Payments and personal data: the public address must be encrypted (HTTPS).
     if (!env.PUBLIC_URL.startsWith("https://")) throw new Error("PUBLIC_URL must start with https:// in production");
-    if (/^(sk|rk)_test_/.test(env.STRIPE_SECRET_KEY ?? "") && env.PUBLIC_URL.includes("xtreme-fmgroup.com")) {
-      console.warn("Warning: Stripe TEST key in use on the production domain. Switch to the live key before taking real payments.");
+    if (env.ZIINA_TEST && env.PUBLIC_URL.includes("xtreme-fmgroup.com")) {
+      console.warn("Warning: Ziina TEST mode on the production domain. Card payments are not real until ZIINA_TEST is turned off.");
     }
-    if (env.STRIPE_SECRET_KEY && !env.STRIPE_WEBHOOK_SECRET) throw new Error("STRIPE_WEBHOOK_SECRET is required with STRIPE_SECRET_KEY");
-    if (env.TAMARA_API_TOKEN && !env.TAMARA_NOTIFICATION_TOKEN) throw new Error("TAMARA_NOTIFICATION_TOKEN is required with TAMARA_API_TOKEN");
     if (env.CORS_ORIGINS.includes("*")) throw new Error("CORS_ORIGINS=* is not allowed in production");
   }
   if (env.MAIL_PROVIDER === "smtp" && (!env.SMTP_USER || !env.SMTP_PASS)) throw new Error("MAIL_PROVIDER=smtp needs SMTP_USER and SMTP_PASS");

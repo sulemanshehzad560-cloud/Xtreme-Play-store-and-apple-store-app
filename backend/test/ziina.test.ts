@@ -37,7 +37,8 @@ const sign = (body: string, key = secret) => createHmac("sha256", key).update(bo
 let t: TestContext;
 beforeAll(async () => {
   vi.stubGlobal("fetch", fakeFetch);
-  t = await createTestApp({ ZIINA_API_KEY: "zi-key" });
+  // The real Ziina gateway, talking to the stand-in API above.
+  t = await createTestApp({ ZIINA_API_KEY: "zi-key" }, { hosted: undefined });
 });
 afterAll(async () => {
   vi.unstubAllGlobals();

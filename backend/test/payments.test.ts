@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { book, createTestApp, resetDb, signInAs, signInPhone, type TestContext } from "./helpers.js";
+import { book, createTestApp, resetDb, signInAs, signInPhone, ziinaHook, type TestContext } from "./helpers.js";
 
 let t: TestContext;
 beforeAll(async () => {
@@ -10,8 +10,7 @@ beforeEach(resetDb);
 
 const post = (url: string, auth: Record<string, string>, payload: unknown = {}) => t.app.inject({ method: "POST", url, headers: auth, payload: payload as object });
 const get = (url: string, auth: Record<string, string>) => t.app.inject({ method: "GET", url, headers: auth });
-const stripeHook = (body: object, signature = "good") =>
-  t.app.inject({ method: "POST", url: "/v1/webhooks/stripe", headers: { "stripe-signature": signature, "content-type": "application/json" }, payload: JSON.stringify(body) });
+const hook = (intentId: string, signature = "good") => ziinaHook(t, intentId, signature);
 
 async function profiled() {
   const me = await signInPhone(t, undefined, "Sara Al Mansoori");
@@ -19,8 +18,8 @@ async function profiled() {
   return me;
 }
 
-describe("card payments (Stripe)", () => {
-  it("shows options with VAT and pays through PaymentSheet + webhook", async () => {
+describe("card payments (Ziina)", () => {
+  it("shows options with VAT and pays on Ziina's page + webhook", async () => {
     const me = await profiled();
     const booking = await book(t, me.auth); // regular, 2bhk apartment = AED 150
 
@@ -30,17 +29,18 @@ describe("card payments (Stripe)", () => {
 
     const start = await post(`/v1/bookings/${booking.id}/payments`, me.auth, { method: "card" });
     expect(start.statusCode).toBe(201);
-    const { paymentId, stripe } = start.json();
-    expect(stripe).toMatchObject({ publishableKey: "pk_test_fake", customerEphemeralKeySecret: "ek_test", currency: "AED" });
-    const intentId = [...t.card.intents.keys()].at(-1)!;
-    expect(t.card.intents.get(intentId)!.amountMinor).toBe(15000);
+    const { paymentId, provider, hosted } = start.json();
+    expect(provider).toBe("ziina");
+    expect(hosted.url).toMatch(/^https:\/\/pay\.ziina\.test\//);
+    const intentId = [...t.ziina.intents.keys()].at(-1)!;
+    expect(t.ziina.intents.get(intentId)!.amountMinor).toBe(15000);
     expect((await get(`/v1/bookings/${booking.id}`, me.auth)).json().paymentStatus).toBe("pending");
 
-    // Bad signatures are rejected; good ones reconcile with Stripe and are processed once.
-    expect((await stripeHook({ id: "evt_1", type: "payment_intent.succeeded", intentId }, "forged")).statusCode).toBe(401);
-    t.card.succeed(intentId);
-    expect((await stripeHook({ id: "evt_1", type: "payment_intent.succeeded", intentId })).statusCode).toBe(200);
-    await stripeHook({ id: "evt_1", type: "payment_intent.succeeded", intentId });
+    // Bad signatures are rejected; good ones re-read the payment from Ziina, and repeats change nothing.
+    expect((await hook(intentId, "forged")).statusCode).toBe(401);
+    t.ziina.succeed(intentId);
+    expect((await hook(intentId)).statusCode).toBe(200);
+    await hook(intentId);
 
     const detail = (await get(`/v1/bookings/${booking.id}`, me.auth)).json();
     expect(detail).toMatchObject({ paymentStatus: "paid", paymentMethod: "card", canPay: false });
@@ -62,9 +62,7 @@ describe("card payments (Stripe)", () => {
     const me = await profiled();
     const booking = await book(t, me.auth);
     await post(`/v1/bookings/${booking.id}/payments`, me.auth, { method: "card" });
-    const first = [...t.card.intents.keys()].at(-1)!;
     await post(`/v1/bookings/${booking.id}/payments`, me.auth, { method: "card" });
-    expect(t.card.cancelled).toContain(first);
     const list = (await get(`/v1/bookings/${booking.id}/payments`, me.auth)).json();
     expect(list.map((p: { status: string }) => p.status)).toEqual(["pending", "cancelled"]);
   });
@@ -73,13 +71,13 @@ describe("card payments (Stripe)", () => {
     const me = await profiled();
     const booking = await book(t, me.auth);
     const { paymentId } = (await post(`/v1/bookings/${booking.id}/payments`, me.auth, { method: "card" })).json();
-    const intentId = [...t.card.intents.keys()].at(-1)!;
-    t.card.succeed(intentId);
+    const intentId = [...t.ziina.intents.keys()].at(-1)!;
+    t.ziina.succeed(intentId);
     await post(`/v1/payments/${paymentId}/sync`, me.auth);
 
     const cancelled = await post(`/v1/bookings/${booking.id}/cancel`, me.auth, { reason: "Travelling" });
     expect(cancelled.statusCode).toBe(200);
-    expect(t.card.refunds).toEqual([{ intentId, amountMinor: 15000 }]);
+    expect(t.ziina.refunds).toEqual([{ intentId, amountMinor: 15000 }]);
     const detail = (await get(`/v1/bookings/${booking.id}`, me.auth)).json();
     expect(detail.paymentStatus).toBe("refunded");
     expect(detail.timeline.some((e: { type: string }) => e.type === "refund")).toBe(true);
@@ -90,7 +88,7 @@ describe("card payments (Stripe)", () => {
     const admin = await signInAs(t, "admin");
     const booking = await book(t, me.auth);
     const { paymentId } = (await post(`/v1/bookings/${booking.id}/payments`, me.auth, { method: "card" })).json();
-    t.card.succeed([...t.card.intents.keys()].at(-1)!);
+    t.ziina.succeed([...t.ziina.intents.keys()].at(-1)!);
     await post(`/v1/payments/${paymentId}/sync`, me.auth);
 
     expect((await post(`/v1/admin/bookings/${booking.id}/price`, admin.auth, { priceAed: 500 })).json().error.code).toBe("already_paid");
@@ -114,7 +112,7 @@ describe("card payments (Stripe)", () => {
     expect((await post(`/v1/bookings/${booking.id}/payments`, me.auth, { method: "card" })).json().error.code).toBe("awaiting_quote");
     await post(`/v1/admin/bookings/${booking.id}/price`, admin.auth, { priceAed: 275 });
     expect((await post(`/v1/bookings/${booking.id}/payments`, me.auth, { method: "card" })).statusCode).toBe(201);
-    expect([...t.card.intents.values()].at(-1)!.amountMinor).toBe(27500);
+    expect([...t.ziina.intents.values()].at(-1)!.amountMinor).toBe(27500);
   });
 });
 
@@ -132,11 +130,11 @@ describe("cash on the day with an online deposit", () => {
     // The deposit is paid by card; the booking is then confirmed with cash still due.
     const start = await post(`/v1/bookings/${booking.id}/payments`, me.auth, { method: "cash" });
     expect(start.statusCode).toBe(201);
-    const intentId = [...t.card.intents.keys()].at(-1)!;
-    expect(t.card.intents.get(intentId)!.amountMinor).toBe(3000);
+    const intentId = [...t.ziina.intents.keys()].at(-1)!;
+    expect(t.ziina.intents.get(intentId)!.amountMinor).toBe(3000);
     expect((await get(`/v1/bookings/${booking.id}`, me.auth)).json()).toMatchObject({ paymentStatus: "pending", paymentMethod: "cash" });
-    t.card.succeed(intentId);
-    expect((await stripeHook({ id: "evt_cash", type: "payment_intent.succeeded", intentId })).statusCode).toBe(200);
+    t.ziina.succeed(intentId);
+    expect((await hook(intentId)).statusCode).toBe(200);
     let detail = (await get(`/v1/bookings/${booking.id}`, me.auth)).json();
     expect(detail).toMatchObject({ paymentStatus: "deposit_paid", paymentMethod: "cash", cashDueAed: 120, canPay: false, awaitingPayment: false });
     expect((await get(`/v1/bookings/${booking.id}/payments`, me.auth)).json()[0]).toMatchObject({ kind: "deposit", amountAed: 30, cashDueAed: 120, status: "captured" });
@@ -166,9 +164,9 @@ describe("cash on the day with an online deposit", () => {
     const me = await profiled();
     const booking = await book(t, me.auth);
     await post(`/v1/bookings/${booking.id}/payments`, me.auth, { method: "cash" });
-    const intentId = [...t.card.intents.keys()].at(-1)!;
-    t.card.succeed(intentId);
-    await stripeHook({ id: "evt_cash2", type: "payment_intent.succeeded", intentId });
+    const intentId = [...t.ziina.intents.keys()].at(-1)!;
+    t.ziina.succeed(intentId);
+    await hook(intentId);
     expect((await post(`/v1/bookings/${booking.id}/cancel`, me.auth, { reason: "Plans changed" })).statusCode).toBe(200);
     const detail = (await get(`/v1/bookings/${booking.id}`, me.auth)).json();
     expect(detail).toMatchObject({ paymentStatus: "refunded", cashDueAed: 0 });
@@ -178,6 +176,6 @@ describe("cash on the day with an online deposit", () => {
     const me = await profiled();
     const booking = await book(t, me.auth);
     const res = await post(`/v1/bookings/${booking.id}/payments`, me.auth, { method: "tamara" });
-    expect(res.json().error.code).toBe("method_unavailable");
+    expect(res.statusCode).toBe(400);
   });
 });

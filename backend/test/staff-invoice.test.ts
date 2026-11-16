@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { book, createTestApp, nextPhone, resetDb, signInAs, signInPhone, type TestContext, pay } from "./helpers.js";
+import { book, createTestApp, nextPhone, resetDb, signInAs, signInPhone, type TestContext, pay, ziinaHook } from "./helpers.js";
 
 let t: TestContext;
 beforeAll(async () => {
@@ -97,14 +97,9 @@ describe("automatic invoice email", () => {
     await t.app.inject({ method: "PATCH", url: "/v1/me", headers: customer.auth, payload: { email: "sara@example.com" } });
     const booking = await book(t, customer.auth);
     await post(`/v1/bookings/${booking.id}/payments`, customer.auth, { method: "card" });
-    const intentId = [...t.card.intents.keys()].at(-1)!;
-    t.card.succeed(intentId);
-    await t.app.inject({
-      method: "POST",
-      url: "/v1/webhooks/stripe",
-      headers: { "stripe-signature": "good", "content-type": "application/json" },
-      payload: JSON.stringify({ id: `evt_${intentId}`, type: "payment_intent.succeeded", intentId }),
-    });
+    const intentId = [...t.ziina.intents.keys()].at(-1)!;
+    t.ziina.succeed(intentId);
+    await ziinaHook(t, intentId);
     return { customer, booking };
   }
 

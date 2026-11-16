@@ -132,7 +132,7 @@ export function TrackScene({ size = 240 }: { size?: number }) {
   );
 }
 
-/** Onboarding 3: card, Tamara and a security shield. */
+/** Onboarding 3: card and a security shield. */
 export function PayScene({ size = 240 }: { size?: number }) {
   return (
     <Svg width={size} height={size * 0.85} viewBox="0 0 240 204">

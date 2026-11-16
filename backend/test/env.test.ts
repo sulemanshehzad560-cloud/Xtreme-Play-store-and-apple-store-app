@@ -25,8 +25,9 @@ describe("production configuration", () => {
     expect(env.SMS_PROVIDER).toBe("console");
   });
 
-  it("requires webhook secrets alongside payment keys", () => {
-    expect(() => loadEnv({ ...base, PUBLIC_URL: "https://a.b", STRIPE_SECRET_KEY: "sk_live_x" })).toThrow(/STRIPE_WEBHOOK_SECRET/);
-    expect(() => loadEnv({ ...base, PUBLIC_URL: "https://a.b", TAMARA_API_TOKEN: "t" })).toThrow(/TAMARA_NOTIFICATION_TOKEN/);
+  it("ignores settings left over from payment providers we no longer use", () => {
+    const env = loadEnv({ ...base, PUBLIC_URL: "https://a.b", STRIPE_SECRET_KEY: "sk_live_x", TAMARA_API_TOKEN: "t", NGENIUS_API_KEY: "k" });
+    expect(env).not.toHaveProperty("STRIPE_SECRET_KEY");
+    expect(env).not.toHaveProperty("TAMARA_API_TOKEN");
   });
 });

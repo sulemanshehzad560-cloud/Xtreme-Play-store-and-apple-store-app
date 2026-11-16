@@ -21,7 +21,7 @@ interface ZiinaRefund {
 
 /**
  * Ziina (UAE): the customer pays on Ziina's secure page (card, Apple Pay, Google Pay), then
- * comes back to the app. As with N-Genius, the payment intent is always re-read from Ziina;
+ * comes back to the app. The payment intent is always re-read from Ziina;
  * redirects and webhook bodies only tell us when to look.
  *
  * Ziina reports refunds separately from the payment intent, so refunded amounts are tracked
@@ -114,7 +114,7 @@ export class ZiinaGateway implements HostedCardGateway {
     if (given.length !== expected.length || !timingSafeEqual(given, expected)) throw unauthorized("Invalid webhook");
   }
 
-  verifyWebhook() {
-    // Ziina webhooks are signed over the body; see verifySignature.
+  verifyWebhook(rawBody: Buffer, signature: string | null) {
+    this.verifySignature(rawBody, signature);
   }
 }

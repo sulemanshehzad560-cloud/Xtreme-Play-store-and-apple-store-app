@@ -7,7 +7,7 @@ import { users } from "../src/db/schema.js";
 import { ConsoleSms } from "../src/modules/auth/sms.js";
 import { NoopPush } from "../src/modules/notifications/push.js";
 import { ConsoleMailer } from "../src/modules/mail/mailer.js";
-import { FakeCard, FakeTamara, FakeVerifier } from "./fakes.js";
+import { FakeVerifier, FakeZiina } from "./fakes.js";
 import { TEST_DATABASE_URL } from "./global-setup.js";
 
 export interface TestContext {
@@ -15,8 +15,7 @@ export interface TestContext {
   c: Container;
   sms: ConsoleSms;
   push: NoopPush;
-  card: FakeCard;
-  tamara: FakeTamara;
+  ziina: FakeZiina;
   mail: ConsoleMailer;
 }
 
@@ -37,20 +36,18 @@ export const testEnv = (extra: Record<string, string> = {}) =>
 export async function createTestApp(extra: Record<string, string> = {}, overrides: Partial<Parameters<typeof buildApp>[1]> = {}): Promise<TestContext> {
   const sms = new ConsoleSms();
   const push = new NoopPush();
-  const card = new FakeCard();
-  const tamara = new FakeTamara();
+  const ziina = new FakeZiina();
   const mail = new ConsoleMailer("Xtreme-Cleaning Partner <sales@xtreme-fmgroup.com>");
   const app = await buildApp(testEnv(extra), {
     mailer: mail,
     sms,
     push,
-    card,
-    bnpl: tamara,
+    hosted: ziina,
     verifiers: { google: new FakeVerifier("google"), facebook: new FakeVerifier("facebook"), apple: new FakeVerifier("apple") },
     ...overrides,
   });
   await app.ready();
-  return { app, c: app.container, sms, push, card, tamara, mail };
+  return { app, c: app.container, sms, push, ziina, mail };
 }
 
 export async function resetDb() {
@@ -106,18 +103,23 @@ export async function book(t: TestContext, auth: Record<string, string>, body: R
   return res.json() as { id: string; reference: string; priceAed: number | null; status: string };
 }
 
-/** Pays a booking by card through the fake gateway and the Stripe webhook. */
+/** Ziina's signed webhook for a payment intent ("good" is the fake's valid signature). */
+export function ziinaHook(t: TestContext, intentId: string, signature = "good") {
+  return t.app.inject({
+    method: "POST",
+    url: "/v1/webhooks/ziina",
+    headers: { "x-hmac-signature": signature, "content-type": "application/json" },
+    payload: JSON.stringify({ event: "payment_intent.status.updated", data: { id: intentId } }),
+  });
+}
+
+/** Pays a booking by card through the fake Ziina and its webhook. */
 export async function pay(t: TestContext, auth: Record<string, string>, bookingId: string) {
   const res = await t.app.inject({ method: "POST", url: `/v1/bookings/${bookingId}/payments`, headers: auth, payload: { method: "card" } });
   if (res.statusCode >= 300) throw new Error(`payment start failed: ${res.body}`);
-  const intentId = [...t.card.intents.keys()].at(-1)!;
-  t.card.succeed(intentId);
-  await t.app.inject({
-    method: "POST",
-    url: "/v1/webhooks/stripe",
-    headers: { "stripe-signature": "good", "content-type": "application/json" },
-    payload: JSON.stringify({ id: `evt_${intentId}`, type: "payment_intent.succeeded", intentId }),
-  });
+  const intentId = [...t.ziina.intents.keys()].at(-1)!;
+  t.ziina.succeed(intentId);
+  await ziinaHook(t, intentId);
 }
 
 /** A fixed-price booking, paid (and so confirmed automatically). */

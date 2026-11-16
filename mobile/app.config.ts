@@ -19,10 +19,6 @@ function googleServicesFile(value: string | undefined): string | undefined {
   return "./google-services.json";
 }
 
-// Apple Pay needs the merchant ID linked to the App ID in Apple Developer and Stripe's
-// Apple Pay certificate. Until both are done, iPhone builds offer card payments only.
-const APPLE_PAY = env.APPLE_PAY_ENABLED === "true";
-
 // APP_VARIANT=staff builds the separate staff & supplier app ("Xtreme Staff"): its own Android
 // package, so it installs next to the customer app, and it opens straight to the staff sign-in.
 // Push alerts need GOOGLE_SERVICES_JSON_STAFF (Firebase → add Android app ae.xtremefm.staff).
@@ -48,8 +44,8 @@ const config: ExpoConfig = {
       NSLocationWhenInUseUsageDescription: "Xtreme-Cleaning Partner uses your location to set the service address and to show your team arriving.",
       NSLocationAlwaysAndWhenInUseUsageDescription:
         "Staff only: Xtreme-Cleaning Partner shares your location with the customer while you are on duty and travelling to a job.",
-      // Camera: a profile photo, quote photos (sofa, mattress…), or scanning a card in Stripe's payment form. Apple requires the reasons.
-      NSCameraUsageDescription: "Xtreme-Cleaning Partner uses the camera only when you choose to take a profile photo, photograph the item you want cleaned (for example a sofa or mattress) so we can send your quote, or scan your payment card.",
+      // Camera: a profile photo or quote photos (sofa, mattress…). Apple requires the reasons.
+      NSCameraUsageDescription: "Xtreme-Cleaning Partner uses the camera only when you choose to take a profile photo, or photograph the item you want cleaned (for example a sofa or mattress) so we can send your quote.",
       NSPhotoLibraryUsageDescription: "Xtreme-Cleaning Partner lets you choose a profile photo, or photos of the item you want cleaned (for example a sofa or mattress) so we can send your quote.",
       NSMicrophoneUsageDescription: "Xtreme-Cleaning Partner uses the microphone only for in-app calls between you and your cleaning team (or, for staff, the customer).",
       // "audio" keeps an in-app call going when the screen locks.
@@ -116,7 +112,6 @@ const config: ExpoConfig = {
         autoLogAppEventsEnabled: false,
       },
     ],
-    ["@stripe/stripe-react-native", { merchantIdentifier: APPLE_PAY ? "merchant.ae.xtremefm.app" : undefined, enableGooglePay: true }],
     // No plain-HTTP traffic in store builds; development builds may talk to a local server.
     ["expo-build-properties", { android: { minSdkVersion: 24, usesCleartextTraffic: !(env.EXPO_PUBLIC_API_URL ?? "").startsWith("https://") } }],
   ],
@@ -127,7 +122,6 @@ const config: ExpoConfig = {
     googleIosClientId: env.GOOGLE_IOS_CLIENT_ID,
     // Android needs a Google Maps key to draw maps; without one the app shows a drawn map instead.
     androidMapsEnabled: Boolean(env.GOOGLE_MAPS_ANDROID_KEY),
-    applePay: APPLE_PAY,
     variant: STAFF ? "staff" : "customer",
     eas: { projectId: env.EAS_PROJECT_ID ?? EXPO_PROJECT_ID },
   },
