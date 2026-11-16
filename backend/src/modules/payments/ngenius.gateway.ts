@@ -27,6 +27,7 @@ interface NiOrder {
  */
 export class NGeniusGateway implements HostedCardGateway {
   readonly name = "Network International";
+  readonly provider = "ngenius" as const;
   private token: { value: string; expiresAt: number } | null = null;
 
   constructor(

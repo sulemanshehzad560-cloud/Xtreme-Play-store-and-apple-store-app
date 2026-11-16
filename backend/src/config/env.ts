@@ -115,6 +115,14 @@ const EnvSchema = z.object({
   NGENIUS_OUTLET_REF: z.string().optional(),
   /** Value of the custom header set on the N-Genius webhook (header name: X-Webhook-Secret). */
   NGENIUS_WEBHOOK_SECRET: z.string().optional(),
+  // Ziina (UAE): card, Apple Pay and Google Pay on Ziina's page. Used for card payments when
+  // N-Genius is not set. The webhook is registered automatically on start-up.
+  ZIINA_API_URL: z.string().url().default("https://api-v2.ziina.com/api"),
+  ZIINA_API_KEY: z.string().optional(),
+  /** true: create test payments (no money moves). */
+  ZIINA_TEST: bool,
+  /** Optional; by default the webhook signing secret is derived from the API key. */
+  ZIINA_WEBHOOK_SECRET: z.string().optional(),
   TAMARA_API_URL: z.string().url().default("https://api-sandbox.tamara.co"),
   TAMARA_API_TOKEN: z.string().optional(),
   TAMARA_NOTIFICATION_TOKEN: z.string().optional(),

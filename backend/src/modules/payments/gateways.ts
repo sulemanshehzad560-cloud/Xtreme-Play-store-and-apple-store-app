@@ -79,7 +79,7 @@ export interface BnplGateway {
   verifyNotification(token: string | null): Promise<void>;
 }
 
-/** A card payment taken on the acquirer's own secure page (e.g. Network International N-Genius). */
+/** A card payment taken on the acquirer's own secure page (Network International N-Genius or Ziina). */
 export interface HostedCardOrder {
   orderRef: string;
   status: "pending" | "captured" | "failed" | "cancelled";
@@ -87,9 +87,13 @@ export interface HostedCardOrder {
   failureReason: string | null;
 }
 
+export type HostedProvider = "ngenius" | "ziina";
+
 export interface HostedCardGateway {
   readonly configured: boolean;
   readonly name: string;
+  /** Stored on the payment so refunds and status checks go back to the same provider. */
+  readonly provider: HostedProvider;
   createOrder(input: {
     paymentId: string;
     reference: string;

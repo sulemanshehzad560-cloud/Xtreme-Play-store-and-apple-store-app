@@ -79,11 +79,12 @@ export async function paymentRoutes(app: FastifyInstance, c: Container) {
 
   // N-Genius sends the customer's browser here after paying (or cancelling); we re-read the order and hand back to the app.
   r.get(
-    "/payments/ngenius/return",
+    "/payments/:provider/return",
     {
       schema: {
         tags,
-        summary: "N-Genius redirect target; forwards to the app",
+        summary: "N-Genius / Ziina redirect target; forwards to the app",
+        params: z.object({ provider: z.enum(["ngenius", "ziina"]) }),
         querystring: z.object({ paymentId: z.uuid(), result: z.enum(["done", "cancel"]), ref: z.string().optional() }),
       },
     },
@@ -92,7 +93,7 @@ export async function paymentRoutes(app: FastifyInstance, c: Container) {
       let outcome = result === "cancel" ? "cancel" : "failure";
       const [p] = await c.db.query.payments.findMany({ where: (t, { eq }) => eq(t.id, paymentId), limit: 1 });
       if (p) {
-        const synced = await c.payments.reconcile(p).catch((err) => (req.log.warn({ err }, "ngenius return sync failed"), p));
+        const synced = await c.payments.reconcile(p).catch((err) => (req.log.warn({ err, provider: req.params.provider }, "card page return sync failed"), p));
         if (["captured", "partially_refunded", "refunded"].includes(synced.status)) outcome = "success";
         else if (synced.status === "pending" && result !== "cancel") outcome = "pending";
       }
@@ -121,6 +122,13 @@ export async function paymentRoutes(app: FastifyInstance, c: Container) {
         throw badRequest("bad_webhook", "Invalid JSON");
       }
       await c.payments.handleNGeniusWebhook(typeof secret === "string" ? secret : null, body);
+      return reply.send({ received: true });
+    });
+
+    hooks.post("/webhooks/ziina", { schema: { tags, summary: "Ziina webhook", hide: true } }, async (req, reply) => {
+      const signature = req.headers["x-hmac-signature"];
+      if (!Buffer.isBuffer(req.body)) throw badRequest("bad_webhook", "Missing body");
+      await c.payments.handleZiinaWebhook(req.body, typeof signature === "string" ? signature : null);
       return reply.send({ received: true });
     });
 

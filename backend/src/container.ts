@@ -25,6 +25,7 @@ import { ExpoPush, NoopPush, type PushSender } from "./modules/notifications/pus
 import type { BnplGateway, CardGateway, HostedCardGateway } from "./modules/payments/gateways.js";
 import { configureSealing } from "./lib/sealed.js";
 import { NGeniusGateway } from "./modules/payments/ngenius.gateway.js";
+import { ZiinaGateway } from "./modules/payments/ziina.gateway.js";
 import { PaymentService } from "./modules/payments/payment.service.js";
 import { StripeGateway } from "./modules/payments/stripe.gateway.js";
 import { TamaraGateway } from "./modules/payments/tamara.gateway.js";
@@ -142,7 +143,17 @@ export function createContainer(env: Env, log: FastifyBaseLogger, overrides: Con
   });
   const users = new UserService(db, tokens, bookings);
   const card = overrides.card ?? new StripeGateway(env.STRIPE_SECRET_KEY, env.STRIPE_PUBLISHABLE_KEY, env.STRIPE_WEBHOOK_SECRET);
-  const hosted = overrides.hosted ?? new NGeniusGateway(env.NGENIUS_API_URL, env.NGENIUS_API_KEY, env.NGENIUS_OUTLET_REF, env.NGENIUS_WEBHOOK_SECRET);
+  const ngenius = new NGeniusGateway(env.NGENIUS_API_URL, env.NGENIUS_API_KEY, env.NGENIUS_OUTLET_REF, env.NGENIUS_WEBHOOK_SECRET);
+  const ziina = new ZiinaGateway(env.ZIINA_API_URL, env.ZIINA_API_KEY, { test: env.ZIINA_TEST, webhookSecret: env.ZIINA_WEBHOOK_SECRET });
+  // Card payments: N-Genius when set up, otherwise Ziina, otherwise Stripe's in-app sheet.
+  const hosted = overrides.hosted ?? (ngenius.configured || !ziina.configured ? ngenius : ziina);
+  const hostedByProvider = overrides.hosted ? { [overrides.hosted.provider]: overrides.hosted } : { ngenius, ziina };
+  if (!overrides.hosted && ziina.configured && env.PUBLIC_URL.startsWith("https://")) {
+    ziina
+      .registerWebhook(`${env.PUBLIC_URL}/v1/webhooks/ziina`)
+      .then(() => log.info("Ziina webhook registered"))
+      .catch((err: unknown) => log.error({ err }, "Ziina webhook registration failed; payments still confirm when customers return to the app"));
+  }
   const bnpl = overrides.bnpl ?? new TamaraGateway(env.TAMARA_API_URL, env.TAMARA_API_TOKEN, env.TAMARA_NOTIFICATION_TOKEN);
   const payments = new PaymentService(
     db,
@@ -172,6 +183,7 @@ export function createContainer(env: Env, log: FastifyBaseLogger, overrides: Con
       },
     },
     log,
+    hostedByProvider,
   );
   const admin = new AdminService(db, tokens, env);
   const prices = new PricingService(db, defaultPricing(env.TAMARA_FEE_PERCENT, env.SERVICE_FEE_PERCENT));
