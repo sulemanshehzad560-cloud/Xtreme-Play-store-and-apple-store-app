@@ -11,10 +11,20 @@ const tags = ["payments"];
 export async function paymentRoutes(app: FastifyInstance, c: Container) {
   const r = app.withTypeProvider<ZodTypeProvider>();
   const customer = requireAuth(c, "customer");
+  const team = requireAuth(c, "staff", "admin");
+
+  r.post(
+    "/bookings/:id/cash-collected",
+    {
+      onRequest: team,
+      schema: { tags, summary: "The team collected the cash balance of a cash booking", params: uuidParam },
+    },
+    async (req) => c.payments.collectCash(req.params.id, req.user),
+  );
 
   r.get(
     "/bookings/:id/payment-options",
-    { onRequest: customer, schema: { tags, summary: "Ways to pay for this booking (card or Tamara)", params: uuidParam } },
+    { onRequest: customer, schema: { tags, summary: "Ways to pay for this booking (card, or cash with an online deposit)", params: uuidParam } },
     async (req) => c.payments.options(req.params.id, req.user),
   );
 
@@ -25,10 +35,10 @@ export async function paymentRoutes(app: FastifyInstance, c: Container) {
       config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
       schema: {
         tags,
-        summary: "Start paying by card (Stripe PaymentSheet) or Tamara (hosted checkout)",
+        summary: "Start paying by card, or the online deposit of a cash booking",
         params: uuidParam,
         body: z.object({
-          method: z.enum(["card", "tamara"]),
+          method: z.enum(["card", "cash", "tamara"]),
           locale: z.enum(["en", "ar"]).optional(),
           /** Optional tip for the team, in whole AED. */
           tipAed: z.number().int().min(0).max(500).optional(),

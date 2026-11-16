@@ -69,7 +69,7 @@ describe("price list", () => {
     const options = (await t.app.inject({ method: "GET", url: `/v1/bookings/${booking.id}/payment-options`, headers: me.auth })).json();
     expect(options.amount).toMatchObject({ totalAed: 135, serviceFeeAed: 10 });
     expect(options.methods[0]).toMatchObject({ method: "card", feePercent: 0, feeAed: 10, totalAed: 145 });
-    expect(options.methods[1]).toMatchObject({ method: "tamara", feeAed: 20.8, totalAed: 155.8 });
+    expect(options.methods[1]).toMatchObject({ method: "cash", feeAed: 10, totalAed: 145, depositAed: 29, cashDueAed: 116 });
 
     await pay(t, me.auth, booking.id);
     expect([...t.card.intents.values()].at(-1)!.amountMinor).toBe(14500);
@@ -89,7 +89,7 @@ describe("price list", () => {
     const options = (await t.app.inject({ method: "GET", url: `/v1/bookings/${booking.id}/payment-options`, headers: me.auth })).json();
     expect(options.amount).toMatchObject({ totalAed: 150, serviceFeeAed: 3, serviceFeePercent: 2 });
     expect(options.methods[0]).toMatchObject({ method: "card", feeAed: 3, totalAed: 153 });
-    expect(options.methods[1]).toMatchObject({ method: "tamara", totalAed: 165 });
+    expect(options.methods[1]).toMatchObject({ method: "cash", totalAed: 153, depositAed: 31, cashDueAed: 122 });
 
     await pay(t, me.auth, booking.id);
     expect([...t.card.intents.values()].at(-1)!.amountMinor).toBe(15300);

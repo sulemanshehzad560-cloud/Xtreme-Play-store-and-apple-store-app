@@ -4,7 +4,6 @@ import { router, useLocalSearchParams } from "expo-router";
 import Constants from "expo-constants";
 import * as WebBrowser from "expo-web-browser";
 import { initStripe, useStripe } from "@stripe/stripe-react-native";
-import { TamaraBadge } from "@/components/BrandIcons";
 import { Button, Card, ErrorText, InlineLoader, Input, Notice, OptionCard, Row, Screen, StickyFooter, Text } from "@/components/ui";
 import { api } from "@/lib/api";
 import { DEMO } from "@/lib/demo";
@@ -17,11 +16,22 @@ import { t } from "@/lib/i18n";
 interface Options {
   amount: { priceAed: number; discountAed: number; totalAed: number; serviceFeeAed?: number; serviceFeePercent?: number };
   promoCode: string | null;
-  methods: { method: "card" | "tamara"; available: boolean; label: string; feeAed?: number; feePercent?: number; totalAed?: number; instalments?: number }[];
+  methods: {
+    method: "card" | "cash";
+    available: boolean;
+    label: string;
+    feeAed?: number;
+    feePercent?: number;
+    totalAed?: number;
+    /** Cash: paid online now to confirm, and the rest in cash on the day. */
+    depositPercent?: number;
+    depositAed?: number;
+    cashDueAed?: number;
+  }[];
 }
 interface CardStart {
   paymentId: string;
-  /** Network International: the card is entered on N-Genius's secure page. */
+  /** Ziina or Network International: the card is entered on the provider's secure page. */
   hosted?: { url: string; returnUrlPrefix: string };
   stripe?: {
     publishableKey: string;
@@ -33,20 +43,15 @@ interface CardStart {
     currency: string;
   };
 }
-interface TamaraStart {
-  paymentId: string;
-  tamara?: { checkoutUrl: string; returnUrlPrefix: string };
-}
-
 export default function Pay() {
-  const { id, method: preselected } = useLocalSearchParams<{ id: string; method?: "card" | "tamara" }>();
+  const { id, method: preselected } = useLocalSearchParams<{ id: string; method?: "card" | "cash" | "tamara" }>();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [options, setOptions] = useState<Options | null>(null);
   const [booking, setBooking] = useState<Booking | null>(null);
   const [code, setCode] = useState("");
   const [promoBusy, setPromoBusy] = useState(false);
   const [promoNote, setPromoNote] = useState<{ text: string; ok: boolean } | null>(null);
-  const [method, setMethod] = useState<"card" | "tamara">(preselected ?? "card");
+  const [method, setMethod] = useState<"card" | "cash">(preselected === "cash" ? "cash" : "card");
   // Optional tip for the team, passed on in full.
   const [tip, setTip] = useState(0);
   const [tipOpen, setTipOpen] = useState(false);
@@ -103,8 +108,9 @@ export default function Pay() {
     else setError(t("The payment didn't go through. Please try another method."));
   }
 
+  // Cash bookings pay their deposit the same way as a card payment.
   async function payByCard() {
-    const start = await api<CardStart>(`/bookings/${id}/payments`, { body: { method: "card", ...(tip ? { tipAed: tip } : {}) } });
+    const start = await api<CardStart>(`/bookings/${id}/payments`, { body: { method, ...(tip ? { tipAed: tip } : {}) } });
     if (!DEMO && start.hosted) {
       await WebBrowser.openAuthSessionAsync(start.hosted.url, start.hosted.returnUrlPrefix);
       return finish(start.paymentId);
@@ -131,18 +137,11 @@ export default function Pay() {
     await finish(start.paymentId);
   }
 
-  async function payByTamara() {
-    const start = await api<TamaraStart>(`/bookings/${id}/payments`, { body: { method: "tamara", ...(tip ? { tipAed: tip } : {}) } });
-    if (!DEMO && start.tamara) await WebBrowser.openAuthSessionAsync(start.tamara.checkoutUrl, start.tamara.returnUrlPrefix);
-    await finish(start.paymentId);
-  }
-
   async function confirm() {
     setBusy(true);
     setError(null);
     try {
-      if (method === "card") await payByCard();
-      else await payByTamara();
+      await payByCard();
     } catch (e) {
       setError(e instanceof Error ? e.message : t("Payment failed"));
     } finally {
@@ -151,11 +150,14 @@ export default function Pay() {
   }
 
   const chosen = options?.methods.find((x) => x.method === method);
-  const tamara = options?.methods.find((x) => x.method === "tamara");
+  const cash = options?.methods.find((x) => x.method === "cash");
+  const isCash = method === "cash";
   const fee = chosen?.feeAed ?? 0;
   const serviceFee = options?.amount.serviceFeeAed ?? 0;
   const methodFee = Math.round((fee - serviceFee) * 100) / 100;
-  const total = options ? (chosen?.totalAed ?? options.amount.totalAed) + tip : undefined;
+  const bookingTotal = options ? (chosen?.totalAed ?? options.amount.totalAed) + tip : undefined;
+  // What is charged now: everything by card, or only the deposit (plus any tip) for cash.
+  const total = isCash && cash?.depositAed != null ? cash.depositAed + tip : bookingTotal;
   const available = (m: string) => options?.methods.find((x) => x.method === m)?.available ?? false;
 
   return (
@@ -190,13 +192,21 @@ export default function Pay() {
             <SummaryLine label={t("Cleaning materials")} value={t("FREE")} />
             {tip ? <SummaryLine label={t("Tip for your team")} value={aed(tip)} /> : null}
             {serviceFee > 0 ? <SummaryLine label={options.amount.serviceFeePercent ? t("Service fee ({0}%)", { 0: options.amount.serviceFeePercent }) : t("Service fee")} value={aed(serviceFee)} /> : null}
-            {methodFee > 0 ? <SummaryLine label={t("{0} fee ({1}%)", { 0: method === "tamara" ? "Tamara" : "Card", 1: chosen?.feePercent ?? 0 })} value={aed(methodFee)} /> : null}
+            {methodFee > 0 ? <SummaryLine label={t("Card fee ({0}%)", { 0: chosen?.feePercent ?? 0 })} value={aed(methodFee)} /> : null}
             <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.12)" }} />
+            {isCash && cash?.cashDueAed != null && bookingTotal != null ? (
+              <>
+                <SummaryLine label={t("Booking total")} value={aed(bookingTotal)} />
+                <SummaryLine label={t("Cash to the team on the day")} value={aed(cash.cashDueAed)} />
+              </>
+            ) : null}
             <Row style={{ justifyContent: "space-between", alignItems: "flex-end" }}>
-              <Text style={{ color: "#BDB4A3", fontFamily: fonts.semibold }}>{t("Total to pay")}</Text>
+              <Text style={{ color: "#BDB4A3", fontFamily: fonts.semibold }}>{isCash ? t("Pay now ({0}% deposit)", { 0: cash?.depositPercent ?? 20 }) : t("Total to pay")}</Text>
               <Text style={{ color: colors.onInk, fontFamily: fonts.extrabold, fontSize: 28 }}>{aed(total ?? options.amount.totalAed)}</Text>
             </Row>
-            <Text style={{ color: "#BDB4A3", fontSize: 12.5 }}>{method === "tamara" ? t("Tamara fee added for paying in instalments · no hidden charges") : t("No hidden charges · your tax invoice is emailed after payment")}</Text>
+            <Text style={{ color: "#BDB4A3", fontSize: 12.5 }}>
+              {isCash ? t("The deposit confirms your booking · pay the rest in cash when the team arrives") : t("No hidden charges · your tax invoice is emailed after payment")}
+            </Text>
           </Card>
 
           {options.amount.discountAed > 0 ? (
@@ -289,16 +299,16 @@ export default function Pay() {
             icon={<LineIcon name="card" size={24} color={iconColor("card")} />}
           />
           <OptionCard
-            selected={method === "tamara"}
-            disabled={!available("tamara")}
-            onPress={() => setMethod("tamara")}
-            title={t("Pay in 4 with Tamara")}
+            selected={method === "cash"}
+            disabled={!available("cash")}
+            onPress={() => setMethod("cash")}
+            title={t("Cash on the day")}
             subtitle={
-              tamara?.totalAed
-                ? t("4 payments of {0} · includes {1}% Tamara fee", { 0: aed(Math.round(((tamara.totalAed + tip) / 4) * 100) / 100), 1: tamara.feePercent ?? 8 })
-                : t("Pay in instalments")
+              cash?.depositAed != null && cash.cashDueAed != null
+                ? t("Pay {0} now to confirm, then {1} in cash to the team", { 0: aed(cash.depositAed), 1: aed(cash.cashDueAed) })
+                : t("Pay a small deposit now and the rest in cash")
             }
-            icon={<TamaraBadge />}
+            icon={<LineIcon name="cash" size={24} color={iconColor("cash")} />}
           />
 
           <View style={{ flexDirection: "row", alignItems: "center", gap: space(2), justifyContent: "center", marginTop: space(2) }}>
@@ -307,7 +317,7 @@ export default function Pay() {
               {t("Payments are encrypted and processed securely.")}
             </Text>
           </View>
-          <Notice tone="info">{t("Your booking is confirmed as soon as the payment goes through.")}</Notice>
+          <Notice tone="info">{isCash ? t("Your booking is confirmed as soon as the deposit goes through.") : t("Your booking is confirmed as soon as the payment goes through.")}</Notice>
           {DEMO ? <Notice>{t("Demo build: no real payment is taken. Tapping Pay marks the booking as paid.")}</Notice> : null}
         </>
       ) : null}

@@ -322,7 +322,7 @@ export async function demoApi(path: string, method: string, body: Json | undefin
       services: SERVICES,
       propertySizes: Object.fromEntries(Object.entries(PRICES).map(([t, sizes]) => [t, Object.keys(sizes).map((key) => ({ key, label: SIZE_LABELS[key] }))])),
       regularRates: REGULAR_RATES,
-      payments: { tamaraFeePercent: 8, tamaraInstalments: 4, serviceFeeAed: 0, serviceFeePercent: 2 },
+      payments: { cashDepositPercent: 20, serviceFeeAed: 0, serviceFeePercent: 2 },
       frequencyDiscountPercent: { weekly: 10, biweekly: 5 },
       referral: { friendAed: 20, rewardAed: 20 },
     };
@@ -508,14 +508,17 @@ export async function demoApi(path: string, method: string, body: Json | undefin
       const discountAed = demoDiscount(b);
       const total = b.priceAed! - discountAed;
       const svc = Math.round(total * 2) / 100;
-      const tam = Math.round(total * 8) / 100;
       return {
         bookingId: b.id,
         promoCode: (b as any).promoCode ?? null,
         amount: { priceAed: b.priceAed, discountAed, totalAed: total, serviceFeeAed: svc, serviceFeePercent: 2, vatAed: Math.round((total - total / 1.05) * 100) / 100, vatIncluded: true, currency: "AED" },
         methods: [
           { method: "card", available: true, label: "Credit / debit card, Apple Pay or Google Pay", feePercent: 0, feeAed: svc, totalAed: Math.round((total + svc) * 100) / 100 },
-          { method: "tamara", available: true, label: "Pay in 4 with Tamara", feePercent: 8, feeAed: Math.round((svc + tam) * 100) / 100, totalAed: Math.round((total + svc + tam) * 100) / 100, instalments: 4 },
+          (() => {
+            const all = Math.round((total + svc) * 100) / 100;
+            const cashDueAed = Math.floor(all * 0.8);
+            return { method: "cash", available: true, label: "Cash on the day", feePercent: 0, feeAed: svc, totalAed: all, depositPercent: 20, depositAed: Math.round((all - cashDueAed) * 100) / 100, cashDueAed };
+          })(),
         ],
       };
     }

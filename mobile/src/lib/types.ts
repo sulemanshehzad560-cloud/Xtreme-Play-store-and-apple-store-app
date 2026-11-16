@@ -59,7 +59,9 @@ export interface Booking {
   /** Photos the customer sent for a quote. */
   photoCount?: number;
   paymentMethod: string;
-  paymentStatus: "unpaid" | "pending" | "paid" | "partially_refunded" | "refunded" | "included";
+  paymentStatus: "unpaid" | "pending" | "deposit_paid" | "paid" | "partially_refunded" | "refunded" | "included";
+  /** Cash bookings: what the team collects on the day after the online deposit. */
+  cashDueAed?: number;
   subscriptionId?: string | null;
   frequency?: "one_time" | "weekly" | "biweekly";
   repeatOfId?: string | null;

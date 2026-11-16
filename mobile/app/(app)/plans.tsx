@@ -76,7 +76,7 @@ export default function Plans() {
       })}
 
       <Text variant="small" style={{ textAlign: "center" }}>
-        {t("Prices include all cleaning materials. Pay securely by card or Tamara.")}
+        {t("Prices include all cleaning materials. Pay securely by card.")}
       </Text>
     </Screen>
   );

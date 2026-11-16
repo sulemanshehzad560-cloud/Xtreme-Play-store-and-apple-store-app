@@ -142,7 +142,7 @@ export default function Account() {
       {editing ? (
         <Card>
           <Input label={t("Full name")} value={name} onChangeText={setName} textContentType="name" />
-          <Input label={t("Email (for invoices and Tamara)")} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+          <Input label={t("Email (for invoices)")} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
           <BirthdayPicker value={dob} onChange={setDob} />
           <ErrorText error={error} />
           <Button title={t("Save changes")} onPress={save} loading={saving} />

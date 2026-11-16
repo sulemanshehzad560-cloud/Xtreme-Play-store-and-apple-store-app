@@ -88,7 +88,7 @@ main { padding: 18px 28px 48px; }
 .pill.requested { background: #fdf1dc; color: var(--warn); }
 .pill.confirmed, .pill.assigned { background: #e8f0fd; color: var(--info); }
 .pill.en_route, .pill.arrived, .pill.in_progress { background: var(--gold-soft); color: var(--gold); }
-.pill.completed, .pill.paid, .pill.captured { background: #e6f6ec; color: var(--ok); }
+.pill.completed, .pill.paid, .pill.captured, .pill.deposit_paid { background: #e6f6ec; color: var(--ok); }
 .pill.cancelled, .pill.failed, .pill.refunded { background: #fce9e9; color: var(--danger); }
 .pill.unpaid, .pill.pending, .pill.partially_refunded { background: #f1ece2; color: var(--muted); }
 

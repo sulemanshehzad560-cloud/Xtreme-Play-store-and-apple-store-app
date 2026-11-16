@@ -28,6 +28,7 @@ export type LineIconName =
   | "office"
   | "restaurant"
   | "card"
+  | "cash"
   | "clock"
   | "tag"
   | "sun"
@@ -71,6 +72,7 @@ const TINT: Partial<Record<LineIconName, string>> = {
   briefcase: "#8E4EC6",
   restaurant: "#E5484D",
   card: "#2F6FDE",
+  cash: "#1E9E5A",
   clock: "#F76B15",
   camera: "#B98F35",
   image: "#B98F35",
@@ -187,6 +189,14 @@ export function LineIcon({ name, size = 22, color = colors.text }: { name: LineI
               <>
                 <Rect x={2.5} y={5} width={19} height={14} rx={2.5} {...p} />
                 <Path d="M2.5 9.5h19M6.5 15h4" {...p} />
+              </>
+            );
+          case "cash":
+            return (
+              <>
+                <Rect x={2.5} y={6} width={19} height={12} rx={2} {...p} />
+                <Circle cx={12} cy={12} r={2.6} {...p} />
+                <Path d="M6 9.5v5M18 9.5v5" {...p} />
               </>
             );
           case "camera":

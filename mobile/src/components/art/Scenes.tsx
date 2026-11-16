@@ -37,16 +37,15 @@ export function LivingRoomScene({ width = 180, height = 140 }: { width?: number;
   );
 }
 
-/** Phone with a four-part payment ring (Tamara "pay in 4"). */
-export function PayInFourScene({ width = 160, height = 140 }: { width?: number; height?: number }) {
+/** Phone with a small slice of the payment ring paid (a deposit now, the rest later). */
+export function PayDepositScene({ width = 160, height = 140 }: { width?: number; height?: number }) {
   return (
     <Svg width={width} height={height} viewBox="0 0 160 140">
       <G {...s}>
         <Rect x={44} y={8} width={72} height={126} rx={12} fill={CREAM} />
         <Line x1={70} y1={18} x2={90} y2={18} />
         <Circle cx={80} cy={66} r={26} fill="#fff" />
-        <Path d="M80 40 A26 26 0 0 1 106 66 L80 66 Z" fill={GOLD} />
-        <Path d="M106 66 A26 26 0 0 1 80 92 L80 66 Z" fill={GOLD_DARK} />
+        <Path d="M80 40 A26 26 0 0 1 104.7 58 L80 66 Z" fill={GOLD} />
         <Rect x={58} y={104} width={44} height={12} rx={6} fill={INK} />
       </G>
       <Path d={sparkle(130, 30, 7)} fill={GOLD} stroke={INK} strokeWidth={1.4} />

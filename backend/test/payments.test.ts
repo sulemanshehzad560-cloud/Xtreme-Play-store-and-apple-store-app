@@ -26,7 +26,7 @@ describe("card payments (Stripe)", () => {
 
     const options = (await get(`/v1/bookings/${booking.id}/payment-options`, me.auth)).json();
     expect(options.amount).toEqual({ priceAed: 150, discountAed: 0, totalAed: 150, serviceFeeAed: 0, serviceFeePercent: 0, vatAed: 7.14, vatIncluded: true, currency: "AED" });
-    expect(options.methods.map((m: { method: string; available: boolean }) => [m.method, m.available])).toEqual([["card", true], ["tamara", true]]);
+    expect(options.methods.map((m: { method: string; available: boolean }) => [m.method, m.available])).toEqual([["card", true], ["cash", true]]);
 
     const start = await post(`/v1/bookings/${booking.id}/payments`, me.auth, { method: "card" });
     expect(start.statusCode).toBe(201);
@@ -118,49 +118,66 @@ describe("card payments (Stripe)", () => {
   });
 });
 
-describe("Tamara (pay later)", () => {
-  it("creates a checkout, then authorises and captures on the approved notification", async () => {
+describe("cash on the day with an online deposit", () => {
+  it("takes 20% online to confirm, then the team collects the cash and the invoice covers both", async () => {
     const me = await profiled();
-    const booking = await book(t, me.auth);
-    const start = await post(`/v1/bookings/${booking.id}/payments`, me.auth, { method: "tamara" });
+    const admin = await signInAs(t, "admin");
+    const staff = await signInAs(t, "staff");
+    const other = await signInAs(t, "staff", "Bilal");
+    const booking = await book(t, me.auth); // AED 150
+
+    const options = (await get(`/v1/bookings/${booking.id}/payment-options`, me.auth)).json();
+    expect(options.methods[1]).toMatchObject({ method: "cash", available: true, totalAed: 150, depositPercent: 20, depositAed: 30, cashDueAed: 120 });
+
+    // The deposit is paid by card; the booking is then confirmed with cash still due.
+    const start = await post(`/v1/bookings/${booking.id}/payments`, me.auth, { method: "cash" });
     expect(start.statusCode).toBe(201);
-    expect(start.json().tamara.checkoutUrl).toMatch(/^https:\/\/checkout\.tamara\.test\//);
+    const intentId = [...t.card.intents.keys()].at(-1)!;
+    expect(t.card.intents.get(intentId)!.amountMinor).toBe(3000);
+    expect((await get(`/v1/bookings/${booking.id}`, me.auth)).json()).toMatchObject({ paymentStatus: "pending", paymentMethod: "cash" });
+    t.card.succeed(intentId);
+    expect((await stripeHook({ id: "evt_cash", type: "payment_intent.succeeded", intentId })).statusCode).toBe(200);
+    let detail = (await get(`/v1/bookings/${booking.id}`, me.auth)).json();
+    expect(detail).toMatchObject({ paymentStatus: "deposit_paid", paymentMethod: "cash", cashDueAed: 120, canPay: false, awaitingPayment: false });
+    expect((await get(`/v1/bookings/${booking.id}/payments`, me.auth)).json()[0]).toMatchObject({ kind: "deposit", amountAed: 30, cashDueAed: 120, status: "captured" });
+    expect((await post(`/v1/bookings/${booking.id}/payments`, me.auth, { method: "card" })).json().error.code).toBe("already_paid");
+    expect((await get(`/v1/bookings/${booking.id}/invoice`, me.auth)).json().error.code).toBe("not_paid");
 
-    const checkout = t.tamara.checkouts.at(-1)!;
-    expect(checkout).toMatchObject({
-      // AED 150 + the 8% Tamara fee.
-      amountMinor: 16200,
-      taxMinor: 771,
-      instalments: 4,
-      consumer: { firstName: "Sara", lastName: "Al Mansoori", email: "sara@example.com" },
-      urls: { notification: "https://api.xtreme.test/v1/webhooks/tamara" },
-    });
-    const orderId = [...t.tamara.orders.keys()].at(-1)!;
+    // Paid deposit lets the office assign a team, who see the cash to collect.
+    expect((await post(`/v1/admin/bookings/${booking.id}/assign`, admin.auth, { staffIds: [staff.user.id] })).statusCode).toBe(200);
+    const job = (await get(`/v1/bookings/${booking.id}`, staff.auth)).json();
+    expect(job).toMatchObject({ paymentStatus: "deposit_paid", cashDueAed: 120 });
 
-    const forged = await t.app.inject({ method: "POST", url: "/v1/webhooks/tamara?tamaraToken=bad", headers: { "content-type": "application/json" }, payload: JSON.stringify({ order_id: orderId, event_type: "order_approved" }) });
-    expect(forged.statusCode).toBe(401);
+    // Only the assigned team or the office can record the cash, and only once.
+    expect((await post(`/v1/bookings/${booking.id}/cash-collected`, me.auth)).statusCode).toBe(403);
+    expect((await post(`/v1/bookings/${booking.id}/cash-collected`, other.auth)).statusCode).toBe(404);
+    const collected = await post(`/v1/bookings/${booking.id}/cash-collected`, staff.auth);
+    expect(collected.statusCode).toBe(200);
+    expect(collected.json()).toMatchObject({ method: "cash", kind: "cash", amountAed: 120, status: "captured" });
+    expect((await post(`/v1/bookings/${booking.id}/cash-collected`, staff.auth)).json().error.code).toBe("no_cash_due");
 
-    t.tamara.approve(orderId);
-    const hook = await t.app.inject({ method: "POST", url: "/v1/webhooks/tamara?tamaraToken=tamara-ok", headers: { "content-type": "application/json" }, payload: JSON.stringify({ order_id: orderId, event_type: "order_approved" }) });
-    expect(hook.statusCode).toBe(200);
-    expect(t.tamara.calls).toEqual([`authorise:${orderId}`, `capture:${orderId}:16200`]);
-    expect((await get(`/v1/bookings/${booking.id}`, me.auth)).json()).toMatchObject({ paymentStatus: "paid", paymentMethod: "tamara" });
+    detail = (await get(`/v1/bookings/${booking.id}`, me.auth)).json();
+    expect(detail).toMatchObject({ paymentStatus: "paid", paymentMethod: "cash", cashDueAed: 0 });
+    const invoice = (await get(`/v1/bookings/${booking.id}/invoice`, me.auth)).json();
+    expect(invoice).toMatchObject({ totalAed: 150, vatAed: 7.14, payment: { method: "Card deposit AED 30 + cash AED 120" } });
   });
 
-  it("sends the customer back to the app after checkout", async () => {
+  it("refunds the deposit if a cash booking is cancelled before the visit", async () => {
     const me = await profiled();
     const booking = await book(t, me.auth);
-    const { paymentId } = (await post(`/v1/bookings/${booking.id}/payments`, me.auth, { method: "tamara" })).json();
-    t.tamara.approve([...t.tamara.orders.keys()].at(-1)!);
-    const res = await t.app.inject({ method: "GET", url: `/v1/payments/tamara/return?paymentId=${paymentId}&result=success` });
-    expect(res.statusCode).toBe(302);
-    expect(res.headers.location).toBe(`xtreme://payments/${paymentId}?result=success`);
-    expect((await get(`/v1/bookings/${booking.id}`, me.auth)).json().paymentStatus).toBe("paid");
+    await post(`/v1/bookings/${booking.id}/payments`, me.auth, { method: "cash" });
+    const intentId = [...t.card.intents.keys()].at(-1)!;
+    t.card.succeed(intentId);
+    await stripeHook({ id: "evt_cash2", type: "payment_intent.succeeded", intentId });
+    expect((await post(`/v1/bookings/${booking.id}/cancel`, me.auth, { reason: "Plans changed" })).statusCode).toBe(200);
+    const detail = (await get(`/v1/bookings/${booking.id}`, me.auth)).json();
+    expect(detail).toMatchObject({ paymentStatus: "refunded", cashDueAed: 0 });
   });
 
-  it("needs an email and name for Tamara", async () => {
-    const me = await signInPhone(t);
+  it("no longer offers Tamara", async () => {
+    const me = await profiled();
     const booking = await book(t, me.auth);
-    expect((await post(`/v1/bookings/${booking.id}/payments`, me.auth, { method: "tamara" })).json().error.code).toBe("email_required");
+    const res = await post(`/v1/bookings/${booking.id}/payments`, me.auth, { method: "tamara" });
+    expect(res.json().error.code).toBe("method_unavailable");
   });
 });

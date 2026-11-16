@@ -79,7 +79,7 @@ export default function Bookings() {
           <Row style={{ justifyContent: "space-between", borderTopWidth: 1, borderTopColor: colors.divider, paddingTop: space(3), marginTop: space(1) }}>
             <Text style={{ fontFamily: fonts.bold }}>
               {aed(b.amountDueAed ?? b.priceAed)}
-              <Text variant="small"> · {b.paymentStatus === "paid" ? t("Paid") : b.paymentStatus === "refunded" ? t("Refunded") : b.priceAed == null ? t("Survey") : t("Unpaid")}</Text>
+              <Text variant="small"> · {b.paymentStatus === "paid" ? t("Paid") : b.paymentStatus === "deposit_paid" ? t("Deposit paid") : b.paymentStatus === "refunded" ? t("Refunded") : b.priceAed == null ? t("Survey") : t("Unpaid")}</Text>
             </Text>
             {b.trackable ? (
               <Button title={t("Track")} size="sm" onPress={() => router.push(`/booking/${b.id}/track`)} />

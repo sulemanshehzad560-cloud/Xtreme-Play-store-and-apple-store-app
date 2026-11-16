@@ -74,6 +74,7 @@ export async function catalogRoutes(app: FastifyInstance, c: Container) {
       payments: {
         tamaraFeePercent: pricing().tamaraFeePercent,
         tamaraInstalments: c.env.TAMARA_INSTALMENTS,
+        cashDepositPercent: c.env.CASH_DEPOSIT_PERCENT,
         cardFeePercent: pricing().cardFeePercent,
         serviceFeeAed: pricing().serviceFeeAed,
         serviceFeePercent: pricing().serviceFeePercent,

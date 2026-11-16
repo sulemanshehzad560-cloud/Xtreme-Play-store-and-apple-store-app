@@ -788,6 +788,8 @@ export class BookingService {
         subscriptionId: b.subscriptionId,
         discountAed: b.discountAed,
         amountDueAed: b.priceAed == null ? null : b.priceAed - b.discountAed,
+        /** Cash the team collects on the day (cash bookings after the online deposit). */
+        cashDueAed: b.paymentStatus === "deposit_paid" ? b.cashDueMinor / 100 : 0,
         promoCode: b.promoCode,
         awaitingPayment: b.status === "requested" && awaitingPayment(b),
         canPay: b.priceAed != null && b.priceAed > 0 && (b.paymentStatus === "unpaid" || b.paymentStatus === "pending") && b.status !== "cancelled",

@@ -56,7 +56,7 @@ const RULES: Rule[] = [
     topic: "payment",
     match: /pay|card|apple pay|google pay|tamara|instal|cash|دفع/i,
     answer: (c) =>
-      `You pay securely in the app by card, Apple Pay or Google Pay${c.cardFeePercent ? ` (a ${c.cardFeePercent}% card fee applies)` : " (no extra fees)"}, or in ${4} interest-free instalments with Tamara (a ${c.tamaraFeePercent}% Tamara fee applies). Bookings are confirmed as soon as payment goes through.`,
+      `You pay securely in the app by card, Apple Pay or Google Pay${c.cardFeePercent ? ` (a ${c.cardFeePercent}% card fee applies)` : " (no extra fees)"}, or choose cash on the day: pay a small deposit in the app to confirm, then the rest in cash to your team. Bookings are confirmed as soon as the payment or deposit goes through.`,
   },
   {
     topic: "cancel",

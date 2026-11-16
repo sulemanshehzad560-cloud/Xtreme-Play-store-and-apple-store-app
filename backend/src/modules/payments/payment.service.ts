@@ -25,9 +25,11 @@ export interface PaymentConfig {
   serviceFeeAed: number;
   /** Service charge added to every payment, in percent of the amount due. */
   serviceFeePercent: number;
+  /** Cash bookings: percent of the total paid online as a deposit. */
+  cashDepositPercent: number;
 }
 
-export type PayMethod = "card" | "tamara";
+export type PayMethod = "card" | "tamara" | "cash";
 
 const CURRENCY = COMPANY.currency;
 const SETTLED: PaymentStatus[] = ["captured", "partially_refunded", "refunded"];
@@ -64,14 +66,9 @@ export class PaymentService {
   async options(bookingId: string, customer: Actor) {
     const booking = await this.payable(bookingId, customer);
     const amountMinor = dueMinor(booking);
-    const [user] = await this.db.select().from(users).where(eq(users.id, customer.id)).limit(1);
     const serviceFee = this.serviceFeeMinor(amountMinor);
     const cardFee = this.methodFeeMinor("card", amountMinor);
-    const tamaraFee = this.methodFeeMinor("tamara", amountMinor);
-    const tamara =
-      this.bnpl.configured && user?.phone
-        ? await this.bnpl.eligibility({ amountMinor: amountMinor + serviceFee + tamaraFee, currency: CURRENCY, phone: user.phone })
-        : { eligible: false, label: null };
+    const cash = this.cashSplit(amountMinor + serviceFee);
     return {
       bookingId,
       amount: {
@@ -95,13 +92,15 @@ export class PaymentService {
           totalAed: (amountMinor + serviceFee + cardFee) / 100,
         },
         {
-          method: "tamara",
-          available: tamara.eligible,
-          label: tamara.label ?? `Pay in ${this.config.tamaraInstalments} with Tamara`,
-          feePercent: this.config.tamaraFeePercent,
-          feeAed: (serviceFee + tamaraFee) / 100,
-          totalAed: (amountMinor + serviceFee + tamaraFee) / 100,
-          instalments: this.config.tamaraInstalments,
+          method: "cash",
+          available: this.cardAvailable,
+          label: `Cash on the day: pay ${this.config.cashDepositPercent}% now to confirm`,
+          feePercent: 0,
+          feeAed: serviceFee / 100,
+          totalAed: (amountMinor + serviceFee) / 100,
+          depositPercent: this.config.cashDepositPercent,
+          depositAed: cash.depositMinor / 100,
+          cashDueAed: cash.balanceMinor / 100,
         },
       ],
     };
@@ -110,37 +109,41 @@ export class PaymentService {
   /** Starts (or restarts) paying for a booking with card or Tamara. */
   async start(bookingId: string, customer: Actor, method: PayMethod, opts: { locale?: "en" | "ar" | undefined; tipAed?: number | undefined } = {}) {
     const booking = await this.payable(bookingId, customer);
-    if (method === "card" && !this.cardAvailable) throw badRequest("method_unavailable", "Card payments are not available right now");
-    if (method === "tamara" && !this.bnpl.configured) throw badRequest("method_unavailable", "Tamara is not available right now");
+    if ((method === "card" || method === "cash") && !this.cardAvailable) throw badRequest("method_unavailable", "Card payments are not available right now");
+    if (method === "tamara") throw badRequest("method_unavailable", "Tamara is no longer offered. Please pay by card or choose cash.");
     const [user] = await this.db.select().from(users).where(eq(users.id, customer.id)).limit(1);
     if (!user) throw notFound("Account");
 
     await this.retirePendingAttempts(booking.id);
 
     const serviceFeeMinor = this.serviceFeeMinor(dueMinor(booking));
-    const feeMinor = serviceFeeMinor + this.methodFeeMinor(method, dueMinor(booking));
+    const feeMinor = serviceFeeMinor + (method === "cash" ? 0 : this.methodFeeMinor(method, dueMinor(booking)));
     const tipMinor = Math.max(0, Math.round((opts.tipAed ?? 0) * 100));
-    const amountMinor = dueMinor(booking) + feeMinor + tipMinor;
+    // Cash: only the deposit (plus any tip) is paid online now; the rest is collected on the day.
+    const cash = method === "cash" ? this.cashSplit(dueMinor(booking) + serviceFeeMinor) : null;
+    const amountMinor = cash ? cash.depositMinor + tipMinor : dueMinor(booking) + feeMinor + tipMinor;
     const [payment] = await this.db
       .insert(payments)
       .values({
         bookingId: booking.id,
         customerId: customer.id,
-        provider: method === "tamara" ? "tamara" : this.hosted.configured ? this.hosted.provider : "stripe",
+        provider: this.hosted.configured ? this.hosted.provider : "stripe",
         amountMinor,
         feeMinor,
         serviceFeeMinor,
         tipMinor,
         currency: CURRENCY,
-        instalments: method === "tamara" ? this.config.tamaraInstalments : null,
+        instalments: null,
+        kind: cash ? "deposit" : "full",
+        balanceMinor: cash?.balanceMinor ?? 0,
       })
       .returning();
     const itemName = serviceName(booking.serviceKey);
-    const description = `${itemName} · ${booking.reference}`;
+    const description = cash ? `Deposit · ${itemName} · ${booking.reference}` : `${itemName} · ${booking.reference}`;
 
     try {
       // Network International or Ziina: the customer pays on the provider's secure page, then returns to the app.
-      if (method === "card" && this.hosted.configured) {
+      if (this.hosted.configured) {
         const ret = (result: string) => `${this.config.publicUrl}/v1/payments/${this.hosted.provider}/return?paymentId=${payment!.id}&result=${result}`;
         const order = await this.hosted.createOrder({
           paymentId: payment!.id,
@@ -156,7 +159,7 @@ export class PaymentService {
           .update(payments)
           .set({ providerRef: order.orderRef, checkoutUrl: order.paymentUrl, updatedAt: new Date() })
           .where(eq(payments.id, payment!.id));
-        await this.markBookingPending(booking, "card");
+        await this.markBookingPending(booking, method);
         return {
           paymentId: payment!.id,
           provider: this.hosted.provider,
@@ -165,7 +168,8 @@ export class PaymentService {
         };
       }
 
-      if (method === "card") {
+      // Stripe's in-app payment sheet.
+      {
         const customerId = await this.card.ensureCustomer({
           id: user.id,
           email: user.email,
@@ -184,7 +188,7 @@ export class PaymentService {
         });
         const sheet = await this.card.sheetSession(customerId);
         await this.db.update(payments).set({ providerRef: intent.id, updatedAt: new Date() }).where(eq(payments.id, payment!.id));
-        await this.markBookingPending(booking, "card");
+        await this.markBookingPending(booking, method);
         return {
           paymentId: payment!.id,
           provider: "stripe" as const,
@@ -201,45 +205,6 @@ export class PaymentService {
         };
       }
 
-      if (!user.email) throw badRequest("email_required", "Add your email address in your profile to pay with Tamara");
-      if (!user.fullName?.trim()) throw badRequest("name_required", "Add your full name in your profile to pay with Tamara");
-      const [firstName, ...rest] = user.fullName.trim().split(/\s+/);
-      const ret = (result: string) =>
-        `${this.config.publicUrl}/v1/payments/tamara/return?paymentId=${payment!.id}&result=${result}`;
-      const checkout = await this.bnpl.createCheckout({
-        paymentId: payment!.id,
-        reference: booking.reference,
-        amountMinor,
-        taxMinor: this.vatMinor(amountMinor),
-        currency: CURRENCY,
-        description,
-        instalments: this.config.tamaraInstalments,
-        item: { reference: booking.id, name: itemName, sku: booking.serviceKey },
-        consumer: { firstName: firstName!, lastName: rest.join(" "), phone: user.phone!, email: user.email },
-        address: {
-          line1: [booking.address.unit, booking.address.building, booking.address.street, booking.address.area].filter(Boolean).join(", "),
-          city: COMPANY.address.city,
-          countryCode: COMPANY.address.countryCode,
-        },
-        urls: {
-          success: ret("success"),
-          failure: ret("failure"),
-          cancel: ret("cancel"),
-          notification: `${this.config.publicUrl}/v1/webhooks/tamara`,
-        },
-        locale: opts.locale === "ar" ? "ar_SA" : "en_US",
-      });
-      await this.db
-        .update(payments)
-        .set({ providerRef: checkout.orderId, checkoutUrl: checkout.checkoutUrl, updatedAt: new Date() })
-        .where(eq(payments.id, payment!.id));
-      await this.markBookingPending(booking, "tamara");
-      return {
-        paymentId: payment!.id,
-        provider: "tamara" as const,
-        status: "pending" as const,
-        tamara: { checkoutUrl: checkout.checkoutUrl, returnUrlPrefix: `${this.config.appScheme}://payments/` },
-      };
     } catch (err) {
       await this.db
         .update(payments)
@@ -265,17 +230,19 @@ export class PaymentService {
     if (!["paid", "partially_refunded", "refunded"].includes(booking.paymentStatus) || booking.priceAed == null) {
       throw conflict("not_paid", "The invoice is available once the booking is paid");
     }
-    const [paid] = await this.db
+    const settled = await this.db
       .select()
       .from(payments)
       .where(and(eq(payments.bookingId, booking.id), inArray(payments.status, ["captured", "partially_refunded", "refunded"])))
-      .orderBy(desc(payments.capturedAt))
-      .limit(1);
+      .orderBy(desc(payments.capturedAt));
+    const paid = settled[0];
+    const sum = (f: (p: Payment) => number) => settled.reduce((n, p) => n + f(p), 0);
     const [customer] = await this.db.select().from(users).where(eq(users.id, booking.customerId)).limit(1);
-    const totalMinor = paid?.amountMinor ?? dueMinor(booking);
-    const tipMinor = paid?.tipMinor ?? 0;
-    const feeMinor = paid?.feeMinor ?? 0;
-    const serviceFeeMinor = paid?.serviceFeeMinor ?? 0;
+    const totalMinor = settled.length ? sum((p) => p.amountMinor) : dueMinor(booking);
+    const tipMinor = sum((p) => p.tipMinor);
+    const feeMinor = sum((p) => p.feeMinor);
+    const serviceFeeMinor = sum((p) => p.serviceFeeMinor);
+    const cashMinor = sum((p) => (p.kind === "cash" ? p.amountMinor : 0));
     const methodFeeMinor = feeMinor - serviceFeeMinor;
     const discountMinor = booking.priceAed * 100 - (totalMinor - feeMinor - tipMinor);
     // The tip goes to the team in full and is not part of the VAT-able price.
@@ -316,9 +283,52 @@ export class PaymentService {
       subtotalAed: (totalMinor - tipMinor - vatMinor) / 100,
       vatAed: vatMinor / 100,
       totalAed: totalMinor / 100,
-      refundedAed: (paid?.refundedMinor ?? 0) / 100,
-      payment: paid ? { method: paid.provider === "tamara" ? "Tamara" : "Card", paidAt: paid.capturedAt?.toISOString() ?? null } : null,
+      refundedAed: sum((p) => p.refundedMinor) / 100,
+      payment: paid
+        ? {
+            method: cashMinor > 0 ? `Card deposit ${CURRENCY} ${(totalMinor - cashMinor) / 100} + cash ${CURRENCY} ${cashMinor / 100}` : paid.provider === "tamara" ? "Tamara" : "Card",
+            paidAt: paid.capturedAt?.toISOString() ?? null,
+          }
+        : null,
     };
+  }
+
+  /**
+   * The team (or an admin) confirms they collected the cash balance of a cash booking.
+   * Records it as a payment so the booking shows as paid and the invoice is sent.
+   */
+  async collectCash(bookingId: string, actor: Actor) {
+    const booking = await this.bookingsSvc.loadFor(bookingId, actor);
+    if (actor.role === "customer") throw notFound("Booking");
+    if (booking.paymentStatus !== "deposit_paid" || booking.cashDueMinor <= 0) {
+      throw conflict("no_cash_due", "There is no cash to collect for this booking");
+    }
+    const [row] = await this.db
+      .insert(payments)
+      .values({
+        bookingId: booking.id,
+        customerId: booking.customerId,
+        provider: "cash",
+        kind: "cash",
+        status: "captured",
+        amountMinor: booking.cashDueMinor,
+        currency: CURRENCY,
+        providerRef: `cash-${booking.id}`,
+        capturedAt: new Date(),
+      })
+      .onConflictDoNothing()
+      .returning();
+    if (!row) throw conflict("no_cash_due", "The cash for this booking is already recorded");
+    await this.db.insert(bookingEvents).values({
+      bookingId: booking.id,
+      type: "cash_collected",
+      actorId: actor.id,
+      actorRole: actor.role,
+      data: { paymentId: row.id, amountMinor: row.amountMinor },
+    });
+    await this.rollUp(booking.id);
+    await this.onCaptured(row);
+    return this.view(row);
   }
 
   /** Called by the app after the payment screen closes, so it need not wait for the webhook. */
@@ -419,7 +429,8 @@ export class PaymentService {
 
     if (payment.provider === "stripe") await this.card.refund(payment.providerRef!, amount, input.reason);
     else if (payment.provider === "ngenius" || payment.provider === "ziina") await this.hostedFor(payment.provider).refund(payment.providerRef!, amount, payment.currency);
-    else await this.bnpl.refund(payment.providerRef!, amount, payment.currency, input.reason);
+    else if (payment.provider === "tamara") await this.bnpl.refund(payment.providerRef!, amount, payment.currency, input.reason);
+    // Cash: the money is handed back in person; we only record it.
 
     const refunded = payment.refundedMinor + amount;
     const [after] = await this.db
@@ -451,7 +462,7 @@ export class PaymentService {
    * Safe to call any number of times, from webhooks, the app or an admin.
    */
   async reconcile(payment: Payment): Promise<Payment> {
-    if (!payment.providerRef) return payment;
+    if (!payment.providerRef || payment.provider === "cash") return payment;
     let next: { status: PaymentStatus; refundedMinor: number; failureReason?: string | null };
 
     if (payment.provider === "ngenius" || payment.provider === "ziina") {
@@ -528,7 +539,10 @@ export class PaymentService {
     });
     void this.notifications.notifyAdmins({
       title: `Paid: ${booking?.reference}`,
-      body: `${amount} via ${payment.provider === "tamara" ? "Tamara" : "card"}`,
+      body:
+        payment.kind === "deposit"
+          ? `${amount} card deposit · ${CURRENCY} ${payment.balanceMinor / 100} cash to collect on the day`
+          : `${amount} via ${payment.kind === "cash" ? "cash" : payment.provider === "tamara" ? "Tamara" : "card"}`,
       data: { type: "booking", bookingId: payment.bookingId },
     });
     // Tips paid after the job (e.g. a quote paid on completion) reach the team now; others when the job is done.
@@ -604,21 +618,28 @@ export class PaymentService {
     const settled = rows.filter((p) => SETTLED.includes(p.status));
     const paid = settled.reduce((n, p) => n + p.amountMinor, 0);
     const refunded = settled.reduce((n, p) => n + p.refundedMinor, 0);
+    // A cash booking whose deposit is in but whose cash is not yet collected.
+    const deposit = settled.find((p) => p.kind === "deposit");
+    const awaitingCash = Boolean(deposit) && !settled.some((p) => p.kind === "cash") && refunded === 0;
     const status = settled.length
       ? refunded >= paid
         ? "refunded"
         : refunded > 0
           ? "partially_refunded"
-          : "paid"
+          : awaitingCash
+            ? "deposit_paid"
+            : "paid"
       : rows.some((p) => p.status === "pending" || p.status === "authorised")
         ? "pending"
         : "unpaid";
-    const method = settled.at(-1)?.provider ?? rows.find((p) => p.status === "pending")?.provider;
+    const latest = settled.at(-1) ?? rows.find((p) => p.status === "pending");
+    const method = latest ? (latest.kind !== "full" ? "cash" : latest.provider === "tamara" ? "tamara" : "card") : null;
     await this.db
       .update(bookings)
       .set({
         paymentStatus: status,
-        ...(method ? { paymentMethod: method === "tamara" ? "tamara" : "card" } : {}),
+        cashDueMinor: awaitingCash ? deposit!.balanceMinor : 0,
+        ...(method ? { paymentMethod: method } : {}),
         updatedAt: new Date(),
       })
       .where(eq(bookings.id, bookingId));
@@ -638,7 +659,7 @@ export class PaymentService {
     if (booking.status === "cancelled") throw conflict("not_payable", "This booking is closed");
     if (booking.priceAed == null) throw conflict("awaiting_quote", "We'll send your price after the survey. You can pay then.");
     if (booking.paymentStatus === "included" || booking.priceAed <= 0) throw conflict("nothing_to_pay", "This visit is included in your subscription");
-    if (booking.paymentStatus === "paid" || booking.paymentStatus === "partially_refunded") {
+    if (booking.paymentStatus === "paid" || booking.paymentStatus === "partially_refunded" || booking.paymentStatus === "deposit_paid") {
       throw conflict("already_paid", "This booking is already paid");
     }
     // Promotions are re-checked right before paying, so an ended offer no longer applies.
@@ -649,6 +670,12 @@ export class PaymentService {
     const [p] = await this.db.select().from(payments).where(eq(payments.id, paymentId)).limit(1);
     if (!p) throw notFound("Payment");
     return p;
+  }
+
+  /** Splits a cash booking's total into the online deposit and whole-dirham cash due on the day. */
+  private cashSplit(totalMinor: number) {
+    const balanceMinor = Math.floor((totalMinor * (100 - this.config.cashDepositPercent)) / 100 / 100) * 100;
+    return { depositMinor: totalMinor - balanceMinor, balanceMinor };
   }
 
   private hostedFor(provider: HostedProvider): HostedCardGateway {
@@ -692,9 +719,11 @@ export class PaymentService {
     return {
       id: p.id,
       bookingId: p.bookingId,
-      method: p.provider === "tamara" ? "tamara" : "card",
+      method: p.kind === "cash" ? "cash" : p.provider === "tamara" ? "tamara" : "card",
+      kind: p.kind,
       status: p.status,
       amountAed: p.amountMinor / 100,
+      cashDueAed: p.kind === "deposit" ? p.balanceMinor / 100 : 0,
       refundedAed: p.refundedMinor / 100,
       vatAed: this.vatMinor(p.amountMinor - p.tipMinor) / 100,
       tipAed: p.tipMinor / 100,

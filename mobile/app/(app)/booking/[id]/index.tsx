@@ -31,6 +31,7 @@ const FLOW: [BookingStatus, string][] = [
 const PAYMENT_LABEL: Record<Booking["paymentStatus"], string> = {
   unpaid: "Not paid yet",
   pending: "Payment in progress",
+  deposit_paid: "Deposit paid · rest in cash on the day",
   paid: "Paid",
   partially_refunded: "Partly refunded",
   refunded: "Refunded",
@@ -202,13 +203,16 @@ export default function BookingDetail() {
         <Row style={{ justifyContent: "space-between" }}>
           <View>
             <Text variant="small">{t("Payment")}</Text>
-            <Text style={{ fontFamily: fonts.semibold, color: b.paymentStatus === "paid" || b.paymentStatus === "included" ? colors.success : colors.text }}>{t(PAYMENT_LABEL[b.paymentStatus])}</Text>
+            <Text style={{ fontFamily: fonts.semibold, color: b.paymentStatus === "paid" || b.paymentStatus === "included" || b.paymentStatus === "deposit_paid" ? colors.success : colors.text }}>{t(PAYMENT_LABEL[b.paymentStatus])}</Text>
           </View>
           <View style={{ alignItems: "flex-end" }}>
             {b.discountAed ? <Text variant="small" style={{ textDecorationLine: "line-through" }}>{aed(b.priceAed)}</Text> : null}
             <Text variant="price">{b.paymentStatus === "included" ? t("Included") : aed(b.amountDueAed ?? b.priceAed)}</Text>
           </View>
         </Row>
+        {b.paymentStatus === "deposit_paid" && b.cashDueAed ? (
+          <Notice tone="info">{t("Please have {0} in cash ready for the team when they arrive.", { 0: aed(b.cashDueAed) })}</Notice>
+        ) : null}
         {b.discountAed ? (
           <Text variant="small" style={{ color: colors.success, fontFamily: fonts.semibold }}>
             {t("Discount")}{" "}{aed(b.discountAed)}{b.promoCode ? t(" · code {0}", { 0: b.promoCode }) : ""}

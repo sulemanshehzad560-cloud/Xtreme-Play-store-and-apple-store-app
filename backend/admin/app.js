@@ -224,7 +224,8 @@ function card(b) {
   }
   if (b.team.length) actions.push(`<button class="btn outline small" data-act="chat" data-id="${b.id}">Job chat</button>`);
   if (b.status !== "completed") actions.push(`<button class="btn danger small" data-act="cancel" data-id="${b.id}">Cancel</button>`);
-  if (b.paymentStatus === "paid" || b.paymentStatus === "partially_refunded") actions.push(`<button class="btn outline small" data-act="refund" data-id="${b.id}">Refund</button>`);
+  if (b.paymentStatus === "deposit_paid") actions.push(`<button class="btn gold small" data-act="cash" data-id="${b.id}">Cash collected</button>`);
+  if (["paid", "partially_refunded", "deposit_paid"].includes(b.paymentStatus)) actions.push(`<button class="btn outline small" data-act="refund" data-id="${b.id}">Refund</button>`);
   if (b.status === "completed" && (b.paymentStatus === "paid" || b.paymentStatus === "partially_refunded"))
     actions.push(`<button class="btn outline small" data-act="invoice" data-id="${b.id}">${b.invoiceSentAt ? "Resend invoice" : "Email invoice"}</button>`);
   return `<div class="card">
@@ -237,6 +238,7 @@ function card(b) {
     ${b.discountAed ? `<div class="meta">🏷️ Discount ${aed(b.discountAed)}${b.promoCode ? ` · code ${esc(b.promoCode)}` : ""}</div>` : ""}
     ${b.awaitingPayment ? `<div class="meta warn">⏳ Waiting for the customer to pay. It is confirmed automatically once paid.</div>` : ""}
     <div class="row"><span class="pill ${b.paymentStatus}">${esc(b.paymentStatus.replace("_", " "))} · ${esc(b.paymentMethod.replace("_", " "))}</span></div>
+    ${b.paymentStatus === "deposit_paid" ? `<div class="meta warn">💵 Deposit paid online · team collects ${aed(b.cashDueAed)} in cash on the day</div>` : ""}
     ${team ? `<div class="meta">🧑‍🔧 ${team}</div>` : ""}
     ${b.notes ? `<div class="meta">📝 ${esc(b.notes)}</div>` : ""}
     ${b.photoCount ? `<div class="meta ${b.priceAed == null ? "warn" : ""}">📷 <a href="#" data-act="photos" data-id="${b.id}">${b.photoCount} photo${b.photoCount === 1 ? "" : "s"} from the customer</a>${b.priceAed == null ? " · review and send the quote" : ""}</div>` : ""}
@@ -250,7 +252,7 @@ $("#board").addEventListener("click", (e) => {
   if (!btn) return;
   e.preventDefault();
   const b = state.bookings.find((x) => x.id === btn.dataset.id);
-  ({ confirm: confirmBooking, assign: assignTeam, price: setPrice, photos: setPrice, chat: jobChat, cancel: cancelBooking, refund: refundBooking, invoice: emailInvoice })[btn.dataset.act](b);
+  ({ confirm: confirmBooking, assign: assignTeam, price: setPrice, photos: setPrice, chat: jobChat, cancel: cancelBooking, refund: refundBooking, invoice: emailInvoice, cash: collectCash })[btn.dataset.act](b);
 });
 
 const emailInvoice = (b) =>
@@ -371,6 +373,12 @@ function cancelBooking(b) {
   );
 }
 
+const collectCash = (b) =>
+  act(async () => {
+    await sure({ title: `Cash collected · ${b.reference}`, message: `Confirm the team collected ${aed(b.cashDueAed)} in cash from the customer. The booking is then marked as paid and the invoice is sent.`, confirm: "Cash collected" });
+    await api(`/bookings/${b.id}/cash-collected`, { body: {} });
+  }, `${b.reference}: cash recorded, booking paid`);
+
 async function refundBooking(b) {
   const payments = (await api(`/bookings/${b.id}/payments`)).filter((p) => p.status === "captured" || p.status === "partially_refunded");
   const p = payments[0];
@@ -383,7 +391,12 @@ async function refundBooking(b) {
      <label>Reason<input name="reason" required minlength="3" placeholder="e.g. late arrival" /></label>
      <div class="modal-actions"><button class="btn outline" value="cancel" formnovalidate>Close</button><button class="btn primary">Refund</button></div>`,
     async (form) => {
-      await sure({ title: `Refund ${aed(Number(form.get("amount")))}?`, message: `The money goes back to the customer's ${p.method === "tamara" ? "Tamara account" : "card"}. This cannot be undone.`, confirm: "Refund", danger: true });
+      await sure({
+        title: `Refund ${aed(Number(form.get("amount")))}?`,
+        message: p.method === "cash" ? "This records that the cash was handed back to the customer. Hand it back in person." : `The money goes back to the customer's ${p.method === "tamara" ? "Tamara account" : "card"}. This cannot be undone.`,
+        confirm: "Refund",
+        danger: true,
+      });
       await api(`/admin/payments/${p.id}/refund`, { body: { amountAed: Number(form.get("amount")), reason: form.get("reason") } });
       toast("Refund issued");
     },
@@ -729,10 +742,10 @@ $("#refresh-system").addEventListener("click", () => loadAdminTab().catch((err) 
 function renderPayments() {
   $("#payments-table").innerHTML = `<tr><th>When</th><th>Booking</th><th>Method</th><th>Amount</th><th>Refunded</th><th>Status</th></tr>${state.payments
     .map(
-      (p) => `<tr><td>${when(p.createdAt)}</td><td>${esc(p.bookingReference)}</td><td>${esc(p.method)}${p.instalments ? ` · ${p.instalments}x` : ""}</td>
+      (p) => `<tr><td>${when(p.createdAt)}</td><td>${esc(p.bookingReference)}</td><td>${esc(p.method)}${p.kind === "deposit" ? " · deposit (cash booking)" : ""}${p.instalments ? ` · ${p.instalments}x` : ""}</td>
       <td>${aed(p.amountAed)}</td><td>${p.refundedAed ? aed(p.refundedAed) : "—"}</td><td><span class="pill ${p.status}">${esc(p.status.replace("_", " "))}</span></td></tr>`,
     )
-    .join("") || '<tr><td colspan="6" class="muted">No payments yet. Card and Tamara payments appear here as customers pay.</td></tr>'}`;
+    .join("") || '<tr><td colspan="6" class="muted">No payments yet. Card payments, deposits and collected cash appear here.</td></tr>'}`;
 }
 
 // ------------------------------------------------------------------ subscriptions
@@ -1177,12 +1190,12 @@ const PAGE_SUB = {
   board: "Live jobs, teams and payments",
   map: "Where every team is right now",
   subscriptions: "Monthly and yearly cleaning contracts",
-  pricing: "Fixed prices, site-visit quotes and the Tamara fee",
+  pricing: "Fixed prices and site-visit quotes",
   promotions: "First-booking offers and promo codes",
   messages: "Customer chats: automatic answers and your replies",
   staff: "Team members, sign-in and alerts",
   customers: "Customer accounts",
-  payments: "Card and Tamara payments and refunds",
+  payments: "Card payments, cash deposits and refunds",
   admin: "Access, company details and connected services",
   calls: "In-app calls between customers and teams: recordings and live listening",
 };

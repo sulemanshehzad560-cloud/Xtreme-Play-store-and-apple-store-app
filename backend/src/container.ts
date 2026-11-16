@@ -181,6 +181,7 @@ export function createContainer(env: Env, log: FastifyBaseLogger, overrides: Con
       get serviceFeePercent() {
         return pricing().serviceFeePercent;
       },
+      cashDepositPercent: env.CASH_DEPOSIT_PERCENT,
     },
     log,
     hostedByProvider,

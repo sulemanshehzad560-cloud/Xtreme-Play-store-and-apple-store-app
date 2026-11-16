@@ -27,7 +27,7 @@ const NEXT: Partial<Record<BookingStatus, { to: BookingStatus; label: string }>>
 
 export default function Job() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data: job, setData } = useApi<Booking>(`/bookings/${id}`);
+  const { data: job, setData, reload } = useApi<Booking>(`/bookings/${id}`);
   const { user } = useAuth();
   const me = useApi<{ status: StaffStatus }>("/staff/me");
   const [busy, setBusy] = useState(false);
@@ -35,6 +35,7 @@ export default function Job() {
   const [note, setNote] = useState("");
   const [quoting, setQuoting] = useState(false);
   const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [collecting, setCollecting] = useState(false);
   if (!job) {
     return (
       <Screen edges={["left", "right"]}>
@@ -107,7 +108,41 @@ export default function Job() {
     }
   }
 
+  const cashDue = job.paymentStatus === "deposit_paid" ? (job.cashDueAed ?? 0) : 0;
+
+  /** Records the cash the customer handed over, after the team confirms the amount. */
+  function confirmCash(after?: () => void) {
+    Alert.alert(t("Cash collected?"), t("Confirm you received {0} in cash from the customer.", { 0: aed(cashDue) }), [
+      { text: t("Not yet"), style: "cancel" },
+      {
+        text: t("Yes, collected"),
+        onPress: async () => {
+          setCollecting(true);
+          try {
+            await api(`/bookings/${job!.id}/cash-collected`, { body: {} });
+            await reload();
+            after?.();
+          } catch (e) {
+            Alert.alert(t("Could not update"), e instanceof Error ? e.message : "");
+          } finally {
+            setCollecting(false);
+          }
+        },
+      },
+    ]);
+  }
+
   async function advance(): Promise<boolean> {
+    if (!next) return false;
+    // Cash bookings: the cash is collected before the job is closed.
+    if (next.to === "completed" && cashDue > 0) {
+      confirmCash(() => void advanceNow());
+      return false;
+    }
+    return advanceNow();
+  }
+
+  async function advanceNow(): Promise<boolean> {
     if (!next) return false;
     setBusy(true);
     try {
@@ -207,6 +242,8 @@ export default function Job() {
         <Text style={{ fontFamily: fonts.semibold }}>
           {job.paymentStatus === "included"
             ? t("Included in the customer's subscription")
+            : job.paymentStatus === "deposit_paid"
+            ? t("Deposit paid in the app · collect {0} in cash", { 0: aed(cashDue) })
             : job.paymentStatus === "paid"
             ? t("Paid in the app · {0}", { 0: aed(job.priceAed) })
             : job.priceAed == null
@@ -214,6 +251,15 @@ export default function Job() {
               : t("{0} · customer pays securely in the app", { 0: aed(job.priceAed) })}
         </Text>
         {needsQuote && next?.to === "completed" ? <Text variant="small">{t("Send the quote before marking the job completed.")}</Text> : null}
+        {cashDue > 0 ? (
+          <>
+            <View style={{ backgroundColor: colors.goldSoft, borderRadius: 14, padding: space(3), alignItems: "center", gap: space(1) }}>
+              <Text variant="small">{t("COLLECT IN CASH")}</Text>
+              <Text style={{ fontFamily: fonts.extrabold, fontSize: 30, color: colors.text }}>{aed(cashDue)}</Text>
+            </View>
+            <Button title={t("Cash collected")} variant="gold" onPress={() => confirmCash()} loading={collecting} />
+          </>
+        ) : null}
       </Card>
       <View />
     </Screen>

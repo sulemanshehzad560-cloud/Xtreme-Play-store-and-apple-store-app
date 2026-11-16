@@ -4,7 +4,7 @@ import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Location from "expo-location";
 import { FadeIn, SkeletonCard } from "@/components/art/Motion";
-import { PayInFourScene } from "@/components/art/Scenes";
+import { PayDepositScene } from "@/components/art/Scenes";
 import { PromoBanner, type Promo } from "@/components/PromoBanner";
 import { ServiceBanner, ServiceIcon } from "@/components/art/ServiceIcon";
 import { BrandMark } from "@/components/BrandMark";
@@ -97,16 +97,16 @@ const promos = (homeFrom: number | null, weeklySave: number): Promo[] => [
     accent: "#E2C170",
   },
   {
-    key: "tamara",
-    tag: t("PAY IN 4"),
-    title: t("Split any booking into 4 with Tamara"),
-    body: t("Interest-free instalments. Choose Tamara at checkout."),
+    key: "cash",
+    tag: t("CASH ON THE DAY"),
+    title: t("Pay just 20% now, the rest in cash"),
+    body: t("A small deposit confirms your booking. Pay the rest to your team."),
     cta: t("Book now"),
     service: "regular",
-    art: <PayInFourScene width={140} height={120} />,
-    colors: ["#FFE9EF", "#F8C9D7"],
+    art: <PayDepositScene width={140} height={120} />,
+    colors: ["#FFF6E0", "#F3DFA8"],
     light: true,
-    accent: "#F3A6BE",
+    accent: "#C9952F",
   },
 ];
 
@@ -460,7 +460,7 @@ function WhyXtreme() {
     ["shield", t("Vetted pros"), t("Background-checked, uniformed and insured teams"), tones.ink],
     ["check", t("Satisfaction guarantee"), t("Not happy? We'll come back and make it right"), tones.gold],
     ["bottle", t("Materials free"), t("All materials and equipment included, every time"), tones.green],
-    ["lock", t("Secure payments"), t("Card, Apple Pay, Google Pay or Tamara, encrypted and secure"), tones.blue],
+    ["lock", t("Secure payments"), t("Card, Apple Pay, Google Pay or cash on the day"), tones.blue],
   ];
   const tileW = (W - space(4) * 2 - space(3)) / 2;
   return (

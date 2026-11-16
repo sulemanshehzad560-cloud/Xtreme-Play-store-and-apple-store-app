@@ -36,12 +36,12 @@ export const pricingKind = pgEnum("pricing_kind", ["fixed", "inspection"]);
 export const paymentMethod = pgEnum("payment_method", ["card", "tamara", "cash", "card_on_site", "bank_transfer"]);
 /** Roll-up on the booking, derived from its payments. */
 // "included": a visit covered by a paid subscription, so nothing to pay.
-export const bookingPaymentStatus = pgEnum("booking_payment_status", ["unpaid", "pending", "paid", "partially_refunded", "refunded", "included"]);
+export const bookingPaymentStatus = pgEnum("booking_payment_status", ["unpaid", "pending", "deposit_paid", "paid", "partially_refunded", "refunded", "included"]);
 export const subscriptionInterval = pgEnum("subscription_interval", ["monthly", "yearly"]);
 /** pending_payment → active (paid period) → expired (period over, not renewed) / cancelled. */
 export const subscriptionStatus = pgEnum("subscription_status", ["pending_payment", "active", "expired", "cancelled"]);
 export const promotionKind = pgEnum("promotion_kind", ["percent", "fixed"]);
-export const paymentProvider = pgEnum("payment_provider", ["stripe", "tamara", "ngenius", "ziina"]);
+export const paymentProvider = pgEnum("payment_provider", ["stripe", "tamara", "ngenius", "ziina", "cash"]);
 export const paymentStatus = pgEnum("payment_status", [
   "pending", // created, customer has not finished paying
   "authorised", // money reserved (Tamara approved), not captured yet
@@ -297,6 +297,8 @@ export const bookings = pgTable(
     promotionId: uuid("promotion_id").references(() => promotions.id, { onDelete: "set null" }),
     /** Promo code the customer entered for this booking, if any. */
     promoCode: text("promo_code"),
+    /** Cash the team collects on the day, after the customer paid the online deposit (paymentStatus deposit_paid). */
+    cashDueMinor: integer("cash_due_minor").notNull().default(0),
     cancelReason: text("cancel_reason"),
     completedAt: ts("completed_at"),
     // Tax invoice emailed to the customer (once, after the job is completed and paid).
@@ -499,6 +501,10 @@ export const payments = pgTable(
     /** Optional tip for the cleaning team, passed on in full (not part of the VAT-able price). */
     tipMinor: integer("tip_minor").notNull().default(0),
     refundedMinor: integer("refunded_minor").notNull().default(0),
+    /** full: the whole booking online; deposit: the online part of a cash booking; cash: collected by the team. */
+    kind: text("kind").$type<"full" | "deposit" | "cash">().notNull().default("full"),
+    /** On a deposit: the cash still to collect on the day. */
+    balanceMinor: integer("balance_minor").notNull().default(0),
     currency: text("currency").notNull().default("AED"),
     providerRef: text("provider_ref"),
     checkoutUrl: text("checkout_url"),

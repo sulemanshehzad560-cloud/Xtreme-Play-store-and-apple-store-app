@@ -15,7 +15,7 @@ import { STAFF_APP } from "@/lib/variant";
 const PERKS: [LineIconName, string][] = [
   ["shield", "Vetted, trained & insured teams"],
   ["map", "Track your team live on the map"],
-  ["card", "Card, Apple Pay, Google Pay or Tamara"],
+  ["card", "Card, Apple Pay, Google Pay or cash"],
 ];
 
 export default function Welcome() {

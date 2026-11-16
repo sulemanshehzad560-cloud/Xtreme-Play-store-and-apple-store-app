@@ -11,7 +11,6 @@ import { AddressPicker, completeAddress, type NewAddress } from "@/components/Ad
 import { colors, fonts, radius, space } from "@/lib/theme";
 import type { Booking, Service } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
-import { TamaraBadge } from "@/components/BrandIcons";
 import { PlanPromo } from "@/components/Promo";
 import { SlotPicker, abuDhabiTime, firstOpenDay, hourLabel, nextDays } from "@/components/SlotPicker";
 import { LineIcon, iconColor, type LineIconName } from "@/components/LineIcon";
@@ -20,7 +19,7 @@ import { useMaterialsText } from "@/lib/materials";
 import { MIN_PHOTOS, QuotePhotoPicker, uploadQuotePhotos, type QuotePhoto } from "@/components/QuotePhotos";
 
 type PropertyType = "apartment" | "villa" | "office" | "restaurant";
-type Pay = "card" | "tamara";
+type Pay = "card" | "cash";
 type Frequency = "one_time" | "weekly" | "biweekly";
 interface Catalog {
   services: Service[];
@@ -28,7 +27,7 @@ interface Catalog {
   regularRates?: Record<string, { priceAed: number; minutes: number; cleaners: number }>;
   /** Fixed prices set in the dashboard: service → property type → size. */
   rates?: Record<string, Partial<Record<PropertyType, Record<string, { priceAed: number; minutes: number; cleaners: number }>>>>;
-  payments?: { tamaraFeePercent: number; tamaraInstalments: number; cardFeePercent?: number; serviceFeeAed?: number; serviceFeePercent?: number };
+  payments?: { cardFeePercent?: number; serviceFeeAed?: number; serviceFeePercent?: number; cashDepositPercent?: number };
   frequencyDiscountPercent?: { weekly: number; biweekly: number };
 }
 interface Quote {
@@ -99,11 +98,13 @@ export default function BookService() {
   // Fixed prices come from the office's price list; anything without one is quoted on a site visit.
   const fixed = q?.pricing === "fixed" && price != null;
   const rates = service ? (catalog.data?.rates ? catalog.data.rates[service.key]?.[type] : service.key === "regular" && type === "apartment" ? catalog.data?.regularRates : undefined) : undefined;
-  const feePct = catalog.data?.payments?.tamaraFeePercent ?? 8;
+  const depositPct = catalog.data?.payments?.cashDepositPercent ?? 20;
   const servicePct = catalog.data?.payments?.serviceFeePercent ?? 0;
   const serviceFee = price != null ? Math.round(((catalog.data?.payments?.serviceFeeAed ?? 0) + (price * servicePct) / 100) * 100) / 100 : 0;
-  const tamaraFee = price != null ? Math.round(price * feePct) / 100 : 0;
-  const payTotal = price != null ? Math.round((price + serviceFee + (pay === "tamara" ? tamaraFee : 0)) * 100) / 100 : null;
+  const payTotal = price != null ? Math.round((price + serviceFee) * 100) / 100 : null;
+  // Cash: a deposit online now, the rest (whole dirhams) in cash on the day. Same split as the server.
+  const cashDue = payTotal != null ? Math.floor((payTotal * (100 - depositPct)) / 100) : null;
+  const deposit = payTotal != null && cashDue != null ? Math.round((payTotal - cashDue) * 100) / 100 : null;
   const savePct = (f: Frequency) => (f === "one_time" ? 0 : (catalog.data?.frequencyDiscountPercent?.[f] ?? 0));
 
   useEffect(() => {
@@ -164,7 +165,7 @@ export default function BookService() {
         setSending(t("Sending photos {0} of {1}…", { 0: 0, 1: photos.length }));
         await uploadQuotePhotos(booking.id, photos, (n) => setSending(t("Sending photos {0} of {1}…", { 0: n, 1: photos.length }))).catch(() => undefined);
       }
-      if (booking.canPay && (pay === "card" || pay === "tamara")) router.replace(`/booking/${booking.id}/pay?method=${pay}`);
+      if (booking.canPay) router.replace(`/booking/${booking.id}/pay?method=${pay}`);
       else router.replace(`/booking/${booking.id}?new=1`);
     } catch (e) {
       if (e instanceof ApiError && e.code === "phone_required") {
@@ -384,16 +385,20 @@ export default function BookService() {
             <>
               <OptionCard selected={pay === "card"} onPress={() => setPay("card")} title={t("Card, Apple Pay or Google Pay")} subtitle={t("Pay securely now")} icon={<LineIcon name="card" size={24} color={iconColor("card")} />} />
               <OptionCard
-                selected={pay === "tamara"}
-                onPress={() => setPay("tamara")}
-                title={t("Tamara: pay in 4")}
-                subtitle={price ? t("4 payments of {0} · includes {1}% Tamara fee", { 0: aed(Math.round(((price + serviceFee + tamaraFee) / 4) * 100) / 100), 1: feePct }) : t("Split into 4 payments")}
-                icon={<TamaraBadge />}
+                selected={pay === "cash"}
+                onPress={() => setPay("cash")}
+                title={t("Cash on the day")}
+                subtitle={
+                  deposit != null && cashDue != null
+                    ? t("Pay {0} now to confirm, then {1} in cash to the team", { 0: aed(deposit), 1: aed(cashDue) })
+                    : t("Pay a {0}% deposit now and the rest in cash", { 0: depositPct })
+                }
+                icon={<LineIcon name="cash" size={24} color={iconColor("cash")} />}
               />
             </>
           ) : (
             <Card tone="gold">
-              <Text style={{ fontSize: 14 }}>{t("Nothing to pay now. Our team reviews your photos and sends your quote to the app; you pay by card or Tamara once you accept it.")}</Text>
+              <Text style={{ fontSize: 14 }}>{t("Nothing to pay now. Our team reviews your photos and sends your quote to the app; you pay by card, or a deposit and the rest in cash, once you accept it.")}</Text>
             </Card>
           )}
 
@@ -405,9 +410,14 @@ export default function BookService() {
               ) : null}
               <PriceRow label={t("Cleaning materials")} value={t("FREE")} muted />
               {serviceFee > 0 ? <PriceRow label={servicePct ? t("Service fee ({0}%)", { 0: servicePct }) : t("Service fee")} value={aed(serviceFee)} muted /> : null}
-              {pay === "tamara" ? <PriceRow label={t("Tamara fee ({0}%)", { 0: feePct })} value={aed(tamaraFee)} muted /> : null}
               <Divider />
               <PriceRow label={frequency === "one_time" ? t("Total") : t("Total per visit")} value={aed(payTotal)} bold />
+              {pay === "cash" && deposit != null && cashDue != null ? (
+                <>
+                  <PriceRow label={t("Pay now ({0}% deposit)", { 0: depositPct })} value={aed(deposit)} />
+                  <PriceRow label={t("Cash to the team on the day")} value={aed(cashDue)} muted />
+                </>
+              ) : null}
             </Card>
           ) : null}
           <Text variant="small">{t("Free cancellation until your team sets off. Paid bookings are refunded automatically.")}</Text>

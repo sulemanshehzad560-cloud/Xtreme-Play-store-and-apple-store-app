@@ -69,25 +69,6 @@ describe("repeating regular cleaning", () => {
   });
 });
 
-describe("Tamara fee", () => {
-  it("adds 8% when paying with Tamara and shows it on the invoice", async () => {
-    const me = await signInPhone(t, undefined, "Sara Al Mansoori");
-    await t.app.inject({ method: "PATCH", url: "/v1/me", headers: me.auth, payload: { email: "sara@example.com" } });
-    const booking = await book(t, me.auth);
-    const options = (await get(`/v1/bookings/${booking.id}/payment-options`, me.auth)).json();
-    expect(options.methods.find((m: { method: string }) => m.method === "card")).toMatchObject({ feeAed: 0, totalAed: 150 });
-    expect(options.methods.find((m: { method: string }) => m.method === "tamara")).toMatchObject({ feePercent: 8, feeAed: 12, totalAed: 162 });
-
-    await post(`/v1/bookings/${booking.id}/payments`, me.auth, { method: "tamara" });
-    const orderId = [...t.tamara.orders.keys()].at(-1)!;
-    t.tamara.approve(orderId);
-    await t.app.inject({ method: "POST", url: "/v1/webhooks/tamara?tamaraToken=tamara-ok", headers: { "content-type": "application/json" }, payload: JSON.stringify({ order_id: orderId, event_type: "order_approved" }) });
-    const invoice = (await get(`/v1/bookings/${booking.id}/invoice`, me.auth)).json();
-    expect(invoice.lines.map((l: { amountAed: number }) => l.amountAed)).toEqual([150, 12]);
-    expect(invoice.totalAed).toBe(162);
-  });
-});
-
 describe("chat with us", () => {
   it("answers common questions instantly and passes the rest to the office", async () => {
     const customer = await signInPhone(t);

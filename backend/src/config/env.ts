@@ -128,6 +128,8 @@ const EnvSchema = z.object({
   TAMARA_NOTIFICATION_TOKEN: z.string().optional(),
   TAMARA_INSTALMENTS: z.coerce.number().int().min(2).max(12).default(4),
   /** Fee added when the customer pays with Tamara, in percent of the amount due (0 = none). */
+  /** Cash bookings: share of the total paid online to confirm the booking; the rest is paid in cash on the day. */
+  CASH_DEPOSIT_PERCENT: z.coerce.number().min(5).max(90).default(20),
   TAMARA_FEE_PERCENT: z.coerce.number().min(0).max(20).default(8),
   /** Default service charge on every payment, in percent (editable later in the dashboard). */
   SERVICE_FEE_PERCENT: z.coerce.number().min(0).max(20).default(2),

@@ -13,7 +13,7 @@ const W = Dimensions.get("window").width;
 const SLIDES = [
   { Art: BookScene, title: "Book in seconds", body: "Home cleaning, deep cleaning, sofas, carpets and more. Pick a time that suits you and you're done." },
   { Art: TrackScene, title: "Track your team live", body: "See who's coming and watch them arrive on the map, minute by minute." },
-  { Art: PayScene, title: "Pay your way", body: "Card, Apple Pay, Google Pay or Tamara in 4 instalments. No hidden charges." },
+  { Art: PayScene, title: "Pay your way", body: "Card, Apple Pay, Google Pay, or a small deposit and the rest in cash. No hidden charges." },
 ];
 
 export default function Onboarding() {
