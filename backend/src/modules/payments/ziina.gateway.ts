@@ -34,7 +34,7 @@ export class ZiinaGateway implements HostedCardGateway {
   constructor(
     private readonly baseUrl: string,
     private readonly apiKey: string | undefined,
-    private readonly opts: { test: boolean; webhookSecret?: string | undefined },
+    private readonly opts: { webhookSecret?: string | undefined },
     private readonly fetchFn: FetchLike = fetch,
   ) {}
 
@@ -69,7 +69,8 @@ export class ZiinaGateway implements HostedCardGateway {
       success_url: i.redirectUrl,
       cancel_url: i.cancelUrl,
       failure_url: i.redirectUrl,
-      test: this.opts.test,
+      // Always live: real payments only.
+      test: false,
       allow_tips: false,
     });
     if (!intent.id || !intent.redirect_url) throw new Error("Ziina did not return a payment page");
@@ -94,7 +95,7 @@ export class ZiinaGateway implements HostedCardGateway {
       payment_intent_id: orderRef,
       amount: amountMinor,
       currency_code: currency,
-      test: this.opts.test,
+      test: false,
     });
     if (refund.status === "failed") throw new Error(`Ziina refused the refund: ${refund.error?.message ?? "unknown reason"}`);
   }

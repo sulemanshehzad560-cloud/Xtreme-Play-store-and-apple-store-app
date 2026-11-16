@@ -108,8 +108,6 @@ const EnvSchema = z.object({
   // The webhook is registered automatically on start-up.
   ZIINA_API_URL: z.string().url().default("https://api-v2.ziina.com/api"),
   ZIINA_API_KEY: z.string().optional(),
-  /** true: create test payments (no money moves). */
-  ZIINA_TEST: bool,
   /** Optional; by default the webhook signing secret is derived from the API key. */
   ZIINA_WEBHOOK_SECRET: z.string().optional(),
   /** Cash bookings: share of the total paid online to confirm the booking; the rest is paid in cash on the day. */
@@ -165,9 +163,6 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     if (env.SMS_PROVIDER === "console") console.warn("Warning: test server. Sign-in codes are written to the log, not sent by SMS.");
     // Payments and personal data: the public address must be encrypted (HTTPS).
     if (!env.PUBLIC_URL.startsWith("https://")) throw new Error("PUBLIC_URL must start with https:// in production");
-    if (env.ZIINA_TEST && env.PUBLIC_URL.includes("xtreme-fmgroup.com")) {
-      console.warn("Warning: Ziina TEST mode on the production domain. Card payments are not real until ZIINA_TEST is turned off.");
-    }
     if (env.CORS_ORIGINS.includes("*")) throw new Error("CORS_ORIGINS=* is not allowed in production");
   }
   if (env.MAIL_PROVIDER === "smtp" && (!env.SMTP_USER || !env.SMTP_PASS)) throw new Error("MAIL_PROVIDER=smtp needs SMTP_USER and SMTP_PASS");

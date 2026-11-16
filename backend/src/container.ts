@@ -136,7 +136,7 @@ export function createContainer(env: Env, log: FastifyBaseLogger, overrides: Con
   });
   const users = new UserService(db, tokens, bookings);
   // Card, Apple Pay and Google Pay: all through Ziina.
-  const ziina = new ZiinaGateway(env.ZIINA_API_URL, env.ZIINA_API_KEY, { test: env.ZIINA_TEST, webhookSecret: env.ZIINA_WEBHOOK_SECRET });
+  const ziina = new ZiinaGateway(env.ZIINA_API_URL, env.ZIINA_API_KEY, { webhookSecret: env.ZIINA_WEBHOOK_SECRET });
   const hosted = overrides.hosted ?? ziina;
   if (!overrides.hosted && ziina.configured && env.PUBLIC_URL.startsWith("https://")) {
     ziina

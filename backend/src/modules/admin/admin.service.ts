@@ -220,7 +220,7 @@ export class AdminService {
         { key: "google", name: "Google sign-in", provider: "Google", connected: e.GOOGLE_CLIENT_IDS.length > 0 },
         { key: "apple", name: "Sign in with Apple", provider: "Apple", connected: e.APPLE_BUNDLE_IDS.length > 0 },
         { key: "facebook", name: "Facebook sign-in", provider: "Facebook", connected: Boolean(e.FACEBOOK_APP_ID && e.FACEBOOK_APP_SECRET) },
-        { key: "ziina", name: "Card, Apple Pay, Google Pay", provider: "Ziina", connected: Boolean(e.ZIINA_API_KEY), mode: e.ZIINA_API_KEY ? (e.ZIINA_TEST ? "test" : "live") : null },
+        { key: "ziina", name: "Card, Apple Pay, Google Pay", provider: "Ziina", connected: Boolean(e.ZIINA_API_KEY), mode: e.ZIINA_API_KEY ? "live" : null },
         { key: "mail", name: "Invoice emails", provider: e.MAIL_PROVIDER === "smtp" ? `Zoho Mail (${e.SMTP_USER ?? ""})` : "Not sending (console)", connected: e.MAIL_PROVIDER === "smtp" },
         { key: "push", name: "Push notifications", provider: "Expo (APNs / FCM)", connected: e.PUSH_ENABLED },
         { key: "realtime", name: "Live tracking across servers", provider: "Redis", connected: Boolean(e.REDIS_URL) },

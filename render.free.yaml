@@ -4,7 +4,7 @@
 #   - The API sleeps after 15 minutes without traffic; the first request after that takes about a minute.
 #   - The free database is deleted after 30 days unless upgraded to a paid plan.
 # Sign-in codes are NOT texted: open the service's "Logs" tab and read the line "[sms] ... code".
-# Payments: Ziina only (ZIINA_API_KEY). Add ZIINA_TEST=true to take test payments with no real money.
+# Payments: Ziina only (ZIINA_API_KEY), always live.
 services:
   - type: web
     name: xtreme-api-test
