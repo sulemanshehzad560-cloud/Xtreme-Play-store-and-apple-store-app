@@ -31,6 +31,15 @@ export function requireAuth(c: Container, ...roles: UserRole[]) {
     const claims = await c.tokens.verifyAccess(token);
     const user = await c.auth.activeUser(claims.sub);
     req.user = { id: user.id, role: user.role };
-    if (roles.length && !roles.includes(user.role)) throw forbidden();
+    if (roles.length && !roles.includes(user.role)) {
+      // Office and staff accounts can't book: say so plainly instead of a generic refusal.
+      if (roles.length === 1 && roles[0] === "customer") {
+        throw forbidden(
+          `This number is set up as an Xtreme ${user.role === "admin" ? "office" : "staff"} account, so it can't book or pay. Sign in with a customer number to book.`,
+          "customer_only",
+        );
+      }
+      throw forbidden();
+    }
   };
 }
