@@ -1,0 +1,1 @@
+Test build of Xtreme-Cleaning Partner from commit 0c31487 (2026-11-20 04:11 UTC). Demo mode: 1. Install on Android: download the APK on the phone, open it and allow installing from this source.
