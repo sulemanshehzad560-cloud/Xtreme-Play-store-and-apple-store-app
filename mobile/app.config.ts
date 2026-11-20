@@ -94,11 +94,13 @@ const config: ExpoConfig = {
       {
         isAndroidBackgroundLocationEnabled: true,
         isAndroidForegroundServiceEnabled: true,
-        // iOS asks for location only while the app is in use; drop the plugin's generic
-        // "always" and motion texts so the App Store build declares nothing it doesn't use.
+        // iOS asks for location only while the app is in use, so no "always" texts. The location
+        // library contains motion-sensor code, and Apple's upload check needs a motion text for it
+        // (ITMS-90683) even though the app never asks for motion access.
         locationAlwaysAndWhenInUsePermission: false,
         locationAlwaysPermission: false,
-        motionUsagePermission: false,
+        motionUsagePermission:
+          "Xtreme-Cleaning Partner does not use your motion or fitness data. The location feature it uses for your address and team tracking includes this permission, but the app never asks for it.",
       },
     ],
     "@livekit/react-native-expo-plugin",
