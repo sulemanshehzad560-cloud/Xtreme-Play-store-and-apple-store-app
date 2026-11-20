@@ -9,9 +9,12 @@ import { colors, fonts, radius, space } from "@/lib/theme";
 import type { Interval, SubscriptionPlan } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { t } from "@/lib/i18n";
+import { useAuth } from "@/lib/auth";
+import { goSignIn } from "@/lib/guest";
 
 /** Monthly / yearly cleaning plans set by the office. */
 export default function Plans() {
+  const { user } = useAuth();
   const plans = useApi<SubscriptionPlan[]>("/subscription-plans");
   const [interval, setInterval] = useState<Interval>("monthly");
   const list = (plans.data ?? []).filter((p) => (interval === "monthly" ? p.priceMonthlyAed : p.priceYearlyAed) != null);
@@ -49,7 +52,7 @@ export default function Plans() {
         const visits = p.visitsPerMonth * (interval === "monthly" ? 1 : 12);
         const perVisit = Math.round(price / visits);
         return (
-          <Card key={p.id} onPress={() => router.push(`/subscribe/${p.id}?interval=${interval}`)}>
+          <Card key={p.id} onPress={() => (user ? router.push(`/subscribe/${p.id}?interval=${interval}`) : goSignIn())}>
             <Row style={{ gap: space(3), alignItems: "flex-start" }}>
               <View style={{ width: 52, height: 52, borderRadius: radius.md, backgroundColor: colors.goldSoft, alignItems: "center", justifyContent: "center" }}>
                 <ServiceIcon name={p.service.key} size={44} tile={false} />
@@ -69,7 +72,7 @@ export default function Plans() {
                   {interval === "monthly" ? t("per month · about {0} a visit", { 0: aed(perVisit) }) : t("per year · about {0} a visit", { 0: aed(perVisit) })}
                 </Text>
               </View>
-              <Button title={t("Choose")} size="sm" onPress={() => router.push(`/subscribe/${p.id}?interval=${interval}`)} />
+              <Button title={t("Choose")} size="sm" onPress={() => (user ? router.push(`/subscribe/${p.id}?interval=${interval}`) : goSignIn())} />
             </Row>
           </Card>
         );

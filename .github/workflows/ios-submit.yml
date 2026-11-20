@@ -10,11 +10,14 @@ on:
       profile:
         description: "Submit profile in eas.json"
         default: playtest
+      build_first:
+        description: "Build a new iOS version first, then upload exactly that build (true/false)"
+        default: "false"
 
 jobs:
   submit:
     runs-on: ubuntu-latest
-    timeout-minutes: 150
+    timeout-minutes: 300
     defaults: { run: { working-directory: mobile } }
     steps:
       - uses: actions/checkout@v4
@@ -46,9 +49,20 @@ jobs:
       - uses: expo/expo-github-action@v8
         with: { eas-version: latest, token: "${{ secrets.EXPO_TOKEN }}" }
       - run: npm ci --legacy-peer-deps
+      - name: Build iOS on EAS and wait for it
+        id: build
+        if: github.event.inputs.build_first == 'true'
+        run: |
+          npx tsc --noEmit
+          eas build --platform ios --profile "${{ github.event.inputs.profile || 'playtest' }}" --non-interactive --wait --json > build.json
+          id=$(node -e 'const b=JSON.parse(require("fs").readFileSync("build.json","utf8")); console.log((Array.isArray(b)?b[0]:b).id)')
+          echo "Built $id"
+          echo "id=$id" >> "$GITHUB_OUTPUT"
       - name: Upload to TestFlight
         run: |
-          if [ -n "${{ github.event.inputs.build_id }}" ]; then which="--id ${{ github.event.inputs.build_id }}"; else which="--latest"; fi
+          # Upload the build just made, a chosen build, or else the latest one.
+          if [ -n "${{ steps.build.outputs.id }}" ]; then which="--id ${{ steps.build.outputs.id }}";
+          elif [ -n "${{ github.event.inputs.build_id }}" ]; then which="--id ${{ github.event.inputs.build_id }}"; else which="--latest"; fi
           eas submit --platform ios --profile "${{ github.event.inputs.profile || 'playtest' }}" $which --non-interactive --wait
       - name: Remove key file
         if: always()

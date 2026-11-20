@@ -1014,4 +1014,13 @@ export const AR: Record<string, string> = {
   "Deposit paid in the app · collect {0} in cash": "تم دفع العربون في التطبيق · استلم {0} نقداً",
   "COLLECT IN CASH": "المبلغ المطلوب نقداً",
   "Cash collected": "تم استلام النقد",
+  "Not now, browse services": "ليس الآن، تصفّح الخدمات",
+  "Sign in to continue": "سجّل الدخول للمتابعة",
+  "Sign in or create account": "سجّل الدخول أو أنشئ حساباً",
+  "You can browse all services and prices without an account.": "يمكنك تصفّح جميع الخدمات والأسعار بدون حساب.",
+  "Sign in to see your bookings, track your team and pay.": "سجّل الدخول لعرض حجوزاتك وتتبّع فريقك والدفع.",
+  "Sign in to manage your details, addresses and payments.": "سجّل الدخول لإدارة بياناتك وعناوينك ومدفوعاتك.",
+  "Sign in to confirm your booking. Your choices are kept.": "سجّل الدخول لتأكيد حجزك. سنحتفظ باختياراتك.",
+  "Staff account": "حساب موظف",
+  "Staff sign in with the Xtreme Staff app.": "يسجّل الموظفون الدخول عبر تطبيق Xtreme Staff.",
 };

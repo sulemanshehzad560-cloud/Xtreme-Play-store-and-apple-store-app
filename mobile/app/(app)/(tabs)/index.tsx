@@ -20,6 +20,7 @@ import { SERVICE_ICON_PHOTOS } from "@/lib/servicePhotos";
 import { colors, fonts, radius, shadow, space } from "@/lib/theme";
 import type { Booking, Company, Service } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
+import { goSignIn } from "@/lib/guest";
 import { t } from "@/lib/i18n";
 import { OffersOptInCard } from "@/components/OffersOptIn";
 
@@ -117,11 +118,11 @@ export default function Home() {
   const referral = services.data?.referral;
   const homeFrom = services.data?.services.find((s) => s.key === "regular")?.startingFromAed ?? null;
   const weeklySave = services.data?.frequencyDiscountPercent?.weekly ?? 0;
-  const active = useApi<Booking[]>("/bookings?scope=active&limit=3");
-  const addresses = useApi<Address[]>("/me/addresses");
+  const active = useApi<Booking[]>(user ? "/bookings?scope=active&limit=3" : null);
+  const addresses = useApi<Address[]>(user ? "/me/addresses" : null);
   const company = useApi<Company>("/company");
-  const inbox = useApi<{ read: boolean }[]>("/me/notifications?limit=50");
-  const chatUnread = useApi<{ unread: number }>("/me/support/unread");
+  const inbox = useApi<{ read: boolean }[]>(user ? "/me/notifications?limit=50" : null);
+  const chatUnread = useApi<{ unread: number }>(user ? "/me/support/unread" : null);
   const [teams, setTeams] = useState<Availability | null>(null);
   const [query, setQuery] = useState("");
   const [slide, setSlide] = useState(0);
@@ -191,7 +192,7 @@ export default function Home() {
           <SafeAreaView edges={["top"]} style={{ paddingHorizontal: space(4), paddingTop: space(2), gap: space(4) }}>
             <Row style={{ justifyContent: "space-between" }}>
               <BrandMark size={30} sub={t("by Xtreme Facilities Management")} />
-              <Pressable onPress={() => router.push("/notifications")} accessibilityRole="button" accessibilityLabel={t("Notifications, {0} unread", { 0: unread })} style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: "#2A251D", alignItems: "center", justifyContent: "center" }}>
+              <Pressable onPress={() => (user ? router.push("/notifications") : goSignIn())} accessibilityRole="button" accessibilityLabel={t("Notifications, {0} unread", { 0: unread })} style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: "#2A251D", alignItems: "center", justifyContent: "center" }}>
                 <LineIcon name="bell" size={21} color="#F6F0E3" />
                 {unread ? (
                   <View style={{ position: "absolute", top: 4, right: 4, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: colors.danger, alignItems: "center", justifyContent: "center", paddingHorizontal: 4, borderWidth: 2, borderColor: colors.ink }}>
@@ -200,7 +201,7 @@ export default function Home() {
                 ) : null}
               </Pressable>
             </Row>
-            <Pressable onPress={() => router.push("/addresses")} style={{ flexDirection: "row", alignItems: "center", gap: space(2), alignSelf: "flex-start", backgroundColor: "#211D17", borderRadius: radius.pill, paddingLeft: space(2), paddingRight: space(4), paddingVertical: space(1.5), borderWidth: 1, borderColor: "#3A3328" }} accessibilityRole="button" accessibilityLabel={t("Service location")}>
+            <Pressable onPress={() => (user ? router.push("/addresses") : goSignIn())} style={{ flexDirection: "row", alignItems: "center", gap: space(2), alignSelf: "flex-start", backgroundColor: "#211D17", borderRadius: radius.pill, paddingLeft: space(2), paddingRight: space(4), paddingVertical: space(1.5), borderWidth: 1, borderColor: "#3A3328" }} accessibilityRole="button" accessibilityLabel={t("Service location")}>
               <LineIcon name="pin" size={18} color={colors.goldBright} />
               <RNText style={{ color: "#A79E8D", fontFamily: fonts.medium, fontSize: 12 }}>{t("Service location")}</RNText>
               <RNText style={{ color: "#fff", fontFamily: fonts.bold, fontSize: 13, flexShrink: 1 }} numberOfLines={1}>
@@ -407,7 +408,7 @@ export default function Home() {
           <FreeMaterials />
 
           {referral && referral.friendAed > 0 && referral.rewardAed > 0 ? (
-            <Pressable onPress={() => router.push("/invite")} accessibilityRole="button" style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: space(3), backgroundColor: colors.goldSoft, borderWidth: 1, borderColor: colors.goldLine, borderRadius: radius.lg, padding: space(4), opacity: pressed ? 0.85 : 1 })}>
+            <Pressable onPress={() => (user ? router.push("/invite") : goSignIn())} accessibilityRole="button" style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: space(3), backgroundColor: colors.goldSoft, borderWidth: 1, borderColor: colors.goldLine, borderRadius: radius.lg, padding: space(4), opacity: pressed ? 0.85 : 1 })}>
               <View style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: colors.goldBright, alignItems: "center", justifyContent: "center" }}>
                 <LineIcon name="tag" size={22} color="#16130E" />
               </View>
@@ -423,7 +424,7 @@ export default function Home() {
 
           <WhyXtreme />
 
-          <Card tone="ink" onPress={() => router.push("/chat")}>
+          <Card tone="ink" onPress={() => (user ? router.push("/chat") : goSignIn())}>
             <Row>
               <View style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: colors.goldBright, alignItems: "center", justifyContent: "center" }}>
                 <LineIcon name="chat" size={24} color="#16130E" />

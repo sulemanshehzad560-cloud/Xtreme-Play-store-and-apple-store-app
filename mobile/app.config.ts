@@ -42,14 +42,13 @@ const config: ExpoConfig = {
     config: { googleMapsApiKey: env.GOOGLE_MAPS_IOS_KEY },
     infoPlist: {
       NSLocationWhenInUseUsageDescription: "Xtreme-Cleaning Partner uses your location to set the service address and to show your team arriving.",
-      NSLocationAlwaysAndWhenInUseUsageDescription:
-        "Staff only: Xtreme-Cleaning Partner shares your location with the customer while you are on duty and travelling to a job.",
       // Camera: a profile photo or quote photos (sofa, mattress…). Apple requires the reasons.
       NSCameraUsageDescription: "Xtreme-Cleaning Partner uses the camera only when you choose to take a profile photo, or photograph the item you want cleaned (for example a sofa or mattress) so we can send your quote.",
       NSPhotoLibraryUsageDescription: "Xtreme-Cleaning Partner lets you choose a profile photo, or photos of the item you want cleaned (for example a sofa or mattress) so we can send your quote.",
-      NSMicrophoneUsageDescription: "Xtreme-Cleaning Partner uses the microphone only for in-app calls between you and your cleaning team (or, for staff, the customer).",
-      // "audio" keeps an in-app call going when the screen locks.
-      UIBackgroundModes: ["location", "remote-notification", "audio"],
+      NSMicrophoneUsageDescription: "Xtreme-Cleaning Partner uses the microphone only for in-app calls between you and your cleaning team.",
+      // "audio" keeps an in-app call going when the screen locks. No background location: the iOS
+      // app is customer-only, and only the (Android) staff app shares location in the background.
+      UIBackgroundModes: ["remote-notification", "audio"],
       ITSAppUsesNonExemptEncryption: false,
     },
   },
@@ -78,14 +77,15 @@ const config: ExpoConfig = {
   plugins: [
     "expo-router",
     ["expo-splash-screen", { image: "./assets/logo.png", imageWidth: 200, resizeMode: "contain", backgroundColor: "#030405" }],
-    "expo-secure-store",
+    // Sign-in tokens are stored without Face ID, so no Face ID permission text.
+    ["expo-secure-store", { faceIDPermission: false }],
     "expo-apple-authentication",
     "expo-web-browser",
     [
       "expo-image-picker",
       {
         photosPermission: "Xtreme-Cleaning Partner lets you choose a profile photo, or photos of the item you want cleaned (for example a sofa or mattress) so we can send your quote.",
-        cameraPermission: "Xtreme-Cleaning Partner uses the camera only when you choose to take a profile photo, photograph the item you want cleaned (for example a sofa or mattress) so we can send your quote, or scan your payment card.",
+        cameraPermission: "Xtreme-Cleaning Partner uses the camera only when you choose to take a profile photo, or photograph the item you want cleaned (for example a sofa or mattress) so we can send your quote.",
         microphonePermission: "Xtreme-Cleaning Partner uses the microphone for in-app calls with your cleaning team.",
       },
     ],
@@ -94,10 +94,15 @@ const config: ExpoConfig = {
       {
         isAndroidBackgroundLocationEnabled: true,
         isAndroidForegroundServiceEnabled: true,
+        // iOS asks for location only while the app is in use; drop the plugin's generic
+        // "always" and motion texts so the App Store build declares nothing it doesn't use.
+        locationAlwaysAndWhenInUsePermission: false,
+        locationAlwaysPermission: false,
+        motionUsagePermission: false,
       },
     ],
     "@livekit/react-native-expo-plugin",
-    ["@config-plugins/react-native-webrtc", { microphonePermission: "Xtreme-Cleaning Partner uses the microphone only for in-app calls between you and your cleaning team (or, for staff, the customer)." }],
+    ["@config-plugins/react-native-webrtc", { microphonePermission: "Xtreme-Cleaning Partner uses the microphone only for in-app calls between you and your cleaning team." }],
     ["expo-notifications", { icon: "./assets/notification-icon.png", color: "#E2C170" }],
     ["@react-native-google-signin/google-signin", { iosUrlScheme: env.GOOGLE_IOS_URL_SCHEME ?? "com.googleusercontent.apps.placeholder" }],
     [

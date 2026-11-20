@@ -11,8 +11,16 @@ import { colors, fonts, radius, space } from "@/lib/theme";
 import type { Booking } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { t } from "@/lib/i18n";
+import { useAuth } from "@/lib/auth";
+import { GuestPrompt } from "@/components/GuestPrompt";
 
 export default function Bookings() {
+  const { user } = useAuth();
+  if (!user) return <GuestPrompt title={t("My bookings")} icon="calendar" body={t("Sign in to see your bookings, track your team and pay.")} />;
+  return <MyBookings />;
+}
+
+function MyBookings() {
   const [scope, setScope] = useState<"active" | "past">("active");
   const { data, loading, reload } = useApi<Booking[]>(`/bookings?scope=${scope}&limit=50`);
   const [refreshing, setRefreshing] = useState(false);

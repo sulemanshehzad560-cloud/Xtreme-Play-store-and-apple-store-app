@@ -9,17 +9,18 @@ import {
   PlusJakartaSans_800ExtraBold,
 } from "@expo-google-fonts/plus-jakarta-sans";
 import { Tajawal_400Regular, Tajawal_500Medium, Tajawal_700Bold, Tajawal_800ExtraBold } from "@expo-google-fonts/tajawal";
-import { View } from "react-native";
+import { Alert, View } from "react-native";
 import { Stack, router } from "expo-router";
 import * as Notifications from "expo-notifications";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { BrandIntro } from "@/components/BrandIntro";
 import { LanguagePicker } from "@/components/LanguagePicker";
-import { LanguageProvider, useLanguage } from "@/lib/i18n";
+import { LanguageProvider, t, useLanguage } from "@/lib/i18n";
 import { Loading } from "@/components/ui";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { DEMO } from "@/lib/demo";
+import { STAFF_APP } from "@/lib/variant";
 import { registerPush } from "@/lib/push";
 import { closeSocket } from "@/lib/realtime";
 import { colors } from "@/lib/theme";
@@ -37,7 +38,7 @@ if (Platform.OS !== "web") registerGlobals();
 // Hand over from the static native splash to the animated brand intro as soon as JS is up.
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 function Gate() {
-  const { ready, user, refreshUser } = useAuth();
+  const { ready, user, refreshUser, signOut } = useAuth();
   const { dark } = useThemeMode();
   const { lang, chosen } = useLanguage();
   const [introDone, setIntroDone] = useState(false);
@@ -53,6 +54,13 @@ function Gate() {
       .then(() => refreshUser())
       .catch(() => undefined);
   }, [user?.id, user?.locale, lang]);
+
+  // A staff account has nothing to do in the customer app: sign it out and point to the staff app.
+  useEffect(() => {
+    if (STAFF_APP || user?.role !== "staff") return;
+    void signOut();
+    Alert.alert(t("Staff account"), t("Staff sign in with the Xtreme Staff app."));
+  }, [user?.id]);
 
   useEffect(() => {
     if (user) registerPush().catch(() => undefined);
@@ -88,21 +96,27 @@ function Gate() {
   const isStaff = user?.role === "staff";
   // Phone sign-ins start without a name: ask for name and date of birth before anything else.
   const needsProfile = !!user && !isStaff && !user.fullName?.trim();
+  // Guests browse the customer app without an account; sign-in opens on top when they book.
+  // The staff app has nothing to browse, so it still opens on its sign-in screen. A staff account in
+  // the customer app (being signed out above) browses as a guest meanwhile, so a screen is always open.
+  const guest = !STAFF_APP && (!user || isStaff);
   // Screens read the palette and language when they render, so changing either remounts the navigator.
   // Arabic lays the whole app out right-to-left.
   return (
     <View style={{ flex: 1, direction: lang === "ar" ? "rtl" : "ltr" }}>
     <Stack key={`${dark ? "dark" : "light"}-${lang}`} screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
+      {/* Listed first so guests start on the home screen, not the sign-in screen. */}
+      <Stack.Protected guard={guest || (!!user && !isStaff && !needsProfile)}>
+        <Stack.Screen name="(app)" />
+      </Stack.Protected>
       <Stack.Protected guard={!user}>
         <Stack.Screen name="(auth)" />
       </Stack.Protected>
       <Stack.Protected guard={needsProfile}>
         <Stack.Screen name="profile-setup" />
       </Stack.Protected>
-      <Stack.Protected guard={!!user && !isStaff && !needsProfile}>
-        <Stack.Screen name="(app)" />
-      </Stack.Protected>
-      <Stack.Protected guard={isStaff}>
+      {/* The staff screens exist only in the Xtreme Staff app. */}
+      <Stack.Protected guard={STAFF_APP && isStaff}>
         <Stack.Screen name="(staff)" />
       </Stack.Protected>
     </Stack>

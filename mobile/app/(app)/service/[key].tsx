@@ -11,6 +11,8 @@ import { AddressPicker, completeAddress, type NewAddress } from "@/components/Ad
 import { colors, fonts, radius, space } from "@/lib/theme";
 import type { Booking, Service } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
+import { useAuth } from "@/lib/auth";
+import { goSignIn } from "@/lib/guest";
 import { PlanPromo } from "@/components/Promo";
 import { SlotPicker, abuDhabiTime, firstOpenDay, hourLabel, nextDays } from "@/components/SlotPicker";
 import { LineIcon, iconColor, type LineIconName } from "@/components/LineIcon";
@@ -69,7 +71,8 @@ export default function BookService() {
   const { key, type: againType, size: againSize, frequency: againFrequency } = useLocalSearchParams<{ key: string; type?: PropertyType; size?: string; frequency?: Frequency }>();
   const catalog = useApi<Catalog>("/catalog/services");
   const materials = useMaterialsText();
-  const saved = useApi<Address[]>("/me/addresses");
+  const { user } = useAuth();
+  const saved = useApi<Address[]>(user ? "/me/addresses" : null);
   const service = catalog.data?.services.find((s) => s.key === key);
 
   const [step, setStep] = useState(0);
@@ -80,7 +83,8 @@ export default function BookService() {
   const [day, setDay] = useState(() => firstOpenDay(days));
   const [hour, setHour] = useState<number | null>(null);
   const [addressId, setAddressId] = useState<string | null>(null);
-  const [adding, setAdding] = useState(false);
+  // Guests have no saved addresses, so they type one in.
+  const [adding, setAdding] = useState(!user);
   const [draft, setDraft] = useState<Partial<NewAddress>>({ label: "Home" });
   const [notes, setNotes] = useState("");
   const [pay, setPay] = useState<Pay>("card");
@@ -135,7 +139,17 @@ export default function BookService() {
   const needsPhotos = q?.pricing === "inspection";
   const canContinue = [!needsPhotos || photos.length >= MIN_PHOTOS, hour != null, adding ? newAddressOk : Boolean(addressId), true][step];
 
+  // Back from signing in: drop the "sign in to confirm" note.
+  useEffect(() => {
+    if (user) setError(null);
+  }, [user?.id]);
+
   async function submit() {
+    // Booking is account-based: guests sign in here, and land back on this screen with their choices.
+    if (!user) {
+      setError(t("Sign in to confirm your booking. Your choices are kept."));
+      return goSignIn();
+    }
     setBusy(true);
     setError(null);
     try {

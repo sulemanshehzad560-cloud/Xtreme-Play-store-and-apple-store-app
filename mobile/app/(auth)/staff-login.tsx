@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Image, Pressable, Text as RNText, TextInput, View } from "react-native";
-import { router } from "expo-router";
+import { Redirect, router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, ErrorText, Text } from "@/components/ui";
 import { LineIcon } from "@/components/LineIcon";
@@ -11,6 +11,12 @@ import { STAFF_APP } from "@/lib/variant";
 
 /** Sign-in for Xtreme staff with the Staff ID and password set by the office. */
 export default function StaffLogin() {
+  // Staff sign in only in the separate Xtreme Staff app; the customer app has no staff sign-in.
+  if (!STAFF_APP) return <Redirect href="/(auth)" />;
+  return <StaffLoginForm />;
+}
+
+function StaffLoginForm() {
   const { signInStaff } = useAuth();
   const [staffId, setStaffId] = useState("");
   const [password, setPassword] = useState("");
@@ -35,11 +41,6 @@ export default function StaffLogin() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.ink }}>
       <SafeAreaView edges={["top"]} style={{ paddingHorizontal: space(6), paddingTop: space(2), paddingBottom: space(8), gap: space(5) }}>
-        {STAFF_APP ? null : (
-          <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel={t("Back")} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "#2A251D", alignItems: "center", justifyContent: "center" }}>
-            <RNText style={{ color: "#fff", fontSize: 22, marginTop: -2 }}>‹</RNText>
-          </Pressable>
-        )}
         <Image source={require("../../assets/logo-mark.png")} style={{ width: 92, height: 70 }} resizeMode="contain" />
         <View style={{ gap: space(1) }}>
           <RNText style={{ color: colors.goldBright, fontFamily: fonts.bold, fontSize: 14, letterSpacing: 1.5 }}>{t("XTREME STAFF")}</RNText>

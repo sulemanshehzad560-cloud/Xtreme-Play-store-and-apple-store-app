@@ -22,10 +22,17 @@ import { useApi } from "@/lib/useApi";
 import { useThemeMode, type ThemeMode } from "@/lib/themeMode";
 import { t, useLanguage, type Lang } from "@/lib/i18n";
 import { setOffersOptIn } from "@/components/OffersOptIn";
+import { GuestPrompt } from "@/components/GuestPrompt";
 
 const METHOD_LABEL: Record<string, string> = { phone: "Mobile", google: "Google", facebook: "Facebook", apple: "Apple" };
 
 export default function Account() {
+  const { user } = useAuth();
+  if (!user) return <GuestPrompt title={t("Account")} icon="user" body={t("Sign in to manage your details, addresses and payments.")} />;
+  return <MyAccount />;
+}
+
+function MyAccount() {
   const { user, refreshUser, signOut } = useAuth();
   const company = useApi<Company>("/company");
   const addresses = useApi<{ id: string; label: string; area: string }[]>("/me/addresses");

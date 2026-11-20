@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { LineIcon, iconColor, type LineIconName } from "@/components/LineIcon";
 import { hasOnboarded } from "@/lib/onboarding";
-import { Alert, Platform, Text as RNText, View } from "react-native";
+import { Alert, Linking, Platform, Text as RNText, View } from "react-native";
+import { API_URL } from "@/lib/config";
 import { Image } from "expo-image";
 import { Redirect, router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -84,7 +85,9 @@ function CustomerWelcome() {
         ) : null}
         <Button title={t("Continue with Google")} variant="secondary" loading={busy === "google"} onPress={run("google", auth.signInWithGoogle)} icon={<GoogleIcon />} />
         <Button title={t("Continue with Facebook")} variant="secondary" loading={busy === "facebook"} onPress={run("facebook", auth.signInWithFacebook)} icon={<FacebookIcon />} />
-        <Text variant="small" style={{ textAlign: "center", marginTop: "auto" }}>
+        {/* Browsing needs no account: guests go back to the services and sign in when they book. */}
+        <Button title={t("Not now, browse services")} variant="ghost" onPress={() => (router.canGoBack() ? router.back() : router.replace("/(app)/(tabs)"))} />
+        <Text variant="small" onPress={() => void Linking.openURL(`${API_URL}/privacy`)} accessibilityRole="link" style={{ textAlign: "center", marginTop: "auto", textDecorationLine: "underline" }}>
           {t("By continuing, you agree to our Terms of Service and Privacy Policy.")}
         </Text>
       </SafeAreaView>
